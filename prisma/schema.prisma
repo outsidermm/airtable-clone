@@ -97,6 +97,20 @@ model Column {
     cells      Cell[]
 }
 
+model Row {
+    id         Int     @id @default(autoincrement())
+    tableId    String
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    order      String
+    createdAt  DateTime @default(now())
+
+    cells      Cell[]
+
+    @@index([tableId, id])
+    @@index([tableId, order])
+}
+
 enum ColumnType {
     TEXT
     NUMBER
