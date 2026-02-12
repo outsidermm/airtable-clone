@@ -9,14 +9,10 @@ export const baseRouter = createTRPCRouter({
   // Create a new base
   create: protectedProcedure
     .input(z.object({
-      name: z.string().min(1).max(255),
-      starred: z.boolean().optional().default(false),
     }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx }) => {
       return ctx.db.base.create({
         data: {
-          name: input.name,
-          starred: input.starred,
           userId: ctx.session.user.id,
         },
       });
@@ -31,35 +27,21 @@ export const baseRouter = createTRPCRouter({
           { starred: "desc" }, // Starred bases first
           { updatedAt: "desc" }, // Then by most recently updated
         ],
-        include: {
-          _count: {
-            select: { airtableTables: true },
-          },
-        },
       });
     }),
 
-  // Get a single base by ID
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+  // Get bases by name (partial match)
+  getByName: protectedProcedure
+    .input(z.object({ id: z.string(), name: z.string().max(255)}))
     .query(async ({ ctx, input }) => {
-      const base = await ctx.db.base.findUnique({
+      const base = await ctx.db.base.findMany({
         where: {
           id: input.id,
           userId: ctx.session.user.id, // Ensure user owns this base
-        },
-        include: {
-          airtableTables: {
-            orderBy: { createdAt: "asc" },
-            include: {
-              _count: {
-                select: {
-                  rows: true,
-                  columns: true,
-                },
-              },
-            },
-          },
+          name: {
+            contains: input.name, // Partial match on name
+            mode: "insensitive", // Case-insensitive search
+          }
         },
       });
 
@@ -71,18 +53,16 @@ export const baseRouter = createTRPCRouter({
     }),
 
   // Update a base
-  update: protectedProcedure
+  rename: protectedProcedure
     .input(z.object({
       id: z.string(),
-      name: z.string().min(1).max(255).optional(),
-      starred: z.boolean().optional(),
+      name: z.string().min(1).max(255),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
 
       // Verify ownership before updating
       const base = await ctx.db.base.findUnique({
-        where: { id, userId: ctx.session.user.id },
+        where: { id: input.id, userId: ctx.session.user.id },
       });
 
       if (!base) {
@@ -90,8 +70,8 @@ export const baseRouter = createTRPCRouter({
       }
 
       return ctx.db.base.update({
-        where: { id },
-        data,
+        where: { id: input.id },
+        data: { name: input.name },
       });
     }),
 
