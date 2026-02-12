@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ColumnType } from "generated/prisma/enums";
 
 import {
   createTRPCRouter,
@@ -208,5 +209,209 @@ export const viewRouter = createTRPCRouter({
         where: { tableId: input.tableId },
         orderBy: { createdAt: "asc" },
       });
+    }),
+
+  // Get data for a view with filters, sorts, and hidden columns applied
+  getData: protectedProcedure
+    .input(
+      z.object({
+        viewId: z.number().int(),
+        limit: z.number().int().min(1).max(100).default(50),
+        cursor: z.number().int().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Get view with ownership verification
+      const view = await ctx.db.view.findUnique({
+        where: { id: input.viewId },
+        include: {
+          table: {
+            include: { base: true },
+          },
+        },
+      });
+
+      if (!view || view.table.base.userId !== ctx.session.user.id) {
+        throw new Error("View not found or access denied");
+      }
+
+      // Parse view config
+      const config = viewConfigSchema.parse(view.config);
+      const { filters, sorts, hiddenColumns } = config;
+
+      // Get all columns to determine types for filtering
+      const columns = await ctx.db.column.findMany({
+        where: { tableId: view.tableId },
+        orderBy: { order: "asc" },
+      });
+
+      const columnMap = new Map(columns.map((c) => [c.id, c]));
+
+      // Build filter conditions for SQL
+      const filterConditions: string[] = [];
+      const filterParams: (string | number)[] = [];
+
+      filters.forEach((filter) => {
+        const column = columnMap.get(filter.columnId);
+        if (!column) return;
+
+        const isText = column.type === ColumnType.TEXT;
+        const valueField = isText ? "textValue" : "numberValue";
+
+        switch (filter.operator) {
+          case "is_empty":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" IS NULL)`
+            );
+            break;
+
+          case "is_not_empty":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" IS NOT NULL)`
+            );
+            break;
+
+          case "contains":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."textValue" ILIKE $${filterParams.length + 1})`
+            );
+            filterParams.push(`%${filter.value}%`);
+            break;
+
+          case "not_contains":
+            filterConditions.push(
+              `NOT EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."textValue" ILIKE $${filterParams.length + 1})`
+            );
+            filterParams.push(`%${filter.value}%`);
+            break;
+
+          case "equals":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" = $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value!);
+            break;
+
+          case "not_equals":
+            filterConditions.push(
+              `NOT EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" = $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value!);
+            break;
+
+          case "greater_than":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" > $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value as number);
+            break;
+
+          case "less_than":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" < $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value as number);
+            break;
+
+          case "greater_than_or_equal":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" >= $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value as number);
+            break;
+
+          case "less_than_or_equal":
+            filterConditions.push(
+              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" <= $${filterParams.length + 1})`
+            );
+            filterParams.push(filter.value as number);
+            break;
+        }
+      });
+
+      // Build ORDER BY clause for sorts
+      const orderByParts: string[] = [];
+      sorts.forEach((sort) => {
+        const column = columnMap.get(sort.columnId);
+        if (!column) return;
+
+        const isText = column.type === ColumnType.TEXT;
+        const valueField = isText ? "textValue" : "numberValue";
+
+        orderByParts.push(
+          `(SELECT c."${valueField}" FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${sort.columnId} LIMIT 1) ${sort.direction.toUpperCase()}`
+        );
+      });
+
+      // Always add r.id as final sort for deterministic pagination
+      orderByParts.push("r.id ASC");
+
+      // Build WHERE clause
+      const whereClauses: string[] = [`r."tableId" = ${view.tableId}`];
+      if (input.cursor) {
+        whereClauses.push(`r.id > ${input.cursor}`);
+      }
+      if (filterConditions.length > 0) {
+        whereClauses.push(...filterConditions);
+      }
+
+      const whereClause = whereClauses.join(" AND ");
+      const orderByClause = orderByParts.join(", ");
+
+      // Execute query to get row IDs
+      const rowIds = await ctx.db.$queryRawUnsafe<Array<{ id: number }>>(
+        `
+        SELECT r.id
+        FROM "Row" r
+        WHERE ${whereClause}
+        ORDER BY ${orderByClause}
+        LIMIT ${input.limit + 1}
+        `,
+        ...filterParams
+      );
+
+      // Check if there are more rows
+      let nextCursor: number | undefined;
+      if (rowIds.length > input.limit) {
+        const nextItem = rowIds.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      // If no rows, return empty result
+      if (rowIds.length === 0) {
+        return {
+          rows: [],
+          nextCursor: undefined,
+        };
+      }
+
+      // Get full row data with cells (excluding hidden columns)
+      const rows = await ctx.db.row.findMany({
+        where: {
+          id: { in: rowIds.map((r) => r.id) },
+        },
+        include: {
+          cells: {
+            where: hiddenColumns.length > 0
+              ? { columnId: { notIn: hiddenColumns } }
+              : undefined,
+            include: {
+              column: {
+                select: { id: true, name: true, type: true, order: true },
+              },
+            },
+            orderBy: { columnId: "asc" },
+          },
+        },
+      });
+
+      // Sort rows to match the order from the query
+      const rowMap = new Map(rows.map((r) => [r.id, r]));
+      const sortedRows = rowIds.map((r) => rowMap.get(r.id)!);
+
+      return {
+        rows: sortedRows,
+        nextCursor,
+      };
     }),
 });
