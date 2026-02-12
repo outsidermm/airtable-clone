@@ -67,6 +67,8 @@ model Base {
     userId         String
 
     airtableTables AirtableTable[]
+
+    starred         Boolean  @default(false)
 }
 
 model AirtableTable {
