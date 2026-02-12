@@ -166,71 +166,35 @@ export async function bulkCreateRows(
     currentOrder = currentOrder.genNext();
   }
 
-  // Batch size for optimal performance
-  // For 100k+ inserts, use parameterized raw SQL with PostgreSQL parameter limits
+  // Batch size for optimal performance with parameterized raw SQL
   const PARAMS_PER_ROW = 2; // tableId, order
   const MAX_PG_PARAMS = 32767; // PostgreSQL limit is 65535, use conservative value
-  const BATCH_SIZE_RAW_SQL = Math.floor(MAX_PG_PARAMS / PARAMS_PER_ROW); // ~16k rows
-  const BATCH_SIZE_PRISMA = 1000; // Standard batch size for Prisma createMany
+  const batchSize = Math.floor(MAX_PG_PARAMS / PARAMS_PER_ROW); // ~16k rows per batch
 
   const createdRowIds: number[] = [];
 
-  // Determine batch size based on total count
-  const useRawSQL = count >= 100000;
-  const batchSize = useRawSQL ? BATCH_SIZE_RAW_SQL : BATCH_SIZE_PRISMA;
-
-  // Create rows in batches
+  // Create rows in batches using INSERT...RETURNING to get IDs in one round-trip
   for (let i = 0; i < count; i += batchSize) {
     const currentBatchSize = Math.min(batchSize, count - i);
     const batchOrders = rowOrders.slice(i, i + currentBatchSize);
 
-    if (useRawSQL) {
-      // Use parameterized raw SQL for 100k+ inserts (secure and fast)
-      // Build placeholders: ($1, $2, NOW()), ($3, $4, NOW()), ...
-      const placeholders = batchOrders
-        .map((_, idx) => {
-          const offset = idx * PARAMS_PER_ROW;
-          return `($${offset + 1}, $${offset + 2}, NOW())`;
-        })
-        .join(", ");
+    // Build parameterized placeholders: ($1, $2, NOW()), ($3, $4, NOW()), ...
+    const placeholders = batchOrders
+      .map((_, idx) => {
+        const offset = idx * PARAMS_PER_ROW;
+        return `($${offset + 1}, $${offset + 2}, NOW())`;
+      })
+      .join(", ");
 
-      // Flatten parameters: [tableId, order1, tableId, order2, ...]
-      const params = batchOrders.flatMap((order) => [tableId, order]);
+    // Flatten parameters: [tableId, order1, tableId, order2, ...]
+    const params = batchOrders.flatMap((order) => [tableId, order]);
 
-      // Execute parameterized query (PostgreSQL handles all escaping)
-      await tx.$queryRawUnsafe(
-        `INSERT INTO "Row" ("tableId", "order", "createdAt") VALUES ${placeholders}`,
-        ...params
-      );
-
-      // Get the created row IDs
-      const rows = await tx.row.findMany({
-        where: {
-          tableId,
-          order: { in: batchOrders },
-        },
-        select: { id: true },
-      });
-      createdRowIds.push(...rows.map((r) => r.id));
-    } else {
-      // Use createMany for smaller datasets (type-safe)
-      const rowsData = batchOrders.map((order) => ({
-        tableId,
-        order,
-      }));
-
-      await tx.row.createMany({ data: rowsData });
-
-      // Get the created row IDs
-      const rows = await tx.row.findMany({
-        where: {
-          tableId,
-          order: { in: batchOrders },
-        },
-        select: { id: true },
-      });
-      createdRowIds.push(...rows.map((r) => r.id));
-    }
+    // INSERT...RETURNING gives us IDs without a second query
+    const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+      `INSERT INTO "Row" ("tableId", "order", "createdAt") VALUES ${placeholders} RETURNING "id"`,
+      ...params,
+    );
+    createdRowIds.push(...rows.map((r) => r.id));
   }
 
   // Create cells if requested

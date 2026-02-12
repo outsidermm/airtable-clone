@@ -106,10 +106,11 @@ export const rowRouter = createTRPCRouter({
         orderBy: { order: "asc" },
         include: {
           cells: {
-            include: {
-              column: {
-                select: { id: true, name: true, type: true, order: true },
-              },
+            select: {
+              id: true,
+              columnId: true,
+              textValue: true,
+              numberValue: true,
             },
             orderBy: { columnId: "asc" },
           },

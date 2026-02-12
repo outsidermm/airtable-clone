@@ -120,6 +120,15 @@ export function BaseContent({
     }));
   }, [tableQuery.data]);
 
+  // Build a columnId -> type lookup from already-fetched table data
+  const columnTypeMap = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const col of columns) {
+      map.set(col.id, col.type);
+    }
+    return map;
+  }, [columns]);
+
   // Map rows to GridView format
   const gridRows = useMemo(() => {
     return rows.map((row) => ({
@@ -127,13 +136,13 @@ export function BaseContent({
       cells: Object.fromEntries(
         row.cells.map((cell) => [
           cell.columnId,
-          cell.column.type === "NUMBER"
+          columnTypeMap.get(cell.columnId) === "NUMBER"
             ? (cell.numberValue?.toString() ?? "")
             : (cell.textValue ?? ""),
         ]),
       ),
     }));
-  }, [rows]);
+  }, [rows, columnTypeMap]);
 
   const handleCellUpdate = useCallback(
     (rowId: number, columnId: number, value: string) => {

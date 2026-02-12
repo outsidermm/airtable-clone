@@ -49,23 +49,17 @@ export const columnRouter = createTRPCRouter({
           },
         });
 
-        // Get all rows to create cells
-        const rows = await tx.row.findMany({
-          where: { tableId: input.tableId },
-        });
+        // Create cells for this column in all existing rows using a single
+        // INSERT...SELECT so we never load row data into Node.js memory.
+        const textDefault = input.type === ColumnType.TEXT ? "" : null;
+        const numberDefault = null; // NUMBER columns default to null
 
-        // Create cells for this column in all existing rows
-        if (rows.length > 0) {
-          await tx.cell.createMany({
-            data: rows.map((row) => ({
-              tableId: input.tableId,
-              columnId: column.id,
-              rowId: row.id,
-              textValue: input.type === ColumnType.TEXT ? "" : null,
-              numberValue: input.type === ColumnType.NUMBER ? null : null,
-            })),
-          });
-        }
+        await tx.$executeRaw`
+          INSERT INTO "Cell" ("tableId", "columnId", "rowId", "textValue", "numberValue")
+          SELECT ${input.tableId}, ${column.id}, r."id", ${textDefault}, ${numberDefault}::double precision
+          FROM "Row" r
+          WHERE r."tableId" = ${input.tableId}
+        `;
 
         return column;
       });
