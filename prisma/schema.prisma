@@ -68,3 +68,18 @@ model Base {
 
     airtableTables AirtableTable[]
 }
+
+model AirtableTable {
+    id         String   @id @default(cuid())
+    name       String
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    base       Base     @relation(fields: [baseId], references: [id], onDelete: Cascade)
+    baseId     String
+
+    columns     Column[]
+    rows        Row[]
+    views       View[]
+    cells       Cell[]
+}
