@@ -14,6 +14,11 @@ export const baseRouter = createTRPCRouter({
       return ctx.db.base.create({
         data: {
           userId: ctx.session.user.id,
+          airtableTables: {
+            create: {
+              name: "Table 1",
+            }
+          }
         },
       });
     }),
