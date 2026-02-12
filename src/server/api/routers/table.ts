@@ -13,7 +13,6 @@ export const tableRouter = createTRPCRouter({
     .input(
       z.object({
         baseId: z.string(),
-        name: z.string().max(255).optional(),
         rowCount: z.number().min(1).max(1000).optional().default(10),
       })
     )
@@ -30,6 +29,12 @@ export const tableRouter = createTRPCRouter({
         if (!base) {
           throw new Error("Base not found or access denied");
         }
+
+        // Count existing tables to generate sequential name
+        const tableCount = await tx.airtableTable.count({
+          where: { baseId: input.baseId },
+        });
+        const tableName = `Table ${tableCount + 1}`;
 
         // Generate lexorank positions for columns and rows
         const colHeader = LexoRank.middle();
@@ -49,7 +54,7 @@ export const tableRouter = createTRPCRouter({
         // Step 1: Create table with columns and rows
         const table = await tx.airtableTable.create({
           data: {
-            name: input.name ?? "Untitled Table",
+            name: tableName,
             baseId: input.baseId,
             views: {
               create: {
