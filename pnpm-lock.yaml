@@ -11,6 +11,9 @@ importers:
       '@auth/prisma-adapter':
         specifier: ^2.11.1
         version: 2.11.1(@prisma/client@7.3.0(prisma@7.3.0(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))
+      '@faker-js/faker':
+        specifier: ^10.3.0
+        version: 10.3.0
       '@prisma/adapter-pg':
         specifier: ^7.3.0
         version: 7.3.0
@@ -229,6 +232,10 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@faker-js/faker@10.3.0':
+    resolution: {integrity: sha512-It0Sne6P3szg7JIi6CgKbvTZoMjxBZhcv91ZrqrNuaZQfB5WoqYYbzCUOq89YR+VY8juY9M1vDWmDDa2TzfXCw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@fakerjs/age@2.1.1':
     resolution: {integrity: sha512-9MQcaL86EbO43d3EjoSPJ4+Yu37zEex0hH+u33zNjm7dIIrr3mEzeFBUvAow9I0sR4oK7QbM1j2Sju+PvJGpDA==}
@@ -2709,6 +2716,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@faker-js/faker@10.3.0': {}
 
   '@fakerjs/age@2.1.1': {}
 
