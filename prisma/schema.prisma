@@ -111,6 +111,27 @@ model Row {
     @@index([tableId, order])
 }
 
+model Cell {
+    id          Int     @id @default(autoincrement())
+    textValue   String?
+    numberValue Float?
+
+    columnId   Int
+    column     Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+    rowId      Int
+    row        Row           @relation(fields: [rowId], references: [id], onDelete: Cascade)
+
+    tableId    String
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    @@unique([columnId, rowId])
+    @@index([columnId, numberValue])
+    @@index([columnId, textValue])
+    @@index([tableId, columnId, numberValue])
+    @@index([tableId, columnId, textValue])
+}
+
 enum ColumnType {
     TEXT
     NUMBER
