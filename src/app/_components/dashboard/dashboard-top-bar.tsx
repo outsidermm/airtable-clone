@@ -44,9 +44,9 @@ export function DashboardTopBar({ user }: DashboardTopBarProps) {
       </div>
 
       {/* Right: Actions & User Menu */}
-      <div className="flex w-32 items-center justify-end gap-2">
+      <div className="flex w-32 items-center justify-end gap-4">
         {/* Help */}
-        <button className="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900">
+        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100">
           <svg
             className="h-4 w-4"
             fill="none"
@@ -60,11 +60,10 @@ export function DashboardTopBar({ user }: DashboardTopBarProps) {
               d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span className="hidden lg:inline">Help</span>
         </button>
 
         {/* Notifications */}
-        <button className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100">
+        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100 border-gray-100 border">
           <svg
             className="h-4 w-4"
             fill="none"
