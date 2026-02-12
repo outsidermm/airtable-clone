@@ -14,7 +14,11 @@ interface DashboardLayoutProps {
   currentPage?: "home" | "starred" | "shared";
 }
 
-export function DashboardLayout({ children, user, currentPage }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children,
+  user,
+  currentPage,
+}: DashboardLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Auto-collapse sidebar on small screens
@@ -35,19 +39,18 @@ export function DashboardLayout({ children, user, currentPage }: DashboardLayout
   }, []);
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Left Sidebar */}
-      <Sidebar
-        currentPage={currentPage}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-
+    <div className="flex h-screen flex-1 flex-col overflow-hidden bg-white">
+      {/* Top Bar */}
+      <DashboardTopBar user={user} isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top Bar */}
-        <DashboardTopBar user={user} />
-
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar */}
+        <Sidebar
+          currentPage={currentPage}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
         {/* Page Content */}
         {children}
       </div>

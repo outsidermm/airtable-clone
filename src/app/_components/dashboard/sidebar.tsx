@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { CreateBaseModal } from "./create-base-modal";
 
 interface SidebarProps {
@@ -11,74 +10,26 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({
+  currentPage = "home",
+  isCollapsed = false,
+  onToggleCollapse,
+}: SidebarProps) {
   const [isStarredOpen, setIsStarredOpen] = useState(false);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
 
   return (
-    <aside className={`flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-16" : "w-56"}`}>
-      {/* Logo & Menu Toggle - Inside Sidebar Border */}
-      <div className="flex h-14 items-center justify-between border-b border-gray-200 px-3">
-        {!isCollapsed && (
-          <>
-            <button
-              onClick={onToggleCollapse}
-              className="rounded p-1.5 hover:bg-gray-200"
-              aria-label="Toggle sidebar"
-            >
-              <svg
-                className="h-4 w-4 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            <Link href="/dashboard" className="flex items-center gap-2.5">
-                <Image src="/airtable-color.svg" alt="Airtable Logo" width={24} height={24} />
-                AirTable
-            </Link>
-          </>
-        )}
-        {isCollapsed && (
-          <button
-            onClick={onToggleCollapse}
-            className="mx-auto rounded p-1.5 hover:bg-gray-200"
-            aria-label="Expand sidebar"
-          >
-            <svg
-              className="h-4 w-4 text-gray-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-
+    <aside
+      className={`flex h-[100vh-14] flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-14" : "w-64"}`}
+    >
       {/* Navigation Menu */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-3">
         {/* Home */}
         <Link
           href="/dashboard"
-          className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-            currentPage === "home"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-700 hover:bg-gray-100"
+          className={`flex items-center gap-2.5 rounded-xs px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-gray-100 ${
+            currentPage === "home" && !isCollapsed ? "bg-gray-100" : ""
           }`}
           title="Home"
         >
@@ -102,10 +53,8 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
         <div>
           <button
             onClick={() => !isCollapsed && setIsStarredOpen(!isStarredOpen)}
-            className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              currentPage === "starred"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-700 hover:bg-gray-100"
+            className={`flex w-full items-center justify-between rounded-xs px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-gray-100 ${
+              currentPage === "starred" ? "bg-gray-100" : ""
             }`}
             title="Starred"
           >
@@ -128,7 +77,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             {!isCollapsed && (
               <svg
                 className={`h-3 w-3 shrink-0 transition-transform ${
-                  isStarredOpen ? "rotate-180" : ""
+                  isStarredOpen ? "" : "-rotate-90"
                 }`}
                 fill="none"
                 stroke="currentColor"
@@ -144,9 +93,22 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             )}
           </button>
           {!isCollapsed && isStarredOpen && (
-            <div className="ml-7 mt-1">
-              <p className="px-2.5 py-2 text-xs text-gray-500">
-                Click the star on any base or workspace to add it here.
+            <div className="mt-1 ml-7 flex flex-row gap-4 items-center">
+              <svg
+                className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                />
+              </svg>
+              <p className="text-[10px] text-gray-500">
+                Your starred bases, interfaces, and workspaces will appear here
               </p>
             </div>
           )}
@@ -155,10 +117,8 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
         {/* Shared */}
         <Link
           href="/shared"
-          className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-            currentPage === "shared"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-700 hover:bg-gray-100"
+          className={`flex items-center gap-2.5 rounded-xs px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-gray-100 ${
+            currentPage === "shared" ? "bg-gray-100" : ""
           }`}
           title="Shared"
         >
@@ -181,8 +141,10 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
         {/* All Workspaces */}
         <div>
           <button
-            onClick={() => !isCollapsed && setIsWorkspacesOpen(!isWorkspacesOpen)}
-            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            onClick={() =>
+              !isCollapsed && setIsWorkspacesOpen(!isWorkspacesOpen)
+            }
+            className="flex w-full items-center justify-between rounded-xs px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
             title="Workspaces"
           >
             <div className="flex items-center gap-2.5">
@@ -220,7 +182,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             )}
           </button>
           {!isCollapsed && isWorkspacesOpen && (
-            <div className="ml-7 mt-1">
+            <div className="mt-1 ml-7">
               <p className="px-2.5 py-2 text-xs text-gray-500">
                 No workspaces yet
               </p>
@@ -231,88 +193,10 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
 
       {/* Bottom Section */}
       <div className="border-t border-gray-200 p-2">
-        {!isCollapsed ? (
-          <>
-            <div className="mb-1.5 space-y-0.5 text-xs">
-              <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
-                <svg
-                  className="h-3.5 w-3.5 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
-                  />
-                </svg>
-                Templates and apps
-              </button>
-              <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
-                <svg
-                  className="h-3.5 w-3.5 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                  />
-                </svg>
-                Marketplace
-              </button>
-              <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
-                <svg
-                  className="h-3.5 w-3.5 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                Import
-              </button>
-            </div>
-
-            {/* Create Button */}
-            <button
-              onClick={() => setIsCreateBaseModalOpen(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Create
-            </button>
-          </>
-        ) : (
-          <button
-            className="mx-auto flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50"
-            title="Create"
-            onClick={() => setIsCreateBaseModalOpen(true)}
-          >
+        <div className="mb-1.5 space-y-0.5 text-xs">
+          <button className="flex w-full items-center gap-2.5 rounded-xs px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
             <svg
-              className="h-4 w-4"
+              className="h-3.5 w-3.5 shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -321,11 +205,66 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 4v16m8-8H4"
+                d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
               />
             </svg>
+            {!isCollapsed && "Template and apps"}
           </button>
-        )}
+          <button className="flex w-full items-center gap-2.5 rounded-xs px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
+            <svg
+              className="h-3.5 w-3.5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+              />
+            </svg>
+            {!isCollapsed && "Marketplace"}
+          </button>
+          <button className="flex w-full items-center gap-2.5 rounded-xs px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
+            <svg
+              className="h-3.5 w-3.5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            {!isCollapsed && "Import"}
+          </button>
+        </div>
+
+        {/* Create Button */}
+        <button
+          onClick={() => setIsCreateBaseModalOpen(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+        >
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          {!isCollapsed && "Create"}
+        </button>
+
         <CreateBaseModal
           isOpen={isCreateBaseModalOpen}
           onClose={() => setIsCreateBaseModalOpen(false)}
