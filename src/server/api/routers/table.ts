@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { LexoRank } from "lexorank";
-import { faker } from "@faker-js/faker";
 
 import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { createDefaultTable } from "../utils/table-helpers";
 
 export const tableRouter = createTRPCRouter({
   // Create a new table with default rows, columns, and cells
@@ -13,7 +12,7 @@ export const tableRouter = createTRPCRouter({
     .input(
       z.object({
         baseId: z.string(),
-        rowCount: z.number().min(1).max(1000).optional().default(10),
+        rowCount: z.number().min(1).max(1000).optional().default(5),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -36,82 +35,7 @@ export const tableRouter = createTRPCRouter({
         });
         const tableName = `Table ${tableCount + 1}`;
 
-        // Generate lexorank positions for columns and rows
-        const colHeader = LexoRank.middle();
-        const col1 = colHeader.genNext();
-        const col2 = col1.genNext();
-        const col3 = col2.genNext();
-
-        const rowHeader = LexoRank.middle();
-        let currentRowRank = rowHeader.genNext();
-        const rowRanks: string[] = [];
-
-        for (let i = 0; i < input.rowCount; i++) {
-          rowRanks.push(currentRowRank.toString());
-          currentRowRank = currentRowRank.genNext();
-        }
-
-        // Step 1: Create table with columns and rows
-        const table = await tx.airtableTable.create({
-          data: {
-            name: tableName,
-            baseId: input.baseId,
-            views: {
-              create: {
-                name: "Grid view",
-                config: {},
-              },
-            },
-            columns: {
-              create: [
-                { name: "Name", type: "TEXT", order: col1.toString(), primary: true },
-                { name: "Number", type: "NUMBER", order: col2.toString(), primary: false },
-                { name: "Notes", type: "TEXT", order: col3.toString(), primary: false },
-              ],
-            },
-            rows: {
-              create: rowRanks.map((rank) => ({
-                order: rank,
-              })),
-            },
-          },
-          include: {
-            columns: { orderBy: { order: "asc" } },
-            rows: { orderBy: { order: "asc" } },
-          },
-        });
-
-        // Step 2: Create cells with faker data
-        const cellsData = [];
-        for (const row of table.rows) {
-          for (const column of table.columns) {
-            const cellValue: { textValue?: string; numberValue?: number } = {};
-
-            if (column.type === "TEXT") {
-              if (column.name === "Name") {
-                cellValue.textValue = faker.person.fullName();
-              } else {
-                cellValue.textValue = faker.lorem.sentence();
-              }
-            } else if (column.type === "NUMBER") {
-              cellValue.numberValue = faker.number.int({ min: 1, max: 1000 });
-            }
-
-            cellsData.push({
-              tableId: table.id,
-              rowId: row.id,
-              columnId: column.id,
-              ...cellValue,
-            });
-          }
-        }
-
-        // Batch create all cells
-        await tx.cell.createMany({
-          data: cellsData,
-        });
-
-        return table;
+        return createDefaultTable(tx, input.baseId, tableName, input.rowCount);
       });
     }),
 

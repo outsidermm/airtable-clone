@@ -4,22 +4,23 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { createDefaultTable } from "../utils/table-helpers";
 
 export const baseRouter = createTRPCRouter({
-  // Create a new base
+  // Create a new base with a default table (columns, rows, cells, view)
   create: protectedProcedure
-    .input(z.object({
-    }))
+    .input(z.object({}))
     .mutation(async ({ ctx }) => {
-      return ctx.db.base.create({
-        data: {
-          userId: ctx.session.user.id,
-          airtableTables: {
-            create: {
-              name: "Table 1",
-            }
-          }
-        },
+      return await ctx.db.$transaction(async (tx) => {
+        const base = await tx.base.create({
+          data: {
+            userId: ctx.session.user.id,
+          },
+        });
+
+        await createDefaultTable(tx, base.id, "Table 1");
+
+        return base;
       });
     }),
 
