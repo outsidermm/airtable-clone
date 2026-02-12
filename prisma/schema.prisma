@@ -10,18 +10,6 @@ datasource db {
     provider = "postgresql"
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
 // Necessary for Next auth
 model Account {
     id                       String  @id @default(cuid())
@@ -58,7 +46,7 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+    bases         Base[]
 }
 
 model VerificationToken {
@@ -67,4 +55,100 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Base {
+    id             String   @id @default(cuid())
+    name           String   @default("Untitled Base")
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId         String
+
+    airtableTables AirtableTable[]
+
+    starred         Boolean  @default(false)
+}
+
+model AirtableTable {
+    id         Int   @id @default(autoincrement())
+    name       String
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    base       Base     @relation(fields: [baseId], references: [id], onDelete: Cascade)
+    baseId     String
+
+    columns     Column[]
+    rows        Row[]
+    views       View[]
+    cells       Cell[]
+}
+
+model Column {
+    id         Int     @id @default(autoincrement())
+    name       String
+    type       ColumnType
+
+    tableId    Int
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    order      String
+    primary     Boolean @default(false)
+
+    cells      Cell[]
+}
+
+model Row {
+    id         Int     @id @default(autoincrement())
+    tableId    Int
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    order      String
+    createdAt  DateTime @default(now())
+
+    cells      Cell[]
+
+    @@index([tableId, id])
+    @@index([tableId, order])
+}
+
+model Cell {
+    id          Int     @id @default(autoincrement())
+    textValue   String?
+    numberValue Float?
+
+    columnId   Int
+    column     Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+    rowId      Int
+    row        Row           @relation(fields: [rowId], references: [id], onDelete: Cascade)
+
+    tableId    Int
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    @@unique([columnId, rowId])
+    @@index([columnId, numberValue])
+    @@index([columnId, textValue])
+    @@index([tableId, columnId, numberValue])
+    @@index([tableId, columnId, textValue])
+}
+
+model View {
+    id         Int   @id @default(autoincrement())
+    name       String
+
+    tableId    Int
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    config     Json?
+
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+}
+
+enum ColumnType {
+    TEXT
+    NUMBER
 }
