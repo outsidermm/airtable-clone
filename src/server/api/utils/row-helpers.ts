@@ -58,19 +58,19 @@ export async function calculateRowPosition(
 
   // Handle afterRowId or default behavior
   if (afterRowId === null || afterRowId === undefined) {
-    // Insert at first position
-    const firstRow = await tx.row.findFirst({
+    // Insert at last position
+    const lastRow = await tx.row.findFirst({
       where: { tableId },
-      orderBy: { order: "asc" },
+      orderBy: { order: "desc" },
     });
 
-    if (!firstRow) {
+    if (!lastRow) {
       // First row in table
       return LexoRank.middle().toString();
     }
 
-    const firstOrder = LexoRank.parse(firstRow.order);
-    return firstOrder.genPrev().toString();
+    const lastOrder = LexoRank.parse(lastRow.order);
+    return lastOrder.genNext().toString();
   } else {
     // Insert after specified row
     const afterRow = await tx.row.findUnique({
