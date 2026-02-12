@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AirtableLogo } from "./airtable-logo";
+import { api } from "~/trpc/react";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -80,7 +81,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           title="Home"
         >
           <svg
-            className="h-4 w-4 flex-shrink-0"
+            className="h-4 w-4 shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -108,7 +109,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           >
             <div className="flex items-center gap-2.5">
               <svg
-                className="h-4 w-4 flex-shrink-0"
+                className="h-4 w-4 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -124,7 +125,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             </div>
             {!isCollapsed && (
               <svg
-                className={`h-3 w-3 flex-shrink-0 transition-transform ${
+                className={`h-3 w-3 shrink-0 transition-transform ${
                   isStarredOpen ? "rotate-180" : ""
                 }`}
                 fill="none"
@@ -160,7 +161,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           title="Shared"
         >
           <svg
-            className="h-4 w-4 flex-shrink-0"
+            className="h-4 w-4 shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -184,7 +185,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           >
             <div className="flex items-center gap-2.5">
               <svg
-                className="h-4 w-4 flex-shrink-0"
+                className="h-4 w-4 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -233,7 +234,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             <div className="mb-1.5 space-y-0.5 text-xs">
               <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
                 <svg
-                  className="h-3.5 w-3.5 flex-shrink-0"
+                  className="h-3.5 w-3.5 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -249,7 +250,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
               </button>
               <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
                 <svg
-                  className="h-3.5 w-3.5 flex-shrink-0"
+                  className="h-3.5 w-3.5 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -265,7 +266,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
               </button>
               <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-700 hover:bg-gray-100">
                 <svg
-                  className="h-3.5 w-3.5 flex-shrink-0"
+                  className="h-3.5 w-3.5 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
