@@ -5,6 +5,10 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+    images:{
+        domains: ["avatars.githubusercontent.com", "lh3.googleusercontent.com"],
+    }
+};
 
 export default config;

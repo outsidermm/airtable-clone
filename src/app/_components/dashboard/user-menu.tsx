@@ -46,13 +46,15 @@ export function UserMenu({ user }: UserMenuProps) {
       {/* Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
       >
         {user.image ? (
           <Image
             src={user.image}
             alt={user.name ?? "User"}
-            className="h-9 w-9 rounded-full"
+            className="rounded-full"
+            height={28}
+            width={28}
           />
         ) : (
           initials
