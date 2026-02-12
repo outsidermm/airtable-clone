@@ -1,29 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 interface Column {
-  id: string;
+  id: number;
   name: string;
   type: string;
   width: number;
 }
 
 interface Row {
-  id: string;
-  cells: Record<string, string>;
+  id: number;
+  cells: Record<number, string>;
 }
 
 interface GridViewProps {
   columns: Column[];
   rows: Row[];
+  onCellUpdate?: (rowId: number, columnId: number, value: string) => void;
+  onAddRow?: () => void;
+  onAddColumn?: () => void;
 }
 
-export function GridView({ columns, rows }: GridViewProps) {
+export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }: GridViewProps) {
   const [selectedCell, setSelectedCell] = useState<{
-    rowId: string;
-    columnId: string;
+    rowId: number;
+    columnId: number;
   } | null>(null);
+
+  const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  const handleCellChange = useCallback(
+    (rowId: number, columnId: number, value: string) => {
+      if (!onCellUpdate) return;
+      const key = `${rowId}-${columnId}`;
+      const existing = debounceTimers.current.get(key);
+      if (existing) clearTimeout(existing);
+      debounceTimers.current.set(
+        key,
+        setTimeout(() => {
+          onCellUpdate(rowId, columnId, value);
+          debounceTimers.current.delete(key);
+        }, 300),
+      );
+    },
+    [onCellUpdate],
+  );
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -210,7 +232,10 @@ export function GridView({ columns, rows }: GridViewProps) {
 
               {/* Add Column Button */}
               <th className="w-12 border-b border-r border-gray-200 bg-gray-50 p-0">
-                <button className="flex h-full w-full items-center justify-center text-gray-400 hover:text-gray-600">
+                <button
+                  onClick={onAddColumn}
+                  className="flex h-full w-full items-center justify-center text-gray-400 hover:text-gray-600"
+                >
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -261,6 +286,9 @@ export function GridView({ columns, rows }: GridViewProps) {
                         defaultValue={cellValue}
                         className="w-full bg-transparent text-xs text-gray-900 outline-none"
                         placeholder=""
+                        onChange={(e) =>
+                          handleCellChange(row.id, column.id, e.target.value)
+                        }
                       />
                     </td>
                   );
@@ -278,7 +306,10 @@ export function GridView({ columns, rows }: GridViewProps) {
                 colSpan={columns.length + 1}
                 className="border-b border-r border-gray-200 px-2 py-2"
               >
-                <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
+                <button
+                  onClick={onAddRow}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700"
+                >
                   <svg
                     className="h-3.5 w-3.5"
                     fill="none"

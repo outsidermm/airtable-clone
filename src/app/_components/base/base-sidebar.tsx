@@ -1,38 +1,84 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+
+interface Table {
+  id: number;
+  name: string;
+}
 
 interface BaseSidebarProps {
   baseId: string;
+  tables?: Table[];
+  activeTableId?: number;
+  onTableChange?: (tableId: number) => void;
+  onAddTable?: () => void;
 }
 
-export function BaseSidebar({ baseId }: BaseSidebarProps) {
+export function BaseSidebar({
+  baseId: _baseId,
+  tables = [],
+  activeTableId,
+  onTableChange,
+  onAddTable,
+}: BaseSidebarProps) {
   const [activeView, setActiveView] = useState("grid-view");
+  const [isTableDropdownOpen, setIsTableDropdownOpen] = useState(false);
+
+  const activeTable = tables.find((t) => t.id === activeTableId) ?? tables[0];
 
   return (
     <aside className="flex h-full w-60 flex-col border-r border-gray-200 bg-white">
       {/* Table Selector */}
       <div className="border-b border-gray-200 px-3 py-3">
-        <button className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-100">
-          <span>Table 1</span>
-          <svg
-            className="h-4 w-4 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="relative">
+          <button
+            onClick={() => setIsTableDropdownOpen(!isTableDropdownOpen)}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-100"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
+            <span>{activeTable?.name ?? "No tables"}</span>
+            <svg
+              className="h-4 w-4 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {isTableDropdownOpen && tables.length > 1 && (
+            <div className="absolute left-0 top-full z-20 mt-1 w-full rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+              {tables.map((table) => (
+                <button
+                  key={table.id}
+                  onClick={() => {
+                    onTableChange?.(table.id);
+                    setIsTableDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center px-3 py-1.5 text-sm ${
+                    table.id === activeTableId
+                      ? "bg-blue-50 font-medium text-blue-700"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {table.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Add or import button */}
-        <button className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100">
+        <button
+          onClick={onAddTable}
+          className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+        >
           <svg
             className="h-4 w-4"
             fill="none"

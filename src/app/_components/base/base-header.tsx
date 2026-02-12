@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { UserMenu } from "./user-menu";
+import { UserMenu } from "../dashboard/user-menu";
 
 interface BaseHeaderProps {
   base: {

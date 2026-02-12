@@ -23,6 +23,29 @@ export const baseRouter = createTRPCRouter({
       });
     }),
 
+  // Get a single base by ID with tables
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const base = await ctx.db.base.findUnique({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
+        include: {
+          airtableTables: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      if (!base) {
+        throw new Error("Base not found or access denied");
+      }
+
+      return base;
+    }),
+
   // Get all bases for the current user
   getAll: protectedProcedure
     .query(async ({ ctx }) => {

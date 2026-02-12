@@ -1,21 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { api } from "~/trpc/react";
 
 interface Table {
-  id: string;
+  id: number;
   name: string;
-  icon: string;
 }
 
 interface TableTabsProps {
   tables: Table[];
-  activeTableId: string;
+  activeTableId: number;
+  baseId: string;
+  onTableChange?: (tableId: number) => void;
 }
 
-export function TableTabs({ tables, activeTableId }: TableTabsProps) {
-  const [activeTab, setActiveTab] = useState(activeTableId);
+export function TableTabs({ tables, activeTableId, baseId, onTableChange }: TableTabsProps) {
   const [isAddingTable, setIsAddingTable] = useState(false);
+
+  const utils = api.useUtils();
+
+  const createTable = api.table.create.useMutation({
+    onSuccess: (newTable) => {
+      void utils.table.getAllByBase.invalidate({ baseId });
+      onTableChange?.(newTable.id);
+      setIsAddingTable(false);
+    },
+  });
 
   return (
     <div className="border-b border-gray-200 bg-gray-50">
@@ -24,14 +35,13 @@ export function TableTabs({ tables, activeTableId }: TableTabsProps) {
         {tables.map((table) => (
           <button
             key={table.id}
-            onClick={() => setActiveTab(table.id)}
+            onClick={() => onTableChange?.(table.id)}
             className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === table.id
+              activeTableId === table.id
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            <span className="text-base">{table.icon}</span>
             {table.name}
           </button>
         ))}
@@ -67,8 +77,8 @@ export function TableTabs({ tables, activeTableId }: TableTabsProps) {
               onBlur={() => setIsAddingTable(false)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  // TODO: Create new table
-                  setIsAddingTable(false);
+                  e.preventDefault();
+                  createTable.mutate({ baseId });
                 } else if (e.key === "Escape") {
                   setIsAddingTable(false);
                 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
-import { DashboardLayout } from "~/app/_components/dashboard-layout";
-import { BaseCard } from "~/app/_components/base-card";
+import { DashboardLayout } from "~/app/_components/dashboard/dashboard-layout";
+import { BaseCard } from "~/app/_components/dashboard/base-card";
 import { api } from "~/trpc/server";
 
 export default async function DashboardPage() {
