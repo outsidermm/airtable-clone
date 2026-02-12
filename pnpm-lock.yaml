@@ -63,9 +63,18 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3.3.3
         version: 3.3.3
+      '@fakerjs/faker':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
+      '@tanstack/react-table':
+        specifier: ^8.21.3
+        version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tanstack/react-virtual':
+        specifier: ^3.13.18
+        version: 3.13.18(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: ^20.19.33
         version: 20.19.33
@@ -84,6 +93,9 @@ importers:
       eslint-config-next:
         specifier: ^15.5.12
         version: 15.5.12(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+      lexorank:
+        specifier: ^1.0.5
+        version: 1.0.5
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -217,6 +229,110 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@fakerjs/age@2.1.1':
+    resolution: {integrity: sha512-9MQcaL86EbO43d3EjoSPJ4+Yu37zEex0hH+u33zNjm7dIIrr3mEzeFBUvAow9I0sR4oK7QbM1j2Sju+PvJGpDA==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/animal@2.2.0':
+    resolution: {integrity: sha512-EEFtmbcodyuGd2Sw5bfG513kPtEc1EU7+q14rtoJXQ6oJx1W4trRMDilQeNGeVxwHl90K9m5uTETLxxA1Xinhg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/blood@1.0.0':
+    resolution: {integrity: sha512-VP790P5exHez0Yb3UcZ/rraW4bnPe818cZKHI9fe7taCCkFyloWLYS8Zy5+LUtSLK0mQZaJ3MzcF4LZhiBTXzQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/boolean@2.1.1':
+    resolution: {integrity: sha512-OJWuAFs3QEZangHn8tvckr2E+sevjOVwzAfsuWDwDL+ymPNCMjvISvBDW6d7k3I3wgZhjaBLngdZfEl+bhisTQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/browser@1.1.1':
+    resolution: {integrity: sha512-d/nzWRlRGox7pen+3JrU9D3hhXQ6s20RJ0I5i2Q1UiKaLNyq8hW+26Ulr2YXPA9baLqFsrSkMnEoUODTF7jdrQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/domain@1.1.0':
+    resolution: {integrity: sha512-odr4j98GIpyuPYrP8nV8Q7tcSB9VYu3a0Q9Kgx112oTauS7L3TsDbmi8+x2prT6fjHAfZ/eZ5zpDEtjsPVAJsg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/email@1.0.0':
+    resolution: {integrity: sha512-metzbdFNwkZsR5Se7OIPkpMGbkTHdCejB0Tg/Q+M0hYyQnYMyaVdZf53/hb7TMKbNM8HewTERQFPDePiABEKQg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/faker@3.0.0':
+    resolution: {integrity: sha512-sN4LBgZQGEsZw+bzmXf9VwzpfJ1B/ZhqU19NSHku8ywih2g+Kq7uBa7nlmYUUmSlYe6p5cx5eRusswrfm+6Wbw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/firstname@1.0.1':
+    resolution: {integrity: sha512-Z+Ss9jUOm1SJulf/P0jxdE1OosBxbUkN18wDdPdNUl/bdpEsxbya1jsFvQk8vjP8fHwOe5RnEiVwRr03Kp5CPg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/float@2.1.1':
+    resolution: {integrity: sha512-VUX+xCzS0PW2OLtgqVxnU4qqZ3tvzyOFLKRmZlptCAmpTg3jKUbqdt8agHPL8KUjQaXr4UxHdegYNg2R2z2hAw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/game@1.0.1':
+    resolution: {integrity: sha512-w+Htk1jqUrb0GKyjjqLhUCzbu9OtGcpSujlsb3Baj3S5v39ikv3nR2iFL/Bhgs9nrql0ynlYYN/V2oifURAQfw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/gender@2.3.1':
+    resolution: {integrity: sha512-qerBcx9mTPLZFnmJJBnEYlc0BkCdaUfVWWGsLKC7U0Vloai9reS4ArZTFz+Cm0eHNVX1b9RdBIPh9aHIeR2LcQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/house@1.0.2':
+    resolution: {integrity: sha512-DsgcRinbadBQKcXRHQX9lU8xMAdK2nPT/EZwTMA1y56a52XworVOaCecdkGcubzLxdAuMBPLeOMvJxXLswWL/w==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/integer@2.1.1':
+    resolution: {integrity: sha512-yAqbw7SpN1p6XX5JsgIN6xrpGG6Qdl14/9x5RMUG5TL+/LVySg2TberY0rWRyYsRVpOMOJ8hhMaaBAARtxdMwA==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/ip@2.1.1':
+    resolution: {integrity: sha512-oY8+k4c04YF4eLU8brNVUAr5jvmXuzKKCn+qCseDQMK8abDarAJ/c0ig1XpZRBfywUjKxQNGZrfAEvfYiFFdeQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/lastname@1.0.1':
+    resolution: {integrity: sha512-7BJp9D5F4ESBf7MHN4Z8I96Ie78n9qftAwL0591xkHCoIpVpGVq/56ggCaowcxGGvxNYJ3t2OF4P7VLNQtNoDA==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/letter@2.2.2':
+    resolution: {integrity: sha512-JuIqMpefN4JYzinI8Cm+K477xogilhOdLIDtOZ8EwgMSQCcvkB+mBYarNRwwC3FIFjtXGVvMNBe398cB4IEvjg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/paragraph@1.0.0':
+    resolution: {integrity: sha512-usbAIhWVtSf2eHbY5YEXRnEj4otLLKLvOwAoCQ+cxtMd3FGYLxBLNGVwjDXoSl8FOdTbA57Yt1tsu+v21xsoUw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/profession@2.2.0':
+    resolution: {integrity: sha512-yktaNnN8nmr+5wn8m6hE/bhaiYtbBQ5CqttIws+q7SwBx4Ip5/uEttP9UBTZCfACu07gB0RYvb7xDxtFT+dFkw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/sentence@1.0.0':
+    resolution: {integrity: sha512-DRpKfj/dbdMYtW5+k0/wB6oqd0tnOzLCVyKFM50hVF43gXShj4arg23ql2CXxNakagi3yNzBk9W5Am6Y12H6CA==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/sport@1.0.0':
+    resolution: {integrity: sha512-ShkZ6QSzwQP+NRKwkaL3MUG63NTcjzk5ppen3DoOV0GGwDnOTS2OFN5AvtmqjgJD4bAhekPYkHSGN/Pbgk3dSw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/string@2.1.1':
+    resolution: {integrity: sha512-6EfjvoRh+b91MjP/ciOmLJmwtEAvjAqATgaZM1khwEO0azRtnmdXHuxTVl1o+Uvq4kP2zjXvuXqkIZdprNyPyg==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/superhero@1.2.0':
+    resolution: {integrity: sha512-xxKscBJSvSX90Krq2bk2O2V438byQL2hdxzRAGkJ50G/gUUap2NOvOERlunlJ8GadQrlnvEeU4UEk6/Gm3FSwQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/tld@1.1.0':
+    resolution: {integrity: sha512-qsJUB6wm3+KpT+ZKhlRDB7GKh89Nt702ezEnbREtn+nSME6P4aJLygd3GnRtriVYmjokz8RSW/pABS+ft8BeZw==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/url@1.0.0':
+    resolution: {integrity: sha512-Enf9RMHRnRYcFA3dciYVBwHXpJFvMRmyoQVp2vjvyAhkNZ5rl8L5XaGOP3/c8//vry/MuhA+eIqtrs7U4ElLjQ==}
+    engines: {node: '>=12'}
+
+  '@fakerjs/word@1.0.1':
+    resolution: {integrity: sha512-ilyTmSakl4K/osCEE5kUdyAFXxZnmh3WLXlQHKU4ytbkHLHh67f+h25JVrrD+N3Dv7D/7gQlfj/YBH+QuERJlw==}
+    engines: {node: '>=12'}
 
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
@@ -666,6 +782,26 @@ packages:
     resolution: {integrity: sha512-0Lu6y5t+tvlTJMTO7oh5NSpJfpg/5D41LlThfepTixPYkJ0sE2Jj0m0f6yYqujBwIXlId87e234+MxG3D3g7kg==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@tanstack/react-table@8.21.3':
+    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+
+  '@tanstack/react-virtual@3.13.18':
+    resolution: {integrity: sha512-dZkhyfahpvlaV0rIKnvQiVoWPyURppl6w4m9IwMDpuIjcJ1sD9YGWrt0wISvgU7ewACXx2Ct46WPgI6qAD4v6A==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/table-core@8.21.3':
+    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
+    engines: {node: '>=12'}
+
+  '@tanstack/virtual-core@3.13.18':
+    resolution: {integrity: sha512-Mx86Hqu1k39icq2Zusq+Ey2J6dDWTjDvEv43PJtRCoEYTLyfaPnxIQ6iy7YAOK0NV/qOEmZQ/uCufrppZxTgcg==}
 
   '@trpc/client@11.10.0':
     resolution: {integrity: sha512-h0s2AwDtuhS8INRb4hlo4z3RKCkarWqlOy+3ffJgrlDxzzW6aLUN+9nDrcN4huPje1Em15tbCOqhIc6oaKYTRw==}
@@ -1642,6 +1778,9 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
+  lexorank@1.0.5:
+    resolution: {integrity: sha512-K1B/Yr/gIU0wm68hk/yB0p/mv6xM3ShD5aci42vOwcjof8slG8Kpo3Q7+1WTv7DaRHKWRgLPqrFDt+4GtuFAtA==}
+
   lightningcss-android-arm64@1.30.2:
     resolution: {integrity: sha512-BH9sEdOCahSgmkVhBLeU7Hc9DWeZ1Eb6wNS6Da8igvUwAe0sqROHddIlvU06q3WyXVEOYDZ6ykBZQnjTbmo4+A==}
     engines: {node: '>= 12.0.0'}
@@ -1715,6 +1854,10 @@ packages:
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
     engines: {node: '>=10'}
+
+  load-json-file@7.0.1:
+    resolution: {integrity: sha512-Gnxj3ev3mB5TkVBGad0JM6dmLiQL+o0t23JPBZ9sd+yvSLk05mFoqKBw5N8gbbkU4TNXyqCgIrl/VM17OgUIgQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
@@ -2567,6 +2710,120 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
+  '@fakerjs/age@2.1.1': {}
+
+  '@fakerjs/animal@2.2.0':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/blood@1.0.0': {}
+
+  '@fakerjs/boolean@2.1.1': {}
+
+  '@fakerjs/browser@1.1.1':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/domain@1.1.0':
+    dependencies:
+      '@fakerjs/tld': 1.1.0
+      '@fakerjs/word': 1.0.1
+
+  '@fakerjs/email@1.0.0':
+    dependencies:
+      '@fakerjs/domain': 1.1.0
+      '@fakerjs/word': 1.0.1
+
+  '@fakerjs/faker@3.0.0':
+    dependencies:
+      '@fakerjs/age': 2.1.1
+      '@fakerjs/animal': 2.2.0
+      '@fakerjs/blood': 1.0.0
+      '@fakerjs/boolean': 2.1.1
+      '@fakerjs/browser': 1.1.1
+      '@fakerjs/domain': 1.1.0
+      '@fakerjs/email': 1.0.0
+      '@fakerjs/firstname': 1.0.1
+      '@fakerjs/float': 2.1.1
+      '@fakerjs/game': 1.0.1
+      '@fakerjs/gender': 2.3.1
+      '@fakerjs/house': 1.0.2
+      '@fakerjs/integer': 2.1.1
+      '@fakerjs/ip': 2.1.1
+      '@fakerjs/lastname': 1.0.1
+      '@fakerjs/letter': 2.2.2
+      '@fakerjs/paragraph': 1.0.0
+      '@fakerjs/profession': 2.2.0
+      '@fakerjs/sentence': 1.0.0
+      '@fakerjs/sport': 1.0.0
+      '@fakerjs/string': 2.1.1
+      '@fakerjs/superhero': 1.2.0
+      '@fakerjs/tld': 1.1.0
+      '@fakerjs/url': 1.0.0
+      '@fakerjs/word': 1.0.1
+
+  '@fakerjs/firstname@1.0.1':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/float@2.1.1': {}
+
+  '@fakerjs/game@1.0.1':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/gender@2.3.1':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/house@1.0.2':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/integer@2.1.1': {}
+
+  '@fakerjs/ip@2.1.1': {}
+
+  '@fakerjs/lastname@1.0.1':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/letter@2.2.2':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/paragraph@1.0.0':
+    dependencies:
+      '@fakerjs/sentence': 1.0.0
+
+  '@fakerjs/profession@2.2.0':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/sentence@1.0.0':
+    dependencies:
+      '@fakerjs/word': 1.0.1
+
+  '@fakerjs/sport@1.0.0':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/string@2.1.1': {}
+
+  '@fakerjs/superhero@1.2.0':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/tld@1.1.0':
+    dependencies:
+      load-json-file: 7.0.1
+
+  '@fakerjs/url@1.0.0':
+    dependencies:
+      '@fakerjs/domain': 1.1.0
+
+  '@fakerjs/word@1.0.1': {}
+
   '@hono/node-server@1.19.9(hono@4.11.4)':
     dependencies:
       hono: 4.11.4
@@ -2942,6 +3199,22 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.90.20
       react: 19.2.4
+
+  '@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@tanstack/table-core': 8.21.3
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@tanstack/react-virtual@3.13.18(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.18
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@tanstack/table-core@8.21.3': {}
+
+  '@tanstack/virtual-core@3.13.18': {}
 
   '@trpc/client@11.10.0(@trpc/server@11.10.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
@@ -4088,6 +4361,8 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
+  lexorank@1.0.5: {}
+
   lightningcss-android-arm64@1.30.2:
     optional: true
 
@@ -4138,6 +4413,8 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.30.2
 
   lilconfig@2.1.0: {}
+
+  load-json-file@7.0.1: {}
 
   locate-path@6.0.0:
     dependencies:
