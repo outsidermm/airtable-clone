@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 
 interface UserMenuProps {
   user: {
@@ -45,13 +46,15 @@ export function UserMenu({ user }: UserMenuProps) {
       {/* Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
       >
         {user.image ? (
-          <img
+          <Image
             src={user.image}
             alt={user.name ?? "User"}
-            className="h-9 w-9 rounded-full"
+            className="rounded-full"
+            height={28}
+            width={28}
           />
         ) : (
           initials
@@ -62,14 +65,14 @@ export function UserMenu({ user }: UserMenuProps) {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-gray-200 bg-white shadow-lg focus:outline-none">
           {/* User Info */}
-          <div className="border-b border-gray-200 px-5 py-4">
-            <p className="font-semibold text-gray-900">{user.name}</p>
+          <div className="border-b border-gray-200 px-1 py-4 mx-4">
+            <p className="text-gray-900">{user.name}</p>
             <p className="mt-0.5 text-sm text-gray-600">{user.email}</p>
           </div>
 
           {/* Account Section */}
-          <div className="border-b border-gray-200 py-2">
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+          <div className="border-b border-gray-200 py-2 mx-4">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -86,7 +89,7 @@ export function UserMenu({ user }: UserMenuProps) {
               Account
             </button>
 
-            <button className="flex w-full items-center justify-between px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
                 <svg
                   className="mr-3 h-5 w-5 text-gray-500"
@@ -108,7 +111,7 @@ export function UserMenu({ user }: UserMenuProps) {
               </span>
             </button>
 
-            <button className="flex w-full items-center justify-between px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
                 <svg
                   className="mr-3 h-5 w-5 text-gray-500"
@@ -140,7 +143,7 @@ export function UserMenu({ user }: UserMenuProps) {
               </svg>
             </button>
 
-            <button className="flex w-full items-center justify-between px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
                 <svg
                   className="mr-3 h-5 w-5 text-gray-500"
@@ -172,7 +175,7 @@ export function UserMenu({ user }: UserMenuProps) {
               </svg>
             </button>
 
-            <button className="flex w-full items-center justify-between px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
                 <svg
                   className="mr-3 h-5 w-5 text-gray-500"
@@ -187,12 +190,14 @@ export function UserMenu({ user }: UserMenuProps) {
                     d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
                   />
                 </svg>
-                Appearance
+                <div className="flex items-center gap-4">
+                  Appearance
+                  <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-700">
+                    Beta
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-700">
-                  Beta
-                </span>
                 <svg
                   className="h-4 w-4 text-gray-400"
                   fill="none"
@@ -211,8 +216,8 @@ export function UserMenu({ user }: UserMenuProps) {
           </div>
 
           {/* Actions Section */}
-          <div className="border-b border-gray-200 py-2">
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+          <div className="border-b border-gray-200 py- mx-4">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -229,7 +234,7 @@ export function UserMenu({ user }: UserMenuProps) {
               Contact sales
             </button>
 
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -246,7 +251,7 @@ export function UserMenu({ user }: UserMenuProps) {
               Upgrade
             </button>
 
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -265,8 +270,8 @@ export function UserMenu({ user }: UserMenuProps) {
           </div>
 
           {/* Tools Section */}
-          <div className="border-b border-gray-200 py-2">
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+          <div className="border-b border-gray-200 py-2 mx-4">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -283,7 +288,7 @@ export function UserMenu({ user }: UserMenuProps) {
               Integrations
             </button>
 
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -302,8 +307,8 @@ export function UserMenu({ user }: UserMenuProps) {
           </div>
 
           {/* Bottom Section */}
-          <div className="py-2">
-            <button className="flex w-full items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+          <div className="py-2 mx-4">
+            <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"
                 fill="none"
@@ -322,7 +327,7 @@ export function UserMenu({ user }: UserMenuProps) {
 
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex w-full items-center bg-gray-50 px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
+              className="flex w-full items-center px-1.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <svg
                 className="mr-3 h-5 w-5 text-gray-500"

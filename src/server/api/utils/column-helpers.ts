@@ -110,19 +110,19 @@ export async function calculateColumnPosition(
 
   // Handle afterColumnId or default behavior
   if (afterColumnId === null || afterColumnId === undefined) {
-    // Insert at first position
-    const firstColumn = await tx.column.findFirst({
+    // Insert at last position
+    const lastColumn = await tx.column.findFirst({
       where: { tableId },
-      orderBy: { order: "asc" },
+      orderBy: { order: "desc" },
     });
 
-    if (!firstColumn) {
+    if (!lastColumn) {
       // First column in table
       return LexoRank.middle().toString();
     }
 
-    const firstOrder = LexoRank.parse(firstColumn.order);
-    return firstOrder.genPrev().toString();
+    const lastOrder = LexoRank.parse(lastColumn.order);
+    return lastOrder.genNext().toString();
   } else {
     // Insert after specified column
     const afterColumn = await tx.column.findUnique({

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "~/server/auth";
-import { AirtableLogo } from "~/app/_components/airtable-logo";
+import Image from "next/image";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -16,7 +16,7 @@ export default async function LoginPage() {
       <div className="flex w-full flex-col items-center justify-center px-8 py-12 lg:w-1/2 lg:items-start lg:px-24">
         {/* Logo */}
         <div className="mb-12">
-          <AirtableLogo className="h-8 w-auto" showText={false} />
+          <Image src="/airtable-color.svg" alt="Airtable Logo" width={32} height={32} />
         </div>
 
         {/* Login Form */}
