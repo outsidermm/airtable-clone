@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 
 interface CreateBaseModalProps {
   isOpen: boolean;
@@ -10,38 +10,30 @@ interface CreateBaseModalProps {
 
 export function CreateBaseModal({ isOpen, onClose }: CreateBaseModalProps) {
   const router = useRouter();
-  const [baseName, setBaseName] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Reset form when modal opens
-    if (isOpen) {
-      setBaseName("");
-      setSelectedTemplate(null);
-    }
-  }, [isOpen]);
+  const utils = api.useUtils();
 
-  const handleCreate = () => {
-    // TODO: Create base via tRPC
-    // For now, just navigate to a mock base
-    const mockBaseId = Math.random().toString(36).substr(2, 9);
-    router.push(`/base/${mockBaseId}`);
-    onClose();
-  };
+  const createBase = api.base.create.useMutation({
+    onSuccess: async (newBase) => {
+      await utils.base.getAll.invalidate();
+      router.push(`/base/${newBase.id}`);
+      onClose();
+    },
+  });
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-8">
       <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-900">
-            Create a base
+            How do you want to start?
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-2xl p-2 text-gray-400 hover:bg-gray-100"
           >
             <svg
               className="h-5 w-5"
@@ -63,68 +55,45 @@ export function CreateBaseModal({ isOpen, onClose }: CreateBaseModalProps) {
         <div className="px-6 py-6">
           {/* Templates */}
           <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-gray-900">
-              Start from a template
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { id: "blank", name: "Start from scratch", icon: "📋" },
-                { id: "marketing", name: "Marketing", icon: "📊" },
-                { id: "project", name: "Project Management", icon: "🎯" },
-              ].map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => setSelectedTemplate(template.id)}
-                  className={`flex flex-col items-center rounded-lg border-2 p-4 transition-all ${
-                    selectedTemplate === template.id
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="mb-2 text-3xl">{template.icon}</div>
-                  <span className="text-center text-xs font-medium text-gray-700">
-                    {template.name}
-                  </span>
-                </button>
-              ))}
+            <h2 className="mb-3 text-sm font-medium text-gray-900">
+              Workspace:
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                key={"omni"}
+                className="flex flex-col items-center rounded-lg border border-gray-200 p-4 transition-all hover:shadow-md"
+              >
+                <div className="mb-2 text-3xl">{"Test"}</div>
+                <div className="flex flex-col items-start">
+                  <h3 className="text-xl font-semibold">
+                    Build an app with Omni
+                  </h3>
+                  <p className="text-xs font-medium text-gray-700">
+                    Use AI to build a custom app tailored to your workflow.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                key={"own"}
+                className="flex flex-col items-center rounded-lg border border-gray-200 p-4 transition-all hover:shadow-md"
+                onClick={() => {
+                  createBase.mutate({});
+                }}
+                disabled={createBase.isPending}
+              >
+                <div className="mb-2 text-3xl">{"Test"}</div>
+                <div className="flex flex-col items-start">
+                  <h3 className="text-xl font-semibold">
+                    Build an app on your own
+                  </h3>
+                  <p className="text-xs font-medium text-gray-700">
+                    Start with a blank app and build your ideal workflow.
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
-
-          {/* Base Name */}
-          <div>
-            <label
-              htmlFor="base-name"
-              className="mb-2 block text-sm font-medium text-gray-900"
-            >
-              Base name
-            </label>
-            <input
-              id="base-name"
-              type="text"
-              value={baseName}
-              onChange={(e) => setBaseName(e.target.value)}
-              placeholder="Enter base name..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={!baseName.trim() || !selectedTemplate}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Create base
-          </button>
         </div>
       </div>
     </div>

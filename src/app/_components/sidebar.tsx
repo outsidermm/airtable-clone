@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { api } from "~/trpc/react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { CreateBaseModal } from "./create-base-modal";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -13,15 +12,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCollapse }: SidebarProps) {
-  const router = useRouter();
   const [isStarredOpen, setIsStarredOpen] = useState(false);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
-
-  const createBase = api.base.create.useMutation({
-    onSuccess: (newBase) => {
-      router.push(`/base/${newBase.id}`);
-    },
-  });
+  const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
 
   return (
     <aside className={`flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-16" : "w-56"}`}>
@@ -293,8 +286,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
 
             {/* Create Button */}
             <button
-              onClick={() => createBase.mutate({})}
-              disabled={createBase.isPending}
+              onClick={() => setIsCreateBaseModalOpen(true)}
               className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
             >
               <svg
@@ -317,8 +309,7 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           <button
             className="mx-auto flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50"
             title="Create"
-            onClick={() => createBase.mutate({})}
-            disabled={createBase.isPending}
+            onClick={() => setIsCreateBaseModalOpen(true)}
           >
             <svg
               className="h-4 w-4"
@@ -335,6 +326,10 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             </svg>
           </button>
         )}
+        <CreateBaseModal
+          isOpen={isCreateBaseModalOpen}
+          onClose={() => setIsCreateBaseModalOpen(false)}
+        />
       </div>
     </aside>
   );
