@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 
 interface Table {
   id: number;
@@ -34,6 +33,19 @@ export function BaseHeader({
 }: BaseHeaderProps) {
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
+  const [isTableSearchOpen, setIsTableSearchOpen] = useState(false);
+  const [tableSearchQuery, setTableSearchQuery] = useState("");
+  const tableSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isTableSearchOpen && tableSearchRef.current) {
+      tableSearchRef.current.focus();
+    }
+  }, [isTableSearchOpen]);
+
+  const filteredTables = tables.filter((t) =>
+    t.name.toLowerCase().includes(tableSearchQuery.toLowerCase()),
+  );
 
   return (
     <header className="shrink-0 bg-white">
@@ -42,7 +54,7 @@ export function BaseHeader({
         {/* Left: Back & Base Name */}
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100">
-            <span className="text-base">{"icon"}</span>
+            <span className="text-base">{base.icon}</span>
             {base.name}
             <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -60,7 +72,7 @@ export function BaseHeader({
                 onClick={() => setActiveTab(tabKey)}
                 className={`px-1 py-5 text-sm font-medium transition-colors ${
                   activeTab === tabKey
-                    ? "text-gray-900 border-b-2 border-blue-600"
+                    ? "border-b-2 border-blue-600 text-gray-900"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -74,11 +86,14 @@ export function BaseHeader({
         <div className="flex items-center gap-2">
           <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
 
           <button className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.58-5.84L18 2m-3 6l-3-3m6 6l-3-3" />
+            </svg>
             Launch
           </button>
 
@@ -108,11 +123,12 @@ export function BaseHeader({
                   className={`group relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? "rounded-t-md bg-white text-gray-900"
-                      : "text-gray-600 hover:bg-gray-200/70 hover:rounded-t-md"
+                      : "text-gray-600 hover:rounded-t-md hover:bg-gray-200/70"
                   }`}
                 >
                   {table.name}
-                  <button
+                  <span
+                    role="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setTableMenuId(isMenuOpen ? null : table.id);
@@ -126,9 +142,9 @@ export function BaseHeader({
                     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
-                {index === tables.length-1 && tables[index]?.id !== activeTableId && (
+                {index === tables.length - 1 && tables[index]?.id !== activeTableId && (
                   <div className="mb-2 h-4 w-px bg-gray-300" />
                 )}
 
@@ -181,11 +197,71 @@ export function BaseHeader({
               </div>
             );
           })}
-          <div className="mb-1 flex items-center gap-1 px-3 py-1.5">
-            <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+
+          {/* Search tables icon */}
+          <div className="relative flex items-center">
+            <button
+              onClick={() => {
+                setIsTableSearchOpen(!isTableSearchOpen);
+                setTableSearchQuery("");
+              }}
+              className="mb-1 flex items-center gap-1 rounded-md px-2 py-1.5 text-gray-400 hover:bg-gray-200/70 hover:text-gray-600"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Table search dropdown */}
+            {isTableSearchOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setIsTableSearchOpen(false)} />
+                <div className="absolute left-0 top-full z-40 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+                  <div className="px-3 pb-2">
+                    <div className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5">
+                      <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <input
+                        ref={tableSearchRef}
+                        type="text"
+                        value={tableSearchQuery}
+                        onChange={(e) => setTableSearchQuery(e.target.value)}
+                        placeholder="Find a table"
+                        className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {filteredTables.map((table) => (
+                      <button
+                        key={table.id}
+                        onClick={() => {
+                          onTableChange?.(table.id);
+                          setIsTableSearchOpen(false);
+                          setTableSearchQuery("");
+                        }}
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm ${
+                          table.id === activeTableId
+                            ? "bg-blue-50 font-medium text-blue-700"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+                        </svg>
+                        {table.name}
+                      </button>
+                    ))}
+                    {filteredTables.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500">No tables found</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
+
           {/* Add or import button */}
           <button
             onClick={onAddTable}

@@ -9,12 +9,13 @@ interface ViewSidebarProps {
 export function ViewSidebar({ isOpen }: ViewSidebarProps) {
   const [activeView, setActiveView] = useState("grid-view");
 
-  if (!isOpen) return null;
-
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-gray-200 bg-white transition-all">
-      <div className="flex-1 overflow-y-auto p-2">
-
+    <aside
+      className={`flex h-full shrink-0 flex-col border-r border-gray-200 bg-white transition-all duration-200 ease-in-out overflow-hidden ${
+        isOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"
+      }`}
+    >
+      <div className="flex-1 overflow-y-auto p-2 min-w-64">
         {/* Create new view */}
         <button className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 mb-2">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
