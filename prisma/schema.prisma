@@ -59,7 +59,7 @@ model VerificationToken {
 
 model Base {
     id             String   @id @default(cuid())
-    name           String
+    name           String   @default("Untitled Base")
     createdAt      DateTime @default(now())
     updatedAt      DateTime @updatedAt
 

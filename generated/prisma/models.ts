@@ -8,9 +8,14 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/Post'
 export type * from './models/Account'
 export type * from './models/Session'
 export type * from './models/User'
 export type * from './models/VerificationToken'
+export type * from './models/Base'
+export type * from './models/AirtableTable'
+export type * from './models/Column'
+export type * from './models/Row'
+export type * from './models/Cell'
+export type * from './models/View'
 export type * from './commonInputTypes'

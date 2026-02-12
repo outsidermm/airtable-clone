@@ -18,11 +18,6 @@ export { Prisma }
 export * as $Enums from './enums'
 export * from './enums';
 /**
- * Model Post
- * 
- */
-export type Post = Prisma.PostModel
-/**
  * Model Account
  * 
  */
@@ -42,3 +37,33 @@ export type User = Prisma.UserModel
  * 
  */
 export type VerificationToken = Prisma.VerificationTokenModel
+/**
+ * Model Base
+ * 
+ */
+export type Base = Prisma.BaseModel
+/**
+ * Model AirtableTable
+ * 
+ */
+export type AirtableTable = Prisma.AirtableTableModel
+/**
+ * Model Column
+ * 
+ */
+export type Column = Prisma.ColumnModel
+/**
+ * Model Row
+ * 
+ */
+export type Row = Prisma.RowModel
+/**
+ * Model Cell
+ * 
+ */
+export type Cell = Prisma.CellModel
+/**
+ * Model View
+ * 
+ */
+export type View = Prisma.ViewModel
