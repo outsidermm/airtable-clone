@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -12,8 +13,15 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCollapse }: SidebarProps) {
+  const router = useRouter();
   const [isStarredOpen, setIsStarredOpen] = useState(false);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
+
+  const createBase = api.base.create.useMutation({
+    onSuccess: (newBase) => {
+      router.push(`/base/${newBase.id}`);
+    },
+  });
 
   return (
     <aside className={`flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-16" : "w-56"}`}>
@@ -284,7 +292,11 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
             </div>
 
             {/* Create Button */}
-            <button className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            <button
+              onClick={() => createBase.mutate({})}
+              disabled={createBase.isPending}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
               <svg
                 className="h-3.5 w-3.5"
                 fill="none"
@@ -303,8 +315,10 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
           </>
         ) : (
           <button
-            className="mx-auto flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+            className="mx-auto flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50"
             title="Create"
+            onClick={() => createBase.mutate({})}
+            disabled={createBase.isPending}
           >
             <svg
               className="h-4 w-4"
