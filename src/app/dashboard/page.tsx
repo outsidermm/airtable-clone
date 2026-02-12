@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { DashboardLayout } from "~/app/_components/dashboard-layout";
 import { BaseCard } from "~/app/_components/base-card";
-import { api } from "~/trpc/react";
+import { api } from "~/trpc/server";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -12,7 +12,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const basesQuery = api.base.getAll.useQuery();
+  const bases = await api.base.getAll();
 
   return (
     <DashboardLayout user={session.user} currentPage="home">
@@ -147,7 +147,7 @@ export default async function DashboardPage() {
 
           {/* Base Cards */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {basesQuery.data?.map((base) => (
+            {bases.map((base) => (
               <BaseCard key={base.id} base={base} />
             ))}
           </div>

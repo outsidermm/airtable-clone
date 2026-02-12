@@ -1,7 +1,7 @@
 "use client";
 
-import { AirtableLogo } from "./airtable-logo";
 import { UserMenu } from "./user-menu";
+import Image from "next/image";
 
 interface DashboardHeaderProps {
   user: {
@@ -17,7 +17,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <div className="flex h-14 items-center justify-between px-6">
         {/* Left: Logo */}
         <div className="flex items-center gap-8">
-          <AirtableLogo className="h-8" showText={true} />
+          <Image src="/airtable-color.svg" alt="Airtable Logo" width={32} height={32} />
+          AirTable
         </div>
 
         {/* Center: Navigation */}

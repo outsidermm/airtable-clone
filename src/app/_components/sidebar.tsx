@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AirtableLogo } from "./airtable-logo";
 import { api } from "~/trpc/react";
+import Image from "next/image";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -40,8 +40,9 @@ export function Sidebar({ currentPage = "home", isCollapsed = false, onToggleCol
                 />
               </svg>
             </button>
-            <Link href="/dashboard">
-              <AirtableLogo className="h-6" showText={true} />
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+                <Image src="/airtable-color.svg" alt="Airtable Logo" width={24} height={24} />
+                AirTable
             </Link>
           </>
         )}
