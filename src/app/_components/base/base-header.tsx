@@ -41,17 +41,8 @@ export function BaseHeader({
       <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
         {/* Left: Back & Base Name */}
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-
           <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100">
-            <span className="text-base">{base.icon}</span>
+            <span className="text-base">{"icon"}</span>
             {base.name}
             <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -88,7 +79,7 @@ export function BaseHeader({
           </button>
 
           <button className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">
-            🚀 Launch
+            Launch
           </button>
 
           <button className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700">

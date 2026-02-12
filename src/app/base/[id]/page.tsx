@@ -32,7 +32,7 @@ export default async function BasePage({ params }: BasePageProps) {
 
   return (
     <div className="flex h-screen bg-white">
-      <BaseIconSidebar />
+      <BaseIconSidebar user={session.user}/>
 
       <BaseContent
         baseId={id}
