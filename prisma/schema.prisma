@@ -83,3 +83,21 @@ model AirtableTable {
     views       View[]
     cells       Cell[]
 }
+
+model Column {
+    id         Int     @id @default(autoincrement())
+    name       String
+    type       ColumnType
+
+    tableId    String
+    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+    order      String
+
+    cells      Cell[]
+}
+
+enum ColumnType {
+    TEXT
+    NUMBER
+}
