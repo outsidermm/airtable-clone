@@ -1,4 +1,9 @@
 import { baseRouter } from "~/server/api/routers/base";
+import { columnRouter } from "~/server/api/routers/column";
+import { rowRouter } from "~/server/api/routers/row";
+import { tableRouter } from "~/server/api/routers/table";
+import { viewRouter } from "~/server/api/routers/view";
+import { cellRouter } from "~/server/api/routers/cell";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -8,6 +13,11 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   base: baseRouter,
+  table: tableRouter,
+  row: rowRouter,
+  column: columnRouter,
+  view: viewRouter,
+  cell: cellRouter,
 });
 
 // export type definition of API
