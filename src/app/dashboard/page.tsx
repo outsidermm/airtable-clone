@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { DashboardLayout } from "~/app/_components/dashboard-layout";
 import { BaseCard } from "~/app/_components/base-card";
+import { api } from "~/trpc/react";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -11,16 +12,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // TODO: Fetch user's bases from tRPC
-  // For now, using mock data
-  const mockBases = [
-    {
-      id: "1",
-      name: "Untitled Base",
-      icon: "Un",
-      lastModified: "Opened just now",
-    },
-  ];
+  const basesQuery = api.base.getAll.useQuery();
 
   return (
     <DashboardLayout user={session.user} currentPage="home">
@@ -32,7 +24,7 @@ export default async function DashboardPage() {
           <h1 className="mb-5 text-2xl font-medium text-gray-900">Home</h1>
 
           {/* Upgrade Banner */}
-          <div className="mb-5 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-5">
+          <div className="mb-5 rounded-lg bg-linear-to-r from-blue-50 to-purple-50 p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="mb-1.5 text-base font-semibold text-gray-900">
@@ -53,7 +45,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
               <div className="hidden lg:block">
-                <div className="h-28 w-44 rounded-lg bg-gradient-to-br from-green-400 to-blue-500 opacity-50"></div>
+                <div className="h-28 w-44 rounded-lg bg-linear-to-br from-green-400 to-blue-500 opacity-50"></div>
               </div>
             </div>
           </div>
@@ -155,7 +147,7 @@ export default async function DashboardPage() {
 
           {/* Base Cards */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {mockBases.map((base) => (
+            {basesQuery.data?.map((base) => (
               <BaseCard key={base.id} base={base} />
             ))}
           </div>
