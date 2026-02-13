@@ -1,5 +1,6 @@
 "use client";
 
+import type { ColumnType } from "generated/prisma/enums";
 import { useState, useRef, useCallback } from "react";
 
 interface Column {
@@ -19,10 +20,34 @@ interface GridViewProps {
   rows: Row[];
   onCellUpdate?: (rowId: number, columnId: number, value: string) => void;
   onAddRow?: () => void;
+  onDeleteRow?: (rowId: number) => void;
+  onBulkAddRow?: (rowCountToAdd: number) => void;
+  onBulkDeleteRow?: (rowIds: number[]) => void;
   onAddColumn?: () => void;
+  onDeleteColumn?: (columnId: number) => void;
+  onReorderColumn?: (
+    columnId: number,
+    afterColumnId: number | null,
+    beforeColumnId: number | null,
+  ) => void;
+  onUpdateColumn?: (columnId: number, name?: string, type?: ColumnType) => void;
+  onSetPrimaryColumn?: (columnId: number) => void;
 }
 
-export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }: GridViewProps) {
+export function GridView({
+  columns,
+  rows,
+  onCellUpdate,
+  onAddRow,
+  onDeleteRow,
+  onBulkAddRow,
+  onBulkDeleteRow,
+  onAddColumn,
+  onDeleteColumn,
+  onReorderColumn,
+  onUpdateColumn,
+  onSetPrimaryColumn,
+}: GridViewProps) {
   const [selectedCell, setSelectedCell] = useState<{
     rowId: number;
     columnId: number;
@@ -54,29 +79,52 @@ export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }:
         <thead className="sticky top-0 z-10 bg-gray-50">
           <tr>
             {/* Row Number / Checkbox Header */}
-            <th className="w-16.5 min-w-16.5 border-b border-r border-gray-200 bg-gray-50 p-0 text-center">
-              <input type="checkbox" className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600" />
+            <th className="w-16.5 min-w-16.5 border-r border-b border-gray-200 bg-gray-50 p-0 text-center">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+              />
             </th>
 
             {/* Column Headers */}
             {columns.map((column) => (
               <th
                 key={column.id}
-                className="group border-b border-r border-gray-200 bg-gray-50 px-2 py-1.5 text-left"
+                className="group border-r border-b border-gray-200 bg-gray-50 px-2 py-1.5 text-left"
                 style={{ width: column.width, minWidth: column.width }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                    <svg
+                      className="h-3.5 w-3.5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M4 12h16m-7 6h7"
+                      />
                     </svg>
                     <span className="text-xs font-normal text-gray-700">
                       {column.name}
                     </span>
                   </div>
-                  <button className="invisible rounded p-0.5 hover:bg-gray-200 group-hover:visible">
-                    <svg className="h-3 w-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <button className="invisible rounded p-0.5 group-hover:visible hover:bg-gray-200">
+                    <svg
+                      className="h-3 w-3 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -84,13 +132,23 @@ export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }:
             ))}
 
             {/* Add Column Button */}
-            <th className="w-12 border-b border-r border-gray-200 bg-gray-50 p-0">
+            <th className="w-12 border-r border-b border-gray-200 bg-gray-50 p-0">
               <button
                 onClick={onAddColumn}
                 className="flex h-full w-full items-center justify-center text-gray-400 hover:text-gray-600"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
               </button>
             </th>
@@ -102,7 +160,7 @@ export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }:
           {rows.map((row, rowIndex) => (
             <tr key={row.id} className="group hover:bg-gray-50/50">
               {/* Row Number */}
-              <td className="border-b border-r border-gray-200 bg-white text-center text-xs text-gray-400">
+              <td className="border-r border-b border-gray-200 bg-white text-center text-xs text-gray-400">
                 {rowIndex + 1}
               </td>
 
@@ -116,8 +174,8 @@ export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }:
                 return (
                   <td
                     key={column.id}
-                    className={`border-b border-r border-gray-200 px-2 py-1.5 ${
-                      isSelected ? "ring-2 ring-inset ring-blue-500" : ""
+                    className={`border-r border-b border-gray-200 px-2 py-1.5 ${
+                      isSelected ? "ring-2 ring-blue-500 ring-inset" : ""
                     }`}
                     style={{ width: column.width, minWidth: column.width }}
                     onClick={() =>
@@ -138,25 +196,35 @@ export function GridView({ columns, rows, onCellUpdate, onAddRow, onAddColumn }:
               })}
 
               {/* Empty cell for add column button column */}
-              <td className="border-b border-r border-gray-200"></td>
+              <td className="border-r border-b border-gray-200"></td>
             </tr>
           ))}
 
           {/* Add Row Button */}
           <tr>
-            <td className="border-b border-r border-gray-200 bg-white text-center">
+            <td className="border-r border-b border-gray-200 bg-white text-center">
               <button
                 onClick={onAddRow}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="mx-auto h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg
+                  className="mx-auto h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
               </button>
             </td>
             <td
               colSpan={columns.length + 1}
-              className="border-b border-r border-gray-200"
+              className="border-r border-b border-gray-200"
             />
           </tr>
         </tbody>

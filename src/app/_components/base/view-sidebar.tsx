@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import type { ViewConfig } from "~/server/api/routers/view";
 
 interface ViewSidebarProps {
   isOpen: boolean;
+  onAddView?: () => void;
+  onRenameView?: (viewId: number, newName: string) => void;
+  onUpdateView?: (viewId: number, config: ViewConfig) => void;
+  onDeleteView?: (viewId: number) => void;
 }
 
-export function ViewSidebar({ isOpen }: ViewSidebarProps) {
+export function ViewSidebar({ isOpen, onAddView, onRenameView, onUpdateView, onDeleteView }: ViewSidebarProps) {
   const [activeView, setActiveView] = useState("grid-view");
 
   return (

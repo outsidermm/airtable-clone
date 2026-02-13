@@ -35,6 +35,10 @@ const viewConfigSchema = z.object({
   hiddenColumns: z.array(z.number().int()).optional().default([]),
 });
 
+export type SortConfig = z.infer<typeof sortConfigSchema>;
+export type FilterConfig = z.infer<typeof filterConfigSchema>;
+export type ViewConfig = z.infer<typeof viewConfigSchema>;
+
 export const viewRouter = createTRPCRouter({
   // Create a new view
   create: protectedProcedure
@@ -129,7 +133,7 @@ export const viewRouter = createTRPCRouter({
     }),
 
   // Update view configuration (sorts, filters, hidden columns)
-  updateConfig: protectedProcedure
+  update: protectedProcedure
     .input(
       z.object({
         id: z.number().int(),

@@ -22,6 +22,7 @@ interface BaseHeaderProps {
   activeTableId?: number;
   onTableChange?: (tableId: number) => void;
   onAddTable?: () => void;
+  onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
 }
 
@@ -31,6 +32,7 @@ export function BaseHeader({
   activeTableId,
   onTableChange,
   onAddTable,
+  onRenameTable,
   onDeleteTable,
 }: BaseHeaderProps) {
   const [activeTab, setActiveTab] = useState("data");
