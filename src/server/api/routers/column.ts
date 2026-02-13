@@ -200,15 +200,6 @@ export const columnRouter = createTRPCRouter({
           throw new Error("Cannot delete primary column");
         }
 
-        // Check if this is the last column
-        const columnCount = await tx.column.count({
-          where: { tableId: column.tableId },
-        });
-
-        if (columnCount <= 1) {
-          throw new Error("Cannot delete the last column in a table");
-        }
-
         // Delete column
         const deleted = await tx.column.delete({
           where: { id: input.id },
