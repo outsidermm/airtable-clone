@@ -1,0 +1,847 @@
+"use client";
+
+import {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+  type CSSProperties,
+} from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  type ColumnDef,
+} from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { ColumnType } from "generated/prisma/enums";
+import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
+import type { SortConfig } from "~/server/api/routers/view";
+
+// --- Row height map ---
+const ROW_HEIGHT_MAP: Record<string, number> = {
+  short: 36,
+  medium: 56,
+  tall: 84,
+  extraTall: 120,
+};
+const HEADER_HEIGHT = 36;
+
+// --- Sortable Header Cell ---
+function SortableHeaderCell({
+  column,
+  sorts,
+  isPrimary,
+  children,
+}: {
+  column: GridColumn;
+  sorts: SortConfig[];
+  isPrimary: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: column.id,
+    disabled: isPrimary,
+  });
+
+  const style: CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 20 : undefined,
+    position: "relative",
+  };
+
+  const sortEntry = sorts.find((s) => s.columnId === column.id);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex h-full items-center justify-between bg-gray-50 px-2 py-1.5"
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-center gap-1.5 overflow-hidden">
+        <svg
+          className="h-3.5 w-3.5 shrink-0 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d={
+              column.type === "NUMBER"
+                ? "M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                : "M4 6h16M4 12h16m-7 6h7"
+            }
+          />
+        </svg>
+        <span className="truncate text-xs font-normal text-gray-700">
+          {column.name}
+        </span>
+        {sortEntry && (
+          <svg
+            className="h-3 w-3 shrink-0 text-blue-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d={
+                sortEntry.direction === "asc"
+                  ? "M5 15l7-7 7 7"
+                  : "M19 9l-7 7-7-7"
+              }
+            />
+          </svg>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// --- Drag handle SVG ---
+function DragHandle({ className }: { className?: string }) {
+  return (
+    <svg className={className ?? "h-3 w-3 cursor-grab text-gray-300"} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="6" r="1.5" />
+      <circle cx="15" cy="6" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="18" r="1.5" />
+      <circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
+
+// --- Types ---
+interface CellAddress {
+  rowId: number;
+  columnId: number;
+}
+
+interface GridTableProps {
+  columns: GridColumn[];
+  rows: GridRow[];
+  onCellUpdate: (rowId: number, columnId: number, value: string) => void;
+  onAddRow: () => void;
+  onDeleteRow: (rowId: number) => void;
+  onBulkDeleteRow: (rowIds: number[]) => void;
+  onAddColumn: () => void;
+  onDeleteColumn: (columnId: number) => void;
+  onReorderColumn: (
+    columnId: number,
+    afterColumnId: number | null,
+    beforeColumnId: number | null,
+  ) => void;
+  onUpdateColumn: (
+    columnId: number,
+    name?: string,
+    type?: ColumnType,
+  ) => void;
+  onSetPrimaryColumn: (columnId: number) => void;
+  onLoadMore?: () => void;
+  hasNextPage?: boolean;
+  sorts?: SortConfig[];
+  rowHeight?: "short" | "medium" | "tall" | "extraTall";
+  highlightedCells?: Map<number, Set<number>>;
+  onContextMenu?: (state: ContextMenuState) => void;
+}
+
+const CHECKBOX_WIDTH = 66;
+const PRIMARY_WIDTH = 250;
+
+export function GridTable({
+  columns,
+  rows,
+  onCellUpdate,
+  onAddRow,
+  onAddColumn,
+  onReorderColumn,
+  onUpdateColumn,
+  onLoadMore,
+  hasNextPage,
+  sorts = [],
+  rowHeight = "short",
+  highlightedCells,
+  onContextMenu,
+}: GridTableProps) {
+  const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
+
+  // --- Selection state ---
+  const [selectedCell, setSelectedCell] = useState<CellAddress | null>(null);
+  const [selectionStart, setSelectionStart] = useState<CellAddress | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<CellAddress | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+  const [editingHeader, setEditingHeader] = useState<number | null>(null);
+  const [editingHeaderValue, setEditingHeaderValue] = useState("");
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
+
+  const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Find primary column
+  const primaryColumn = useMemo(
+    () => columns.find((c) => c.primary) ?? null,
+    [columns],
+  );
+  const nonPrimaryColumns = useMemo(
+    () => columns.filter((c) => !c.primary),
+    [columns],
+  );
+
+  // Width of frozen section (checkbox + primary column)
+  const frozenWidth = CHECKBOX_WIDTH + (primaryColumn ? PRIMARY_WIDTH : 0);
+
+  const handleCellChange = useCallback(
+    (rowId: number, columnId: number, value: string) => {
+      const key = `${rowId}-${columnId}`;
+      const existing = debounceTimers.current.get(key);
+      if (existing) clearTimeout(existing);
+      debounceTimers.current.set(
+        key,
+        setTimeout(() => {
+          onCellUpdate(rowId, columnId, value);
+          debounceTimers.current.delete(key);
+        }, 300),
+      );
+    },
+    [onCellUpdate],
+  );
+
+  // --- Multi-cell selection helpers ---
+  const getSelectedCells = useCallback((): Set<string> => {
+    if (!selectionStart || !selectionEnd) {
+      if (selectedCell) return new Set([`${selectedCell.rowId}-${selectedCell.columnId}`]);
+      return new Set();
+    }
+    const result = new Set<string>();
+    const rowIds = rows.map((r) => r.id);
+    const colIds = columns.map((c) => c.id);
+    const r1 = rowIds.indexOf(selectionStart.rowId);
+    const r2 = rowIds.indexOf(selectionEnd.rowId);
+    const c1 = colIds.indexOf(selectionStart.columnId);
+    const c2 = colIds.indexOf(selectionEnd.columnId);
+    const rMin = Math.min(r1, r2);
+    const rMax = Math.max(r1, r2);
+    const cMin = Math.min(c1, c2);
+    const cMax = Math.max(c1, c2);
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
+        const rid = rowIds[r];
+        const cid = colIds[c];
+        if (rid !== undefined && cid !== undefined) {
+          result.add(`${rid}-${cid}`);
+        }
+      }
+    }
+    return result;
+  }, [selectionStart, selectionEnd, selectedCell, rows, columns]);
+
+  const handleMouseDown = useCallback(
+    (rowId: number, columnId: number, e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      setSelectedCell({ rowId, columnId });
+      setSelectionStart({ rowId, columnId });
+      setSelectionEnd({ rowId, columnId });
+      setIsSelecting(true);
+    },
+    [],
+  );
+
+  const handleMouseEnter = useCallback(
+    (rowId: number, columnId: number) => {
+      if (isSelecting) {
+        setSelectionEnd({ rowId, columnId });
+      }
+    },
+    [isSelecting],
+  );
+
+  useEffect(() => {
+    const handleMouseUp = () => setIsSelecting(false);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  // --- TanStack Table column defs (NO selectedCell dep!) ---
+  const columnDefs = useMemo<ColumnDef<GridRow>[]>(() => {
+    const defs: ColumnDef<GridRow>[] = [];
+
+    nonPrimaryColumns.forEach((col) => {
+      defs.push({
+        id: String(col.id),
+        accessorFn: (row) => {
+          const val = row.cells[String(col.id)];
+          return val != null ? String(val) : "";
+        },
+        size: col.width,
+        minSize: 80,
+        enableResizing: true,
+        header: () => null,
+        cell: () => null,
+      });
+    });
+
+    // Add column button
+    defs.push({
+      id: "_add",
+      size: 48,
+      minSize: 48,
+      maxSize: 48,
+      enableResizing: false,
+      header: () => null,
+      cell: () => null,
+    });
+
+    return defs;
+  }, [nonPrimaryColumns]);
+
+  const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
+    () => {
+      const sizing: Record<string, number> = {};
+      nonPrimaryColumns.forEach((col) => {
+        sizing[String(col.id)] = col.width;
+      });
+      return sizing;
+    },
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns: columnDefs,
+    state: {
+      rowSelection,
+      columnSizing,
+    },
+    onRowSelectionChange: setRowSelection,
+    onColumnSizingChange: setColumnSizing,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => String(row.id),
+    enableRowSelection: true,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
+  });
+
+  // Virtual rows
+  const tableRows = table.getRowModel().rows;
+  const rowVirtualizer = useVirtualizer({
+    count: tableRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => currentRowHeight,
+    overscan: 10,
+  });
+
+  // Load more
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastItem = virtualItems[virtualItems.length - 1];
+  if (lastItem && lastItem.index >= tableRows.length - 5 && hasNextPage) {
+    onLoadMore?.();
+  }
+
+  // DnD
+  const columnOrder = useMemo(
+    () => nonPrimaryColumns.map((c) => c.id),
+    [nonPrimaryColumns],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const activeId = Number(active.id);
+      const overId = Number(over.id);
+
+      const allCols = columns;
+      const oldIndex = allCols.findIndex((c) => c.id === activeId);
+      const newIndex = allCols.findIndex((c) => c.id === overId);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      if (newIndex === 0) {
+        onReorderColumn(activeId, null, allCols[0]!.id);
+      } else if (oldIndex < newIndex) {
+        onReorderColumn(activeId, allCols[newIndex]!.id, null);
+      } else {
+        onReorderColumn(activeId, null, allCols[newIndex]!.id);
+      }
+    },
+    [columns, onReorderColumn],
+  );
+
+  // Total scrollable width
+  const totalScrollableWidth = useMemo(() => {
+    const headers = table.getHeaderGroups()[0]?.headers ?? [];
+    return headers.reduce((sum, h) => sum + h.getSize(), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, columnSizing]);
+
+  const handleHeaderDoubleClick = useCallback((col: GridColumn) => {
+    setEditingHeader(col.id);
+    setEditingHeaderValue(col.name);
+  }, []);
+
+  const handleHeaderRename = useCallback(
+    (colId: number) => {
+      const col = columns.find((c) => c.id === colId);
+      if (editingHeaderValue.trim() && editingHeaderValue.trim() !== col?.name) {
+        onUpdateColumn(colId, editingHeaderValue.trim());
+      }
+      setEditingHeader(null);
+    },
+    [editingHeaderValue, columns, onUpdateColumn],
+  );
+
+  // Memoize selected cells set for render
+  const selectedCells = getSelectedCells();
+  const isMultiSelect = selectionStart && selectionEnd &&
+    (selectionStart.rowId !== selectionEnd.rowId || selectionStart.columnId !== selectionEnd.columnId);
+
+  // Row that contains the selected cell
+  const activeRowId = selectedCell?.rowId ?? null;
+
+  // Selected row IDs (checkbox selection — blue highlight)
+  const selectedRowIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [key, val] of Object.entries(rowSelection)) {
+      if (val) set.add(key);
+    }
+    return set;
+  }, [rowSelection]);
+
+  // Determine row background for frozen section
+  const getRowBg = useCallback(
+    (rowId: number): string => {
+      if (selectedRowIds.has(String(rowId))) return "bg-blue-50";
+      if (rowId === activeRowId || rowId === hoveredRowId) return "bg-gray-50";
+      return "bg-white";
+    },
+    [selectedRowIds, activeRowId, hoveredRowId],
+  );
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div ref={parentRef} className="flex-1 overflow-auto">
+        <div className="flex min-h-full flex-col" style={{ minWidth: "fit-content" }}>
+          {/* === HEADER === */}
+          <div className="sticky top-0 z-10 flex shrink-0" style={{ minWidth: "fit-content" }}>
+            {/* Frozen: checkbox + primary header */}
+            <div
+              className="sticky left-0 z-30 flex shrink-0 border-b border-gray-200 bg-gray-50"
+              style={{ width: frozenWidth, height: HEADER_HEIGHT, borderRight: "2px solid rgb(209, 213, 219)" }}
+            >
+              {/* Checkbox header — use same layout as rows for alignment */}
+              <div
+                className="flex items-center"
+                style={{ width: CHECKBOX_WIDTH }}
+              >
+                <div className="w-5 shrink-0 pl-1.5" />
+                <div className="flex flex-1 justify-center">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                    checked={table.getIsAllRowsSelected()}
+                    onChange={table.getToggleAllRowsSelectedHandler()}
+                  />
+                </div>
+              </div>
+
+              {/* Primary column header */}
+              {primaryColumn && (
+                <div
+                  className="flex items-center bg-gray-50"
+                  style={{ width: PRIMARY_WIDTH, height: HEADER_HEIGHT }}
+                >
+                  {editingHeader === primaryColumn.id ? (
+                    <div className="flex h-full w-full items-center px-2">
+                      <input
+                        type="text"
+                        value={editingHeaderValue}
+                        onChange={(e) => setEditingHeaderValue(e.target.value)}
+                        onBlur={() => handleHeaderRename(primaryColumn.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleHeaderRename(primaryColumn.id);
+                          if (e.key === "Escape") setEditingHeader(null);
+                        }}
+                        className="w-full bg-transparent text-xs font-normal text-gray-700 outline-none"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="group flex h-full w-full items-center justify-between px-2 py-1.5"
+                      onDoubleClick={() => handleHeaderDoubleClick(primaryColumn)}
+                    >
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        <svg
+                          className="h-3.5 w-3.5 shrink-0 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 6h16M4 12h16m-7 6h7"
+                          />
+                        </svg>
+                        <span className="truncate text-xs font-normal text-gray-700">
+                          {primaryColumn.name}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Scrollable headers */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={columnOrder}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div
+                  className="flex border-b border-gray-200"
+                  style={{ width: totalScrollableWidth }}
+                >
+                  {table.getHeaderGroups()[0]?.headers.map((header) => {
+                    const col = nonPrimaryColumns.find(
+                      (c) => String(c.id) === header.id,
+                    );
+                    const isAddCol = header.id === "_add";
+
+                    if (isAddCol) {
+                      return (
+                        <div
+                          key="_add"
+                          className="flex items-center justify-center bg-gray-50"
+                          style={{ width: header.getSize(), height: HEADER_HEIGHT }}
+                        >
+                          <button
+                            onClick={onAddColumn}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (!col) return null;
+
+                    return (
+                      <div
+                        key={header.id}
+                        className="relative border-r border-gray-200 bg-gray-50"
+                        style={{ width: header.getSize(), height: HEADER_HEIGHT }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          onContextMenu?.({
+                            type: "column",
+                            position: { x: e.clientX, y: e.clientY },
+                            data: { columnId: col.id },
+                          });
+                        }}
+                      >
+                        {editingHeader === col.id ? (
+                          <div className="flex h-full items-center bg-gray-50 px-2">
+                            <input
+                              type="text"
+                              value={editingHeaderValue}
+                              onChange={(e) => setEditingHeaderValue(e.target.value)}
+                              onBlur={() => handleHeaderRename(col.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleHeaderRename(col.id);
+                                if (e.key === "Escape") setEditingHeader(null);
+                              }}
+                              className="w-full bg-transparent text-xs font-normal text-gray-700 outline-none"
+                              autoFocus
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-full" onDoubleClick={() => handleHeaderDoubleClick(col)}>
+                            <SortableHeaderCell column={col} sorts={sorts} isPrimary={false}>
+                              <button className="invisible rounded p-0.5 group-hover:visible hover:bg-gray-200">
+                                <svg className="h-3 w-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            </SortableHeaderCell>
+                          </div>
+                        )}
+
+                        {/* Resize handle */}
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+
+          {/* === ROWS === */}
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              position: "relative",
+              minWidth: "fit-content",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = tableRows[virtualRow.index]!;
+              const rowData = row.original;
+              const isRowSelected = selectedRowIds.has(String(rowData.id));
+              const isActiveRow = rowData.id === activeRowId;
+              const isHoveredRow = rowData.id === hoveredRowId;
+              const rowBg = getRowBg(rowData.id);
+
+              return (
+                <div
+                  key={row.id}
+                  data-index={virtualRow.index}
+                  className="absolute left-0 flex border-b border-gray-200"
+                  style={{
+                    height: currentRowHeight,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    minWidth: "fit-content",
+                  }}
+                  onMouseEnter={() => setHoveredRowId(rowData.id)}
+                  onMouseLeave={() => setHoveredRowId(null)}
+                >
+                  {/* Frozen: checkbox/row-num + primary cell */}
+                  <div
+                    className={`sticky left-0 z-10 flex shrink-0 ${rowBg}`}
+                    style={{ width: frozenWidth, borderRight: "2px solid rgb(209, 213, 219)" }}
+                  >
+                    {/* Row number / checkbox / drag handle */}
+                    <div
+                      className="group flex items-center"
+                      style={{ width: CHECKBOX_WIDTH }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onContextMenu?.({
+                          type: "row",
+                          position: { x: e.clientX, y: e.clientY },
+                          data: { rowId: rowData.id, rowIndex: virtualRow.index },
+                        });
+                      }}
+                    >
+                      {isRowSelected ? (
+                        <>
+                          <div className="flex w-5 shrink-0 items-center justify-center pl-0.5">
+                            <DragHandle />
+                          </div>
+                          <div className="flex flex-1 justify-center">
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                              checked
+                              onChange={row.getToggleSelectedHandler()}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Normal: row number centered, hover: drag + checkbox */}
+                          <div className="flex w-5 shrink-0 items-center justify-center pl-0.5 opacity-0 group-hover:opacity-100">
+                            <DragHandle />
+                          </div>
+                          <div className="flex flex-1 justify-center">
+                            <span className="text-xs text-gray-400 group-hover:hidden">
+                              {virtualRow.index + 1}
+                            </span>
+                            <input
+                              type="checkbox"
+                              className="hidden h-3.5 w-3.5 rounded border-gray-300 text-blue-600 group-hover:block"
+                              checked={false}
+                              onChange={row.getToggleSelectedHandler()}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Primary cell */}
+                    {primaryColumn && (
+                      <div
+                        className={`flex items-center px-2 ${
+                          selectedCell?.rowId === rowData.id && selectedCell?.columnId === primaryColumn.id
+                            ? "ring-2 ring-inset ring-blue-500"
+                            : ""
+                        } ${
+                          isMultiSelect && selectedCells.has(`${rowData.id}-${primaryColumn.id}`) &&
+                          !(selectedCell?.rowId === rowData.id && selectedCell?.columnId === primaryColumn.id)
+                            ? "bg-blue-50/70"
+                            : ""
+                        } ${
+                          highlightedCells?.get(rowData.id)?.has(primaryColumn.id)
+                            ? "bg-yellow-100"
+                            : ""
+                        }`}
+                        style={{ width: PRIMARY_WIDTH }}
+                        onMouseDown={(e) => handleMouseDown(rowData.id, primaryColumn.id, e)}
+                        onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          onContextMenu?.({
+                            type: "cell",
+                            position: { x: e.clientX, y: e.clientY },
+                            data: { rowId: rowData.id, columnId: primaryColumn.id, rowIndex: virtualRow.index },
+                          });
+                        }}
+                      >
+                        <input
+                          type="text"
+                          defaultValue={
+                            rowData.cells[String(primaryColumn.id)] != null
+                              ? String(rowData.cells[String(primaryColumn.id)])
+                              : ""
+                          }
+                          className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                          onChange={(e) =>
+                            handleCellChange(rowData.id, primaryColumn.id, e.target.value)
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scrollable cells */}
+                  <div
+                    className={`flex ${
+                      isRowSelected ? "bg-blue-50" :
+                      isActiveRow || isHoveredRow ? "bg-gray-50/50" : ""
+                    }`}
+                    style={{ width: totalScrollableWidth }}
+                  >
+                    {nonPrimaryColumns.map((col) => {
+                      const cellKey = `${rowData.id}-${col.id}`;
+                      const isOriginCell = selectedCell?.rowId === rowData.id && selectedCell?.columnId === col.id;
+                      const isInSelection = selectedCells.has(cellKey);
+                      const isHighlighted = highlightedCells?.get(rowData.id)?.has(col.id);
+                      const cellValue = rowData.cells[String(col.id)];
+                      const displayValue = cellValue != null ? String(cellValue) : "";
+
+                      let cellBg = "";
+                      if (isHighlighted) {
+                        cellBg = "bg-yellow-100";
+                      } else if (isMultiSelect && isInSelection && !isOriginCell) {
+                        cellBg = "bg-blue-50/70";
+                      }
+
+                      return (
+                        <div
+                          key={col.id}
+                          className={`flex items-center border-r border-gray-200 px-2 ${
+                            isOriginCell ? "ring-2 ring-inset ring-blue-500" : ""
+                          } ${cellBg}`}
+                          style={{
+                            width: columnSizing[String(col.id)] ?? col.width,
+                            minWidth: 80,
+                          }}
+                          onMouseDown={(e) => handleMouseDown(rowData.id, col.id, e)}
+                          onMouseEnter={() => handleMouseEnter(rowData.id, col.id)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            onContextMenu?.({
+                              type: "cell",
+                              position: { x: e.clientX, y: e.clientY },
+                              data: { rowId: rowData.id, columnId: col.id, rowIndex: virtualRow.index },
+                            });
+                          }}
+                        >
+                          <input
+                            type="text"
+                            defaultValue={displayValue}
+                            className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                            onChange={(e) =>
+                              handleCellChange(rowData.id, col.id, e.target.value)
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Add column spacer */}
+                    <div style={{ width: 48 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add row */}
+          <div className="flex shrink-0" style={{ minWidth: "fit-content" }}>
+            <div
+              className="sticky left-0 z-10 flex items-center justify-center border-b border-gray-200 bg-white"
+              style={{ width: frozenWidth, height: HEADER_HEIGHT, borderRight: "2px solid rgb(209, 213, 219)" }}
+            >
+              <button onClick={onAddRow} className="text-gray-400 hover:text-gray-600">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 border-b border-gray-200" style={{ height: HEADER_HEIGHT }} />
+          </div>
+
+          {/* Filler — extends the frozen divider to the bottom of the viewport */}
+          <div className="flex flex-1" style={{ minWidth: "fit-content", minHeight: 0 }}>
+            <div
+              className="sticky left-0 bg-white"
+              style={{ width: frozenWidth, borderRight: "2px solid rgb(209, 213, 219)" }}
+            />
+            <div className="flex-1" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
