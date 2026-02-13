@@ -255,92 +255,124 @@ export const viewRouter = createTRPCRouter({
         const column = columnMap.get(filter.columnId);
         if (!column) return;
 
+        const colKey = String(filter.columnId);
         const isText = column.type === ColumnType.TEXT;
-        const valueField = isText ? "textValue" : "numberValue";
 
         switch (filter.operator) {
           case "is_empty":
-            filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" IS NULL)`
-            );
+            if (isText) {
+              filterConditions.push(
+                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' = '')`
+              );
+            } else {
+              filterConditions.push(
+                `(NOT r.cells ? '${colKey}' OR jsonb_typeof(r.cells->'${colKey}') = 'null')`
+              );
+            }
             break;
 
           case "is_not_empty":
-            filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" IS NOT NULL)`
-            );
+            if (isText) {
+              filterConditions.push(
+                `(r.cells->>'${colKey}' IS NOT NULL AND r.cells->>'${colKey}' != '')`
+              );
+            } else {
+              filterConditions.push(
+                `(r.cells ? '${colKey}' AND jsonb_typeof(r.cells->'${colKey}') != 'null')`
+              );
+            }
             break;
 
           case "contains":
             filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."textValue" ILIKE $${filterParams.length + 1})`
+              `r.cells->>'${colKey}' ILIKE $${filterParams.length + 1}`
             );
             filterParams.push(`%${filter.value}%`);
             break;
 
           case "not_contains":
             filterConditions.push(
-              `NOT EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."textValue" ILIKE $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' NOT ILIKE $${filterParams.length + 1})`
             );
             filterParams.push(`%${filter.value}%`);
             break;
 
           case "equals":
-            filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" = $${filterParams.length + 1})`
-            );
-            filterParams.push(filter.value!);
+            if (isText) {
+              filterConditions.push(
+                `r.cells->>'${colKey}' = $${filterParams.length + 1}`
+              );
+              filterParams.push(filter.value!);
+            } else {
+              filterConditions.push(
+                `(r.cells->>'${colKey}')::float = $${filterParams.length + 1}`
+              );
+              filterParams.push(filter.value!);
+            }
             break;
 
           case "not_equals":
-            filterConditions.push(
-              `NOT EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."${valueField}" = $${filterParams.length + 1})`
-            );
-            filterParams.push(filter.value!);
+            if (isText) {
+              filterConditions.push(
+                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' != $${filterParams.length + 1})`
+              );
+              filterParams.push(filter.value!);
+            } else {
+              filterConditions.push(
+                `(r.cells->>'${colKey}' IS NULL OR (r.cells->>'${colKey}')::float != $${filterParams.length + 1})`
+              );
+              filterParams.push(filter.value!);
+            }
             break;
 
           case "greater_than":
             filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" > $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}')::float > $${filterParams.length + 1}`
             );
             filterParams.push(filter.value as number);
             break;
 
           case "less_than":
             filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" < $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}')::float < $${filterParams.length + 1}`
             );
             filterParams.push(filter.value as number);
             break;
 
           case "greater_than_or_equal":
             filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" >= $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}')::float >= $${filterParams.length + 1}`
             );
             filterParams.push(filter.value as number);
             break;
 
           case "less_than_or_equal":
             filterConditions.push(
-              `EXISTS (SELECT 1 FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${filter.columnId} AND c."numberValue" <= $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}')::float <= $${filterParams.length + 1}`
             );
             filterParams.push(filter.value as number);
             break;
         }
       });
 
-      // Build ORDER BY clause for sorts
+      // Build ORDER BY clause for sorts using JSONB extraction
       const orderByParts: string[] = [];
       sorts.forEach((sort) => {
         const column = columnMap.get(sort.columnId);
         if (!column) return;
 
+        const colKey = String(sort.columnId);
         const isText = column.type === ColumnType.TEXT;
-        const valueField = isText ? "textValue" : "numberValue";
 
-        orderByParts.push(
-          `(SELECT c."${valueField}" FROM "Cell" c WHERE c."rowId" = r.id AND c."columnId" = ${sort.columnId} LIMIT 1) ${sort.direction.toUpperCase()}`
-        );
+        if (isText) {
+          orderByParts.push(
+            `r.cells->>'${colKey}' ${sort.direction.toUpperCase()}`
+          );
+        } else {
+          orderByParts.push(
+            `(r.cells->>'${colKey}')::float ${sort.direction.toUpperCase()}`
+          );
+        }
       });
 
       // Always add r.id as final sort for deterministic pagination
@@ -385,23 +417,10 @@ export const viewRouter = createTRPCRouter({
         };
       }
 
-      // Get full row data with cells (excluding hidden columns)
+      // Get full row data — cells are already on the row as JSONB
       const rows = await ctx.db.row.findMany({
         where: {
           id: { in: rowIds.map((r) => r.id) },
-        },
-        include: {
-          cells: {
-            where: hiddenColumns.length > 0
-              ? { columnId: { notIn: hiddenColumns } }
-              : undefined,
-            include: {
-              column: {
-                select: { id: true, name: true, type: true, order: true },
-              },
-            },
-            orderBy: { columnId: "asc" },
-          },
         },
       });
 

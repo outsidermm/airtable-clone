@@ -2,49 +2,26 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { verifyTableOwnership } from "../utils/column-helpers";
-import {
-  calculateRowPosition,
-  createCellsForRow,
-  bulkCreateRows,
-} from "../utils/row-helpers";
+import { bulkCreateRows } from "../utils/row-helpers";
 
 export const rowRouter = createTRPCRouter({
-  // Create a single row with cells for all columns
+  // Create a single row with empty cells JSON
   create: protectedProcedure
     .input(
       z.object({
         tableId: z.number().int(),
-        afterRowId: z.number().int().nullable().optional(),
-        beforeRowId: z.number().int().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        // Verify ownership
-        await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
+      // Verify ownership
+      await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
-        // Calculate position
-        const order = await calculateRowPosition(tx, input.tableId, {
-          afterRowId: input.afterRowId,
-          beforeRowId: input.beforeRowId,
-        });
-
-        // Create row
-        const row = await tx.row.create({
-          data: {
-            tableId: input.tableId,
-            order,
-          },
-        });
-
-        // Create cells for all columns
-        await createCellsForRow(tx, input.tableId, row.id);
-
-        // Return row with cells
-        return tx.row.findUnique({
-          where: { id: row.id },
-          include: { cells: true },
-        });
+      // Create row with empty cells
+      return ctx.db.row.create({
+        data: {
+          tableId: input.tableId,
+          cells: {},
+        },
       });
     }),
 
@@ -62,24 +39,14 @@ export const rowRouter = createTRPCRouter({
           // Verify ownership
           await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
 
-          // Get last row to determine starting position
-          const lastRow = await tx.row.findFirst({
-            where: { tableId: input.tableId },
-            orderBy: { order: "desc" },
-            select: { order: true },
-          });
-
           // Bulk create with optimizations
-          const rowIds = await bulkCreateRows(tx, input.tableId, input.count, {
-            startingOrder: lastRow?.order,
-            generateCellData: true,
-          });
+          const rowIds = await bulkCreateRows(tx, input.tableId, input.count);
 
           return { count: rowIds.length, rowIds };
         },
         {
-          maxWait: 60000, // 60s max wait for lock
-          timeout: 120000, // 2 min timeout for large batches
+          maxWait: 60000,
+          timeout: 120000,
         },
       );
     }),
@@ -97,24 +64,13 @@ export const rowRouter = createTRPCRouter({
       // Verify ownership
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
-      // Cursor-based pagination with Int IDs (100x faster than CUID)
+      // Cursor-based pagination — cells are already on the row as JSONB
       const rows = await ctx.db.row.findMany({
         where: { tableId: input.tableId },
-        take: input.limit + 1, // Get one extra to check if there's more
+        take: input.limit + 1,
         skip: input.cursor ? 1 : 0,
         cursor: input.cursor ? { id: input.cursor } : undefined,
-        orderBy: { order: "asc" },
-        include: {
-          cells: {
-            select: {
-              id: true,
-              columnId: true,
-              textValue: true,
-              numberValue: true,
-            },
-            orderBy: { columnId: "asc" },
-          },
-        },
+        orderBy: { id: "asc" },
       });
 
       let nextCursor: number | undefined;
@@ -129,75 +85,30 @@ export const rowRouter = createTRPCRouter({
       };
     }),
 
-  // Reorder a row
-  reorder: protectedProcedure
-    .input(
-      z.object({
-        id: z.number().int(),
-        afterRowId: z.number().int().nullable().optional(),
-        beforeRowId: z.number().int().nullable().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        // Get row with ownership verification
-        const row = await tx.row.findUnique({
-          where: { id: input.id },
-          include: {
-            table: {
-              include: { base: true },
-            },
-          },
-        });
-
-        if (!row) {
-          throw new Error("Row not found");
-        }
-
-        if (row.table.base.userId !== ctx.session.user.id) {
-          throw new Error("Access denied");
-        }
-
-        // Calculate new position
-        const newOrder = await calculateRowPosition(tx, row.tableId, {
-          afterRowId: input.afterRowId,
-          beforeRowId: input.beforeRowId,
-        });
-
-        return tx.row.update({
-          where: { id: input.id },
-          data: { order: newOrder },
-        });
-      });
-    }),
-
   // Delete a row
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        // Get row with ownership verification
-        const row = await tx.row.findUnique({
-          where: { id: input.id },
-          include: {
-            table: {
-              include: { base: true },
-            },
+      // Get row with ownership verification
+      const row = await ctx.db.row.findUnique({
+        where: { id: input.id },
+        include: {
+          table: {
+            include: { base: true },
           },
-        });
+        },
+      });
 
-        if (!row) {
-          throw new Error("Row not found");
-        }
+      if (!row) {
+        throw new Error("Row not found");
+      }
 
-        if (row.table.base.userId !== ctx.session.user.id) {
-          throw new Error("Access denied");
-        }
+      if (row.table.base.userId !== ctx.session.user.id) {
+        throw new Error("Access denied");
+      }
 
-        // Delete row (cascade deletes cells)
-        return tx.row.delete({
-          where: { id: input.id },
-        });
+      return ctx.db.row.delete({
+        where: { id: input.id },
       });
     }),
 
@@ -210,7 +121,7 @@ export const rowRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        // Verify ownership of first row (assumes all belong to same table/user)
+        // Verify ownership of first row
         const firstRow = await tx.row.findUnique({
           where: { id: input.ids[0] },
           include: {
@@ -228,11 +139,10 @@ export const rowRouter = createTRPCRouter({
           throw new Error("Access denied");
         }
 
-        // Delete all rows
         const result = await tx.row.deleteMany({
           where: {
             id: { in: input.ids },
-            tableId: firstRow.tableId, // Ensure all rows belong to same table
+            tableId: firstRow.tableId,
           },
         });
 

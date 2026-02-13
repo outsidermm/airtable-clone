@@ -83,7 +83,6 @@ model AirtableTable {
     columns     Column[]
     rows        Row[]
     views       View[]
-    cells       Cell[]
 }
 
 model Column {
@@ -96,8 +95,6 @@ model Column {
 
     order      String
     primary     Boolean @default(false)
-
-    cells      Cell[]
 }
 
 model Row {
@@ -105,34 +102,10 @@ model Row {
     tableId    Int
     table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
-    order      String
+    cells      Json    @default("{}")
     createdAt  DateTime @default(now())
 
-    cells      Cell[]
-
     @@index([tableId, id])
-    @@index([tableId, order])
-}
-
-model Cell {
-    id          Int     @id @default(autoincrement())
-    textValue   String?
-    numberValue Float?
-
-    columnId   Int
-    column     Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
-
-    rowId      Int
-    row        Row           @relation(fields: [rowId], references: [id], onDelete: Cascade)
-
-    tableId    Int
-    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-
-    @@unique([columnId, rowId])
-    @@index([columnId, numberValue])
-    @@index([columnId, textValue])
-    @@index([tableId, columnId, numberValue])
-    @@index([tableId, columnId, textValue])
 }
 
 model View {

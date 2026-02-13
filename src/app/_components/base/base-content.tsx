@@ -103,6 +103,12 @@ export function BaseContent({
     },
   });
 
+  const deleteTable = api.table.delete.useMutation({
+    onSuccess: () => {
+      void utils.table.getAllByBase.invalidate({ baseId });
+    },
+  });
+
   // Flatten paginated rows
   const rows = useMemo(() => {
     if (!rowsQuery.data) return [];
@@ -120,29 +126,18 @@ export function BaseContent({
     }));
   }, [tableQuery.data]);
 
-  // Build a columnId -> type lookup from already-fetched table data
-  const columnTypeMap = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const col of columns) {
-      map.set(col.id, col.type);
-    }
-    return map;
-  }, [columns]);
-
-  // Map rows to GridView format
+  // Map rows to GridView format — row.cells is already a JSONB object
   const gridRows = useMemo(() => {
     return rows.map((row) => ({
       id: row.id,
       cells: Object.fromEntries(
-        row.cells.map((cell) => [
-          cell.columnId,
-          columnTypeMap.get(cell.columnId) === "NUMBER"
-            ? (cell.numberValue?.toString() ?? "")
-            : (cell.textValue ?? ""),
-        ]),
+        columns.map((col) => {
+          const val = (row.cells as Record<string, string | number | null>)[String(col.id)];
+          return [col.id, val != null ? String(val) : ""];
+        }),
       ),
     }));
-  }, [rows, columnTypeMap]);
+  }, [rows, columns]);
 
   const handleCellUpdate = useCallback(
     (rowId: number, columnId: number, value: string) => {
@@ -154,15 +149,13 @@ export function BaseContent({
         updateCell.mutate({
           rowId,
           columnId,
-          numberValue: isNaN(num) ? null : num,
-          textValue: null,
+          value: isNaN(num) ? null : num,
         });
       } else {
         updateCell.mutate({
           rowId,
           columnId,
-          textValue: value,
-          numberValue: null,
+          value,
         });
       }
     },
@@ -184,6 +177,26 @@ export function BaseContent({
   const handleAddTable = useCallback(() => {
     createTable.mutate({ baseId });
   }, [baseId, createTable]);
+
+  const handleDeleteTable = useCallback(
+    (tableId: number) => {
+      deleteTable.mutate(
+        { id: tableId },
+        {
+          onSuccess: () => {
+            // Switch to the first remaining table if we deleted the active one
+            if (tableId === activeTableId) {
+              const remaining = tables.filter((t) => t.id !== tableId);
+              if (remaining.length > 0) {
+                setActiveTableId(remaining[0]!.id);
+              }
+            }
+          },
+        },
+      );
+    },
+    [activeTableId, deleteTable, tables],
+  );
 
   const toggleDropdown = useCallback(
     (dropdown: ToolbarDropdown) => {
@@ -232,6 +245,7 @@ export function BaseContent({
         activeTableId={activeTableId}
         onTableChange={handleTableChange}
         onAddTable={handleAddTable}
+        onDeleteTable={handleDeleteTable}
       />
 
       {/* Toolbar row: hamburger + grid view selector + field controls */}

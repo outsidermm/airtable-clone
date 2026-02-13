@@ -8,7 +8,7 @@ type PrismaTransaction = Omit<
 >;
 
 /**
- * Create a fully initialized table with default columns, rows, cells, and a grid view.
+ * Create a fully initialized table with default columns, rows (with JSONB cells), and a grid view.
  * Used by both base.create (first table) and table.create (additional tables).
  */
 export async function createDefaultTable(
@@ -17,22 +17,13 @@ export async function createDefaultTable(
   tableName: string,
   rowCount = 5,
 ) {
-  // Generate lexorank positions for columns and rows
+  // Generate lexorank positions for columns
   const colHeader = LexoRank.middle();
   const col1 = colHeader.genNext();
   const col2 = col1.genNext();
   const col3 = col2.genNext();
 
-  const rowHeader = LexoRank.middle();
-  let currentRowRank = rowHeader.genNext();
-  const rowRanks: string[] = [];
-
-  for (let i = 0; i < rowCount; i++) {
-    rowRanks.push(currentRowRank.toString());
-    currentRowRank = currentRowRank.genNext();
-  }
-
-  // Create table with columns, rows, and a default view
+  // Create table with columns and a default view (rows added separately with cells JSON)
   const table = await tx.airtableTable.create({
     data: {
       name: tableName,
@@ -60,44 +51,36 @@ export async function createDefaultTable(
           },
         ],
       },
-      rows: {
-        create: rowRanks.map((rank) => ({
-          order: rank,
-        })),
-      },
     },
     include: {
       columns: { orderBy: { order: "asc" } },
-      rows: { orderBy: { order: "asc" } },
     },
   });
 
-  // Create cells with faker data
-  const cellsData = [];
-  for (const row of table.rows) {
+  // Build rows with inline JSONB cells containing faker data
+  const rowsData = Array.from({ length: rowCount }, () => {
+    const cells: Record<string, string | number> = {};
     for (const column of table.columns) {
-      const cellValue: { textValue?: string; numberValue?: number } = {};
-
       if (column.type === "TEXT") {
-        if (column.name === "Name") {
-          cellValue.textValue = faker.person.fullName();
-        } else {
-          cellValue.textValue = faker.lorem.sentence();
-        }
+        cells[String(column.id)] =
+          column.name === "Name"
+            ? faker.person.fullName()
+            : faker.lorem.sentence();
       } else if (column.type === "NUMBER") {
-        cellValue.numberValue = faker.number.int({ min: 1, max: 1000 });
+        cells[String(column.id)] = faker.number.int({ min: 1, max: 1000 });
       }
-
-      cellsData.push({
-        tableId: table.id,
-        rowId: row.id,
-        columnId: column.id,
-        ...cellValue,
-      });
     }
-  }
+    return { tableId: table.id, cells };
+  });
 
-  await tx.cell.createMany({ data: cellsData });
+  await tx.row.createMany({ data: rowsData });
 
-  return table;
+  // Re-fetch with rows included
+  return tx.airtableTable.findUniqueOrThrow({
+    where: { id: table.id },
+    include: {
+      columns: { orderBy: { order: "asc" } },
+      rows: { orderBy: { id: "asc" } },
+    },
+  });
 }

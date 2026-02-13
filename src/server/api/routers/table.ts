@@ -94,7 +94,7 @@ export const tableRouter = createTRPCRouter({
           columns: { orderBy: { order: "asc" } },
           views: true,
           _count: {
-            select: { rows: true, cells: true },
+            select: { rows: true },
           },
         },
       });

@@ -80,16 +80,13 @@ pnpm dev                    # start dev server on :3000
 | ⬜ | Define Base model (id, name, userId, createdAt, updatedAt) | Schema | P0 - Critical |
 | ⬜ | Define AirtableTable model (id, name, baseId, createdAt) | Schema | P0 - Critical |
 | ⬜ | Define Column model (id, name, type enum [TEXT, NUMBER], tableId, order) | Schema | P0 - Critical |
-| ⬜ | Define Row model (id Int @id @default(autoincrement()), tableId, order, createdAt) | Schema | P0 - Critical |
-| ⬜ | Define Cell model (id, rowId, columnId, textValue, numberValue) | Schema | P0 - Critical |
-| ⬜ | Define View model (id, name, tableId, config Json) | Schema | P1 - High |
-| ⬜ | Add @@unique([rowId, columnId]) on Cell for upsert support | Schema | P0 - Critical |
-| ⬜ | Add @@index([tableId, id]) on Row for cursor pagination | Schema | P0 - Critical |
-| ⬜ | Add @@index([columnId, numberValue]) on Cell for numeric filters | Schema | P1 - High |
-| ⬜ | Add @@index([columnId, textValue]) on Cell for text filters | Schema | P1 - High |
-| ⬜ | Use Int autoincrement ID on Row (NOT cuid/uuid) for cursor perf | Schema | P0 - Critical |
-| ⬜ | Run npx prisma db push && npx prisma generate, verify in Studio | Schema | P0 - Critical |
-| ⬜ | Create raw SQL migration for pg_trgm extension + GIN index | Schema | P1 - High |
+| ✅ | Define Row model (id Int autoincrement, tableId, cells Json, createdAt) | Schema | P0 - Critical |
+| ✅ | JSONB-on-Row pattern (no Cell model — cells stored as Row.cells JSONB) | Schema | P0 - Critical |
+| ✅ | Define View model (id, name, tableId, config Json) | Schema | P1 - High |
+| ✅ | Add @@index([tableId, id]) on Row for cursor pagination | Schema | P0 - Critical |
+| ✅ | Add GIN index on Row.cells for JSONB query performance | Schema | P1 - High |
+| ✅ | Use Int autoincrement ID on Row (NOT cuid/uuid) for cursor perf | Schema | P0 - Critical |
+| ✅ | Run npx prisma db push && npx prisma generate, verify in Studio | Schema | P0 - Critical |
 
 ### 🔌 tRPC API Layer (Routers)
 
@@ -99,7 +96,7 @@ pnpm dev                    # start dev server on :3000
 | ⬜ | Create tables router: list by base, create (with Faker defaults), rename | API | P0 - Critical |
 | ⬜ | Create columns router: list by table, add column (TEXT/NUMBER), reorder | API | P0 - Critical |
 | ⬜ | Create rows router: infiniteQuery with Prisma cursor-based pagination | API | P0 - Critical |
-| ⬜ | Create cells router: update single cell (prisma.cell.upsert) | API | P0 - Critical |
+| ✅ | Create cells router: update cell via jsonb_set on Row.cells | API | P0 - Critical |
 | ⬜ | Create views router: create, list, update config, delete | API | P1 - High |
 | ⬜ | Implement server-side search: prisma.cell.findMany with contains/ILIKE | API | P1 - High |
 | ⬜ | Implement server-side filters: where clause builders for number + text | API | P1 - High |
@@ -204,56 +201,38 @@ pnpm dev                    # start dev server on :3000
 
 ## 🏗 Architecture & Database Design
 
-### The EAV Pattern: Why It's Required
+### JSONB-on-Row Pattern
 
-Airtable lets users create columns dynamically. The Entity-Attribute-Value (EAV) pattern solves this by storing each cell as a row in a separate table. Adding a "column" just inserts a record in the columns table—no schema changes, no locks, instant operation.
+Airtable lets users create columns dynamically. Instead of the traditional EAV pattern (separate Cell table), this project stores cell data as a JSONB column directly on each Row: `{ "columnId": value }`. This eliminates JOINs, reduces storage ~10x, and makes writes dramatically simpler (1 row insert vs N+1).
 
 ### Core Prisma Schema
 
 ```prisma
 model Row {
-  id        Int      @id @default(autoincrement())
-  tableId   String
-  order     Int
-  createdAt DateTime @default(now())
-  
-  table AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  cells Cell[]
-  
-  @@index([tableId, id])    // cursor pagination
-  @@index([tableId, order]) // ordered display
-}
+  id        Int            @id @default(autoincrement())
+  tableId   Int
+  table     AirtableTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  cells     Json           @default("{}")
+  createdAt DateTime       @default(now())
 
-model Cell {
-  id          String @id @default(cuid())
-  rowId       Int
-  columnId    String
-  textValue   String?
-  numberValue Float?
-  
-  row    Row    @relation(fields: [rowId], references: [id], onDelete: Cascade)
-  column Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  
-  @@unique([rowId, columnId])
-  @@index([columnId, numberValue])
-  @@index([columnId, textValue])
+  @@index([tableId, id])    // cursor pagination
 }
 ```
 
-### Critical Schema Decisions (⭐ Cannot be changed easily later)
+Cell data format: `{ "1": "Alice", "2": 42, "3": "Some note" }` where keys are column ID strings and values are native JSON types (string, number, null).
 
-- **⭐ Use Int @id @default(autoincrement()) on Row model**: Required for cursor pagination performance. UUID/CUID are ~100x slower at deep offsets
-- **⭐ Separate textValue and numberValue columns**: Enables type-specific indexes and ORDER BY operations
-- **⭐ EAV pattern (Row + Cell tables)**: Essential for dynamic columns without ALTER TABLE operations
-- **⭐ Add @@unique([rowId, columnId])**: Required for upsert operations and creates composite index
+### Critical Schema Decisions
+
+- **Use Int @id @default(autoincrement()) on Row model**: Required for cursor pagination performance. UUID/CUID are ~100x slower at deep offsets
+- **JSONB-on-Row pattern**: Cell data stored as `Row.cells` JSONB. Missing keys = empty cells (frontend handles gracefully). No Cell table.
+- **Column delete uses lazy cleanup**: Delete column immediately, strip orphan JSONB keys in background. Orphan keys are harmless.
+- **GIN index on Row.cells**: Required for JSONB query performance
 
 ### Index Strategy
 
 1. **Row(tableId, id)** - Cursor pagination backbone
-2. **Cell(rowId, columnId) UNIQUE** - Cell lookup and upserts  
-3. **Cell(columnId, numberValue)** - Numeric filters and sorts
-4. **Cell(columnId, textValue)** - Text filters and sorts
-5. **GIN(textValue gin_trgm_ops)** - Global search with ILIKE '%term%'
+2. **GIN(Row.cells jsonb_path_ops)** - JSONB containment and key-exists queries
+3. Column ordering uses LexoRank strings on `Column.order`
 
 ### Performance Considerations
 
@@ -316,7 +295,7 @@ model Cell {
 | Missing GIN index = 8s search | Medium | High | Add pg_trgm GIN index in raw migration |
 | Vercel function timeout on bulk insert | High | Medium | Use Vercel Pro (60s); split into smaller batches |
 | Connection pool exhaustion | High | Critical | pgBouncer + connection_limit=1; Prisma singleton |
-| N+1 cell queries per page | High | High | Always use include: { cells: true } or $queryRaw pivot |
+| JSONB key bloat on column delete | Low | Low | Lazy cleanup strips orphan keys in background; orphans are harmless |
 
 ---
 
@@ -326,18 +305,16 @@ model Cell {
 Use `findMany` with `take`, `skip: 1`, `cursor: { id: lastId }`, `orderBy: { id: 'asc' }`. The cursor field MUST be unique and sequential. Prefer Int autoincrement over cuid() for performance.
 
 ### Bulk Inserts
-Use `prisma.cell.createMany({ data: [...], skipDuplicates: true })` in batches of 500-1,000 rows inside a `$transaction`. For 100k+ rows, fall back to `$executeRawUnsafe` with multi-row INSERT VALUES.
+Use `prisma.row.createMany({ data: [...] })` in batches of 1,000 rows inside a `$transaction`. Each row includes a `cells` JSONB object. For 100k+ rows, fall back to `$executeRawUnsafe` with multi-row INSERT VALUES.
 
 ### Complex Queries
-Prisma's query builder cannot express multi-table JOINs with dynamic WHERE clauses. Use `$queryRaw` with tagged template literals for combined search+filter+sort operations.
+Prisma cannot natively filter/sort on JSONB keys. Use `$queryRaw` with JSONB operators (`->>`, `jsonb_set`, `?`) for search+filter+sort on cell data.
 
 ### Indexes
-Create GIN indexes and extensions (pg_trgm) via raw SQL migrations:
+Create GIN index on Row.cells via raw SQL:
 
 ```sql
--- In prisma/migrations/XXXX_add_gin_index/migration.sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX idx_cell_text_trgm ON "Cell" USING GIN ("textValue" gin_trgm_ops);
+CREATE INDEX idx_row_cells_gin ON "Row" USING GIN (cells jsonb_path_ops);
 ```
 
 ---

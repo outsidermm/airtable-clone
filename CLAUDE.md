@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Airtable clone built with the T3 stack (Next.js, tRPC, Prisma, Tailwind CSS) targeting high-performance handling of 1M+ rows with PostgreSQL. The application uses an Entity-Attribute-Value (EAV) pattern to support dynamic column creation without schema migrations.
+This is an Airtable clone built with the T3 stack (Next.js, tRPC, Prisma, Tailwind CSS) targeting high-performance handling of 1M+ rows with PostgreSQL. The application uses a JSONB-on-Row pattern — each Row has a `cells` JSONB column storing `{ "columnId": value }` — to support dynamic column creation without schema migrations.
 
 **Key Technologies:**
 - Next.js 15 (App Router)
@@ -106,15 +106,16 @@ export const appRouter = createTRPCRouter({
 
 #### 3. Database Schema (Prisma)
 - **Custom output path**: `generated/prisma/` (not default `node_modules/.prisma`)
-- Uses PostgreSQL with EAV pattern for dynamic columns
+- Uses PostgreSQL with JSONB-on-Row pattern for dynamic columns
 - Auto-generates after `pnpm install` via postinstall hook
-- Current models: User, Account, Session, VerificationToken, Post
+- Current models: User, Account, Session, VerificationToken, Base, AirtableTable, Column, Row, View
 
-**Critical EAV Schema Requirements (from README):**
+**Critical JSONB Schema Requirements:**
 - Use `Int @id @default(autoincrement())` on Row model for cursor pagination performance
-- Separate `textValue` and `numberValue` columns in Cell model for type-specific indexes
-- Add `@@unique([rowId, columnId])` on Cell for upsert operations
-- Add indexes: `[tableId, id]`, `[columnId, numberValue]`, `[columnId, textValue]`
+- Row.cells is `Json @default("{}")` — stores `{ "columnId": value }` where keys are column ID strings
+- Cell values are stored as native JSON types (strings, numbers, null)
+- Missing keys in JSONB = empty cell (frontend handles gracefully)
+- GIN index on `Row.cells` for JSONB query performance
 
 #### 4. Type Safety & Validation
 - All environment variables validated in `src/env.js` using Zod
@@ -150,7 +151,7 @@ The README contains a comprehensive implementation checklist organized by priori
 
 Key P0 items include:
 1. NextAuth configuration with Google OAuth
-2. Complete Prisma schema (Base, AirtableTable, Column, Row, Cell models)
+2. Complete Prisma schema (Base, AirtableTable, Column, Row, View models)
 3. tRPC routers for CRUD operations
 4. TanStack Table + Virtual integration
 5. Cursor-based pagination for 1M rows
@@ -161,27 +162,19 @@ Key P0 items include:
 ### Why Int IDs on Row Model
 UUID/CUID are ~100x slower for cursor pagination at deep offsets. The `Row` model must use `Int @id @default(autoincrement())` for performance with large datasets.
 
-### Why EAV Pattern
-Allows users to dynamically create columns without `ALTER TABLE` operations. Each cell is a separate row with `textValue`/`numberValue` polymorphic storage.
+### Why JSONB-on-Row Pattern
+Allows users to dynamically create columns without `ALTER TABLE` operations. Cell data is stored as a JSONB object on each Row: `{ "colId": value }`. This eliminates the N+1 Cell table JOINs, reduces storage ~10x vs EAV, and makes writes dramatically simpler (1 row insert vs N+1).
 
 ### Critical Indexes
 ```prisma
 model Row {
   @@index([tableId, id])      // Cursor pagination
-  @@index([tableId, order])   // Ordered display
-}
-
-model Cell {
-  @@unique([rowId, columnId]) // Upsert support + composite index
-  @@index([columnId, numberValue])
-  @@index([columnId, textValue])
 }
 ```
 
-### GIN Index for Search (Raw SQL)
+### GIN Index for JSONB Search (Raw SQL)
 ```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX idx_cell_text_trgm ON "Cell" USING GIN ("textValue" gin_trgm_ops);
+CREATE INDEX idx_row_cells_gin ON "Row" USING GIN (cells jsonb_path_ops);
 ```
 
 ## Code Style & Patterns
@@ -213,13 +206,13 @@ const rows = await ctx.db.row.findMany({
   skip: cursor ? 1 : 0,
   cursor: cursor ? { id: cursor } : undefined,
   orderBy: { id: 'asc' },
-  include: { cells: true },
+  // cells are already on the row as JSONB — no include needed
 });
 ```
 
 ## Known Constraints & Limitations
 
-1. **Prisma Complex Queries**: Cannot express multi-table JOINs with dynamic WHERE clauses. Use `$queryRaw` with tagged template literals for combined search+filter+sort operations.
+1. **Prisma JSON Limitations**: Prisma cannot natively filter/sort on JSONB keys. Use `$queryRaw` with JSONB operators (`->>`, `jsonb_set`, `? `) for search+filter+sort operations on cell data.
 
 2. **Vercel Function Timeout**: Default 10s (60s on Pro). Bulk inserts must be batched to stay within limits.
 
@@ -256,10 +249,11 @@ Per README performance targets:
 
 1. **Forgetting to register routers**: New tRPC routers must be added to `appRouter` in `src/server/api/root.ts`
 2. **Using wrong Prisma Client path**: Import from `~/server/db`, not `@prisma/client`
-3. **Missing indexes on Cell model**: Performance degrades exponentially without proper indexes
+3. **Missing GIN index on Row.cells**: JSONB queries degrade without `idx_row_cells_gin` GIN index
 4. **Using CUID for Row IDs**: Must use Int autoincrement for cursor pagination performance
 5. **Not batching bulk inserts**: createMany without batching will OOM at 100k+ rows
 6. **Client-side filtering**: All search, filter, sort must be database-level for 1M row performance
+7. **JSONB key format**: Cell keys in Row.cells must be column ID strings (e.g., `"42"`, not `42`). Use `String(columnId)` when building keys.
 
 ## Must not do
 1. Must ask user for permission before drastically changing design architecture in order to fulfill requests

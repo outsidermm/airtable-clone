@@ -156,32 +156,38 @@ export async function calculateColumnPosition(
 }
 
 /**
- * Convert cells when changing column type
+ * Convert JSONB cell values when changing column type.
+ * Operates directly on the Row.cells JSONB column.
  */
 export async function convertCellsForTypeChange(
   tx: PrismaTransaction,
   columnId: number,
+  tableId: number,
   newType: "TEXT" | "NUMBER",
 ) {
+  const colKey = String(columnId);
+
   if (newType === "TEXT") {
-    // Convert number to text using raw SQL
+    // Convert number values to text strings in JSONB
     await tx.$executeRaw`
-      UPDATE "Cell"
-      SET "textValue" = CAST("numberValue" AS TEXT),
-          "numberValue" = NULL
-      WHERE "columnId" = ${columnId} AND "numberValue" IS NOT NULL
+      UPDATE "Row"
+      SET cells = jsonb_set(cells, ${`{${colKey}}`}::text[], to_jsonb((cells->${colKey})::text))
+      WHERE "tableId" = ${tableId} AND cells ? ${colKey} AND jsonb_typeof(cells->${colKey}) = 'number'
     `;
   } else if (newType === "NUMBER") {
-    // Convert text to number (set to null if can't convert)
+    // Convert text values to numbers in JSONB (set to null if can't convert)
     await tx.$executeRaw`
-      UPDATE "Cell"
-      SET "numberValue" = CASE
-        WHEN "textValue" ~ '^[0-9]+\.?[0-9]*$'
-        THEN CAST("textValue" AS FLOAT)
-        ELSE NULL
-      END,
-      "textValue" = NULL
-      WHERE "columnId" = ${columnId} AND "textValue" IS NOT NULL
+      UPDATE "Row"
+      SET cells = jsonb_set(
+        cells,
+        ${`{${colKey}}`}::text[],
+        CASE
+          WHEN (cells->>${colKey}) ~ '^[0-9]+\.?[0-9]*$'
+          THEN to_jsonb((cells->>${colKey})::float)
+          ELSE 'null'::jsonb
+        END
+      )
+      WHERE "tableId" = ${tableId} AND cells ? ${colKey} AND jsonb_typeof(cells->${colKey}) = 'string'
     `;
   }
 }
