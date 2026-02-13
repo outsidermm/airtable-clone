@@ -10,7 +10,7 @@ import {
 } from "../utils/column-helpers";
 
 export const columnRouter = createTRPCRouter({
-  // Create a new column with flexible positioning
+  // Create a new column — no row backfill needed with JSONB (missing keys = empty)
   create: protectedProcedure
     .input(
       z.object({
@@ -38,8 +38,9 @@ export const columnRouter = createTRPCRouter({
           beforeColumnId: input.beforeColumnId,
         });
 
-        // Create column
-        const column = await tx.column.create({
+        // Create column — no need to backfill rows.
+        // Missing keys in JSONB are treated as empty by the frontend.
+        return tx.column.create({
           data: {
             tableId: input.tableId,
             name: columnName,
@@ -48,26 +49,6 @@ export const columnRouter = createTRPCRouter({
             primary: false,
           },
         });
-
-        // Get all rows to create cells
-        const rows = await tx.row.findMany({
-          where: { tableId: input.tableId },
-        });
-
-        // Create cells for this column in all existing rows
-        if (rows.length > 0) {
-          await tx.cell.createMany({
-            data: rows.map((row) => ({
-              tableId: input.tableId,
-              columnId: column.id,
-              rowId: row.id,
-              textValue: input.type === ColumnType.TEXT ? "" : null,
-              numberValue: input.type === ColumnType.NUMBER ? null : null,
-            })),
-          });
-        }
-
-        return column;
       });
     }),
 
@@ -98,9 +79,14 @@ export const columnRouter = createTRPCRouter({
         if (input.name !== undefined) updates.name = input.name;
         if (input.type !== undefined) updates.type = input.type;
 
-        // If changing type, update existing cells
+        // If changing type, convert existing JSONB values
         if (input.type && input.type !== column.type) {
-          await convertCellsForTypeChange(tx, input.id, input.type);
+          await convertCellsForTypeChange(
+            tx,
+            input.id,
+            column.tableId,
+            input.type,
+          );
         }
 
         return tx.column.update({
@@ -197,7 +183,7 @@ export const columnRouter = createTRPCRouter({
       return getColumnWithOwnership(ctx.db, input.id, ctx.session.user.id);
     }),
 
-  // Delete a column
+  // Delete a column — lazy cleanup of orphan JSONB keys
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
@@ -214,19 +200,23 @@ export const columnRouter = createTRPCRouter({
           throw new Error("Cannot delete primary column");
         }
 
-        // Check if this is the last column
-        const columnCount = await tx.column.count({
-          where: { tableId: column.tableId },
-        });
-
-        if (columnCount <= 1) {
-          throw new Error("Cannot delete the last column in a table");
-        }
-
-        // Delete column (cascade deletes cells)
-        return tx.column.delete({
+        // Delete column
+        const deleted = await tx.column.delete({
           where: { id: input.id },
         });
+
+        // Lazy cleanup: strip the orphan key from all rows in the background.
+        // This is fire-and-forget — orphan keys are harmless (frontend ignores them).
+        const colKey = String(input.id);
+        void ctx.db.$executeRaw`
+          UPDATE "Row"
+          SET cells = cells - ${colKey}
+          WHERE "tableId" = ${column.tableId}
+        `.catch(() => {
+          // Swallow errors — cleanup is best-effort
+        });
+
+        return deleted;
       });
     }),
 });

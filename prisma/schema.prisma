@@ -68,11 +68,11 @@ model Base {
 
     airtableTables AirtableTable[]
 
-    starred         Boolean  @default(false)
+    starred        Boolean  @default(false)
 }
 
 model AirtableTable {
-    id         Int   @id @default(autoincrement())
+    id         Int      @id @default(autoincrement())
     name       String
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
@@ -83,7 +83,6 @@ model AirtableTable {
     columns     Column[]
     rows        Row[]
     views       View[]
-    cells       Cell[]
 }
 
 model Column {
@@ -96,47 +95,21 @@ model Column {
 
     order      String
     primary     Boolean @default(false)
-
-    cells      Cell[]
 }
 
 model Row {
-    id         Int     @id @default(autoincrement())
+    id         Int           @id @default(autoincrement())
     tableId    Int
     table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
-    order      String
-    createdAt  DateTime @default(now())
-
-    cells      Cell[]
+    cells      Json          @default("{}")
+    createdAt  DateTime      @default(now())
 
     @@index([tableId, id])
-    @@index([tableId, order])
-}
-
-model Cell {
-    id          Int     @id @default(autoincrement())
-    textValue   String?
-    numberValue Float?
-
-    columnId   Int
-    column     Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
-
-    rowId      Int
-    row        Row           @relation(fields: [rowId], references: [id], onDelete: Cascade)
-
-    tableId    Int
-    table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-
-    @@unique([columnId, rowId])
-    @@index([columnId, numberValue])
-    @@index([columnId, textValue])
-    @@index([tableId, columnId, numberValue])
-    @@index([tableId, columnId, textValue])
 }
 
 model View {
-    id         Int   @id @default(autoincrement())
+    id         Int           @id @default(autoincrement())
     name       String
 
     tableId    Int
@@ -144,8 +117,8 @@ model View {
 
     config     Json?
 
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+    createdAt  DateTime      @default(now())
+    updatedAt  DateTime      @updatedAt
 }
 
 enum ColumnType {
