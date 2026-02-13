@@ -145,4 +145,12 @@ export const baseRouter = createTRPCRouter({
         data: { starred: !base.starred },
       });
     }),
+  
+    getStarred: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.base.findMany({
+        where: { userId: ctx.session.user.id, starred: true },
+        orderBy: { updatedAt: "desc" },
+      });
+    }),
 });
