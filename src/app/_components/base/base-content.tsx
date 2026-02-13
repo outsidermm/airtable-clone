@@ -312,7 +312,7 @@ export function BaseContent({
                 className="fixed inset-0 z-30"
                 onClick={() => setViewMenuOpen(false)}
               />
-              <div className="absolute left-0 top-full z-40 mt-1 w-72 rounded-lg border border-gray-200 bg-white px-2 py-1.5 shadow-lg">
+              <div className="absolute left-0 top-full z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                 <div className="px-3 py-1.5 text-sm text-gray-500">
                   Collaborative view
                   <div className="text-xs text-gray-500">

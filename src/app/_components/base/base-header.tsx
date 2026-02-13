@@ -711,7 +711,7 @@ export function BaseHeader({
                     className="fixed inset-0 z-30"
                     onClick={() => setIsTableSearchOpen(false)}
                   />
-                  <div className="absolute top-full left-0 z-40 mt-1 w-84 rounded-lg border border-gray-200 bg-white py-4 px-4 shadow-lg">
+                  <div className="absolute top-full left-0 z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white py-4 px-4 shadow-lg">
                     <div className="pb-2">
                       <div className="flex items-center gap-2 rounded-md border-b border-gray-200 px-2 py-1.5">
                         <svg
@@ -789,7 +789,7 @@ export function BaseHeader({
                         setIsTableSearchOpen(false);
                         setTableSearchQuery("");
                       }}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900"
                     >
                       <span className="flex items-center gap-2">
                         <svg
