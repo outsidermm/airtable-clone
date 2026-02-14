@@ -67,6 +67,21 @@ export function BaseContent({
 
   const utils = api.useUtils();
 
+  // --- Base ---
+  const renameBase = api.base.rename.useMutation({
+    onSuccess: () => {
+      // Refresh will happen automatically via Next.js router
+      window.location.reload();
+    },
+  });
+
+  const handleRenameBase = useCallback(
+    (name: string) => {
+      renameBase.mutate({ id: baseId, name });
+    },
+    [baseId, renameBase],
+  );
+
   // --- Tables ---
   const tablesQuery = api.table.getAllByBase.useQuery(
     { baseId },
@@ -346,6 +361,7 @@ export function BaseContent({
         }}
         onRenameTable={tableMutations.handleRenameTable}
         onDeleteTable={tableMutations.handleDeleteTable}
+        onRenameBase={handleRenameBase}
       />
 
       {/* Toolbar */}

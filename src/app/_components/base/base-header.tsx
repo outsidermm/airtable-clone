@@ -24,6 +24,7 @@ interface BaseHeaderProps {
   onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
+  onRenameBase?: (newName: string) => void;
 }
 
 export function BaseHeader({
@@ -34,6 +35,7 @@ export function BaseHeader({
   onAddTable,
   onRenameTable,
   onDeleteTable,
+  onRenameBase,
 }: BaseHeaderProps) {
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
@@ -43,6 +45,9 @@ export function BaseHeader({
   const [isImportSubOpen, setIsImportSubOpen] = useState(false);
   const [isTableSearchOpen, setIsTableSearchOpen] = useState(false);
   const [tableSearchQuery, setTableSearchQuery] = useState("");
+  const [showBaseMenu, setShowBaseMenu] = useState(false);
+  const [isRenamingBase, setIsRenamingBase] = useState(false);
+  const [baseNameValue, setBaseNameValue] = useState(base.name);
   const tableSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,24 +71,78 @@ export function BaseHeader({
         {/* Top Bar */}
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           {/* Left: Back & Base Name */}
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100">
-              <span className="text-base">{base.icon}</span>
-              {base.name}
-              <svg
-                className="h-3.5 w-3.5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
+          <div className="relative flex items-center gap-2">
+            {isRenamingBase ? (
+              <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
+                <span className="text-base">{base.icon}</span>
+                <input
+                  type="text"
+                  value={baseNameValue}
+                  onChange={(e) => setBaseNameValue(e.target.value)}
+                  onBlur={() => {
+                    if (baseNameValue.trim() && baseNameValue !== base.name) {
+                      onRenameBase?.(baseNameValue.trim());
+                    }
+                    setIsRenamingBase(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (baseNameValue.trim() && baseNameValue !== base.name) {
+                        onRenameBase?.(baseNameValue.trim());
+                      }
+                      setIsRenamingBase(false);
+                    } else if (e.key === "Escape") {
+                      setBaseNameValue(base.name);
+                      setIsRenamingBase(false);
+                    }
+                  }}
+                  className="rounded border border-blue-500 px-2 py-0.5 text-sm font-semibold text-gray-900 outline-none ring-1 ring-blue-500"
+                  autoFocus
                 />
-              </svg>
-            </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowBaseMenu(!showBaseMenu)}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100"
+              >
+                <span className="text-base">{base.icon}</span>
+                {base.name}
+                <svg
+                  className="h-3.5 w-3.5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            )}
+
+            {/* Base Menu Dropdown */}
+            {showBaseMenu && !isRenamingBase && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowBaseMenu(false)} />
+                <div className="absolute top-full left-0 z-40 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <button
+                    onClick={() => {
+                      setShowBaseMenu(false);
+                      setIsRenamingBase(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Rename base
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Center: Navigation Tabs */}
