@@ -369,6 +369,7 @@ function SortableRow(props: SortableRowProps) {
         {/* Primary cell */}
         {primaryColumn && (
           <div
+            id={`cell-${rowData.id}-${primaryColumn.id}`}
             className={`flex items-center px-2 ${
               selectedCell?.rowId === rowData.id &&
               selectedCell?.columnId === primaryColumn.id
@@ -475,6 +476,7 @@ function SortableRow(props: SortableRowProps) {
           return (
             <div
               key={col.id}
+              id={`cell-${rowData.id}-${col.id}`}
               className={`flex items-center border-r border-gray-200 px-2 ${
                 isOriginCell ? "ring-2 ring-blue-500 ring-inset" : ""
               } ${cellBg}`}
@@ -710,6 +712,87 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // --- Arrow key navigation between cells ---
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Only navigate if no input is focused (except inputs inside the table)
+        const activeElement = document.activeElement;
+        const isInputFocused =
+          activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement;
+        const isInsideTable =
+          parentRef.current?.contains(activeElement as Node) ?? false;
+
+        // Allow navigation when inside table inputs, but not when typing
+        if (isInputFocused && !isInsideTable) return;
+
+        const isArrowKey = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
+        const isTabKey = e.key === "Tab";
+
+        if (!isArrowKey && !isTabKey) return;
+        if (!selectedCell) return;
+
+        e.preventDefault();
+
+        // Build column list: primary column + non-primary columns
+        const allColumns = primaryColumn
+          ? [primaryColumn, ...nonPrimaryColumns]
+          : nonPrimaryColumns;
+
+        // Find current cell indices
+        const currentRowIndex = rows.findIndex((r) => r.id === selectedCell.rowId);
+        const currentColumnIndex = allColumns.findIndex(
+          (c) => c.id === selectedCell.columnId
+        );
+
+        if (currentRowIndex === -1 || currentColumnIndex === -1) return;
+
+        let newRowIndex = currentRowIndex;
+        let newColumnIndex = currentColumnIndex;
+
+        // Calculate new position
+        if (e.key === "ArrowUp") {
+          newRowIndex = Math.max(0, currentRowIndex - 1);
+        } else if (e.key === "ArrowDown") {
+          newRowIndex = Math.min(rows.length - 1, currentRowIndex + 1);
+        } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
+          newColumnIndex = Math.max(0, currentColumnIndex - 1);
+        } else if (e.key === "ArrowRight" || e.key === "Tab") {
+          newColumnIndex = Math.min(allColumns.length - 1, currentColumnIndex + 1);
+        }
+
+        // Update selected cell
+        const newRow = rows[newRowIndex];
+        const newColumn = allColumns[newColumnIndex];
+
+        if (newRow && newColumn) {
+          setSelectedCell({ rowId: newRow.id, columnId: newColumn.id });
+
+          // Scroll to cell (use browser's built-in scroll)
+          setTimeout(() => {
+            const cellId = `cell-${newRow.id}-${newColumn.id}`;
+            const cellElement = document.getElementById(cellId);
+            if (cellElement) {
+              cellElement.scrollIntoView({
+                block: "nearest",
+                inline: "nearest",
+                behavior: "smooth",
+              });
+
+              // Focus the input inside the cell
+              const input = cellElement.querySelector("input");
+              if (input) {
+                input.focus();
+              }
+            }
+          }, 0);
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [selectedCell, rows, primaryColumn, nonPrimaryColumns]);
 
     // --- Auto-scroll when mouse near edges ---
     useEffect(() => {
