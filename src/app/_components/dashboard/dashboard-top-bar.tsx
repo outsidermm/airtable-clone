@@ -12,12 +12,14 @@ interface DashboardTopBarProps {
   };
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onSearchClick?: () => void;
 }
 
 export function DashboardTopBar({
   user,
   isCollapsed = false,
   onToggleCollapse,
+  onSearchClick,
 }: DashboardTopBarProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
@@ -62,7 +64,9 @@ export function DashboardTopBar({
           <input
             type="search"
             placeholder="Search..."
-            className="w-full rounded-2xl border border-gray-300 bg-white px-3 py-1.5 pr-14 pl-9 text-xs hover:shadow-md"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-3 py-1.5 pr-14 pl-9 text-xs hover:shadow-md cursor-pointer"
+            onClick={onSearchClick}
+            readOnly
           />
           <svg
             className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
