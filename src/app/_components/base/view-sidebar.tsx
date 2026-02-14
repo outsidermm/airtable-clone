@@ -35,6 +35,7 @@ export function ViewSidebar({
   const [newViewName, setNewViewName] = useState("Grid view");
   const [newViewType, setNewViewType] = useState<string>("grid");
   const [whoCanEdit, setWhoCanEdit] = useState<"collaborative" | "personal" | "locked">("collaborative");
+  const [viewMenuId, setViewMenuId] = useState<number | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -283,55 +284,98 @@ export function ViewSidebar({
                 />
               </div>
             ) : (
-              <button
-                onClick={() => onSelectView(view.id)}
-                onDoubleClick={() => handleDoubleClick(view)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
-                  activeViewId === view.id
-                    ? "bg-blue-50 font-medium text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div className="relative flex items-center gap-1">
+                <button
+                  onClick={() => onSelectView(view.id)}
+                  onDoubleClick={() => handleDoubleClick(view)}
+                  className={`flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
+                    activeViewId === view.id
+                      ? "bg-blue-50 font-medium text-blue-700"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 10h18M3 14h18M3 6h18M3 18h18"
-                  />
-                </svg>
-                <span className="truncate">{view.name}</span>
-              </button>
-            )}
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h18M3 14h18M3 6h18M3 18h18"
+                    />
+                  </svg>
+                  <span className="truncate">{view.name}</span>
+                </button>
 
-            {/* Delete button (not for the only remaining view) */}
-            {views.length > 1 && editingViewId !== view.id && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteView(view.id);
-                }}
-                className="absolute top-1 right-1 hidden rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-red-500 group-hover:block"
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                {/* Three-dot menu button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewMenuId(viewMenuId === view.id ? null : view.id);
+                  }}
+                  className="hidden rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 group-hover:block"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </button>
+
+                {/* Three-dot menu dropdown */}
+                {viewMenuId === view.id && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setViewMenuId(null)} />
+                    <div className="absolute top-full left-0 z-40 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <button
+                        onClick={() => setViewMenuId(null)}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                        Add to favourite
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDoubleClick(view);
+                          setViewMenuId(null);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Rename view
+                      </button>
+                      <button
+                        onClick={() => setViewMenuId(null)}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Duplicate view
+                      </button>
+                      {views.length > 1 && (
+                        <button
+                          onClick={() => {
+                            onDeleteView(view.id);
+                            setViewMenuId(null);
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete view
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         ))}
