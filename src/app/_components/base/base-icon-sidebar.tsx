@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { UserMenu } from "../dashboard/user-menu";
 
 interface UserProps {
@@ -20,19 +21,12 @@ export function BaseIconSidebar({ user }: UserProps) {
         className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
         title="Back to home"
       >
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-          />
-        </svg>
+        <Image
+          src="/airtable-black.svg"
+          alt="Back to home"
+          width={20}
+          height={20}
+        />
       </Link>
 
       {/* Spacer */}
