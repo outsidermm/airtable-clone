@@ -69,10 +69,18 @@ export function AddTableModal({
 
           <p className="mb-1 px-2 text-xs text-gray-500">Build with Omni</p>
           <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
-            New table
+            <span className="flex items-center gap-2.5">
+              <svg className="h-4 w-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              New table
+            </span>
           </button>
           <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
             <span className="flex items-center gap-2.5">
+              <svg className="h-4 w-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
               New table with web data
             </span>
             <span className="flex items-center gap-1 rounded-xl bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-500">
@@ -132,12 +140,11 @@ export function AddTableModal({
           </button>
           <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <span className="flex items-center gap-2.5">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              ></svg>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="18" rx="2" fill="#4285F4"/>
+                <rect x="3" y="4" width="18" height="6" rx="2" fill="#1967D2"/>
+                <path d="M9.5 10V8.5M14.5 10V8.5M7 14H11M7 17H13" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
               Google Calendar
             </span>
             <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
@@ -217,12 +224,9 @@ export function AddTableModal({
           </button>
           <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <span className="flex items-center gap-2.5">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              ></svg>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <path d="M9.5 6.5C10.3 5.5 11.5 5 12.8 5C15.2 5 17 6.8 17 9.2C17 9.5 17 9.8 16.9 10.1C18.2 10.5 19 11.7 19 13.2C19 15.3 17.3 17 15.2 17H8C6.3 17 5 15.7 5 14C5 12.5 6 11.2 7.5 11C7.5 10.8 7.5 10.7 7.5 10.5C7.5 8.3 9.3 6.5 11.5 6.5" fill="#00A1E0"/>
+              </svg>
               Salesforce
             </span>
             <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
@@ -244,24 +248,19 @@ export function AddTableModal({
           </button>
           <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <span className="flex items-center gap-2.5">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              ></svg>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="#0073EA"/>
+                <path d="M7 8H17M7 12H17M7 16H14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
               Smartsheet
             </span>
           </button>
 
           <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
             <span className="flex items-center gap-2.5">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              ></svg>
+              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
               26 more sources...
             </span>
             <svg
