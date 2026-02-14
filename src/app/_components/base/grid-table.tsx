@@ -1042,16 +1042,19 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
           {/* Add row */}
           <div className="flex shrink-0" style={{ minWidth: "fit-content" }}>
             <div
-              className="sticky left-0 z-10 flex items-center justify-center border-b border-gray-200 bg-white"
+              className="sticky left-0 z-10 bg-white"
               style={{ width: frozenWidth, height: HEADER_HEIGHT, borderRight: "2px solid rgb(209, 213, 219)" }}
-            >
+            />
+            <div className="flex bg-white" style={{ height: HEADER_HEIGHT, width: totalScrollableWidth - 48 }}>
+              {/* Scrollable area - extends to last column */}
+            </div>
+            <div className="flex items-center justify-center border border-gray-200 bg-white" style={{ width: 48, height: HEADER_HEIGHT }}>
               <button onClick={onAddRow} className="text-gray-400 hover:text-gray-600">
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </button>
             </div>
-            <div className="flex-1" style={{ height: HEADER_HEIGHT, width: totalScrollableWidth }} />
           </div>
 
           {/* Filler — extends the frozen divider to the bottom of the viewport */}
