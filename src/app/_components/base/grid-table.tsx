@@ -1009,12 +1009,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
           </div>
 
           {/* Filler — extends the frozen divider to the bottom of the viewport */}
-          <div className="flex flex-1" style={{ minWidth: "fit-content", minHeight: 0 }}>
+          <div className="flex flex-1 bg-gray-50" style={{ minWidth: "fit-content", minHeight: 0 }}>
             <div
-              className="sticky left-0 bg-white"
+              className="sticky left-0 bg-gray-50"
               style={{ width: frozenWidth, borderRight: "2px solid rgb(209, 213, 219)" }}
             />
-            <div className="flex-1" />
+            <div className="flex-1 bg-gray-50" />
           </div>
         </div>
       </div>
