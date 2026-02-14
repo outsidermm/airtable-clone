@@ -609,6 +609,20 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
+  // --- Deselect cells when clicking outside table ---
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (parentRef.current && !parentRef.current.contains(event.target as Node)) {
+        setSelectedCell(null);
+        setSelectionStart(null);
+        setSelectionEnd(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // --- Auto-scroll when mouse near edges ---
   useEffect(() => {
     if (!isSelecting || !parentRef.current) return;
