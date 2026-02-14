@@ -77,7 +77,7 @@ interface GridTableProps {
     type?: ColumnType,
   ) => void;
   onSetPrimaryColumn: (columnId: number) => void;
-  onReorderRow?: (draggedRowId: number, targetRowId: number) => void;
+  onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
   onLoadMore?: () => void;
   hasNextPage?: boolean;
   sorts?: SortConfig[];
@@ -712,6 +712,15 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  // Selected row IDs (checkbox selection — blue highlight)
+  const selectedRowIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [key, val] of Object.entries(rowSelection)) {
+      if (val) set.add(key);
+    }
+    return set;
+  }, [rowSelection]);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -743,11 +752,24 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
         const draggedRowId = Number(activeIdStr.replace("row-", ""));
         const targetRowId = Number(overIdStr.replace("row-", ""));
         if (onReorderRow) {
-          onReorderRow(draggedRowId, targetRowId);
+          // Check if dragged row is part of a multi-selection
+          const draggedRowIndex = rows.findIndex((r) => r.id === draggedRowId);
+          const isDraggedRowSelected = draggedRowIndex !== -1 && selectedRowIds.has(String(draggedRowIndex));
+
+          if (isDraggedRowSelected && selectedRowIds.size > 1) {
+            // Multi-row drag: collect all selected row IDs in order
+            const selectedIds = rows
+              .filter((_, index) => selectedRowIds.has(String(index)))
+              .map((r) => r.id);
+            onReorderRow(selectedIds, targetRowId);
+          } else {
+            // Single row drag
+            onReorderRow([draggedRowId], targetRowId);
+          }
         }
       }
     },
-    [columns, onReorderColumn, onReorderRow],
+    [columns, onReorderColumn, onReorderRow, rows, selectedRowIds],
   );
 
   // Total scrollable width
@@ -780,15 +802,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
 
   // Row that contains the selected cell
   const activeRowId = selectedCell?.rowId ?? null;
-
-  // Selected row IDs (checkbox selection — blue highlight)
-  const selectedRowIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const [key, val] of Object.entries(rowSelection)) {
-      if (val) set.add(key);
-    }
-    return set;
-  }, [rowSelection]);
 
   // Determine row background for frozen section
   const getRowBg = useCallback(

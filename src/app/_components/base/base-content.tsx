@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
 import { GridTable, type GridTableHandle } from "./grid-table";
 import { ViewSidebar } from "./view-sidebar";
@@ -433,19 +432,30 @@ export function BaseContent({
               onReorderColumn={columnMutations.handleReorderColumn}
               onUpdateColumn={columnMutations.handleUpdateColumn}
               onSetPrimaryColumn={columnMutations.handleSetPrimaryColumn}
-              onReorderRow={(draggedRowId, targetRowId) => {
+              onReorderRow={(draggedRowIds, targetRowId) => {
                 // Row reordering is local-only (session-based) - no backend persistence
                 const currentOrder = localRowOrder.length === gridRows.length
                   ? localRowOrder
                   : gridRows.map((r) => r.id);
 
-                const oldIndex = currentOrder.indexOf(draggedRowId);
                 const newIndex = currentOrder.indexOf(targetRowId);
+                if (newIndex === -1) return;
 
-                if (oldIndex === -1 || newIndex === -1) return;
+                // Remove all dragged rows from current order
+                const filteredOrder = currentOrder.filter((id) => !draggedRowIds.includes(id));
 
-                // Use @dnd-kit's arrayMove utility for correct reordering
-                setLocalRowOrder(arrayMove(currentOrder, oldIndex, newIndex));
+                // Find the target position in the filtered order
+                const targetIndexInFiltered = filteredOrder.indexOf(targetRowId);
+                if (targetIndexInFiltered === -1) return;
+
+                // Insert dragged rows at target position
+                const newOrder = [
+                  ...filteredOrder.slice(0, targetIndexInFiltered),
+                  ...draggedRowIds,
+                  ...filteredOrder.slice(targetIndexInFiltered),
+                ];
+
+                setLocalRowOrder(newOrder);
               }}
               onLoadMore={() => {
                 if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
