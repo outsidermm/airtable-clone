@@ -46,7 +46,6 @@ const ROW_HEIGHT_MAP: Record<string, number> = {
 const HEADER_HEIGHT = 36;
 const CHECKBOX_WIDTH = 66;
 const PRIMARY_WIDTH = 250;
-const HEADER_ROW_ID = -1; // Special rowId for header selection
 
 // --- Types ---
 interface CellAddress {
@@ -586,63 +585,25 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     const result = new Set<string>();
     const rowIds = rows.map((r) => r.id);
     const colIds = columns.map((c) => c.id);
-
-    // Check if selection includes header row
-    const includesHeader = selectionStart.rowId === HEADER_ROW_ID || selectionEnd.rowId === HEADER_ROW_ID;
-
+    const r1 = rowIds.indexOf(selectionStart.rowId);
+    const r2 = rowIds.indexOf(selectionEnd.rowId);
     const c1 = colIds.indexOf(selectionStart.columnId);
     const c2 = colIds.indexOf(selectionEnd.columnId);
+    const rMin = Math.min(r1, r2);
+    const rMax = Math.max(r1, r2);
     const cMin = Math.min(c1, c2);
     const cMax = Math.max(c1, c2);
-
-    if (includesHeader) {
-      // If header is included, select entire columns
-      for (let r = 0; r < rowIds.length; r++) {
-        for (let c = cMin; c <= cMax; c++) {
-          const rid = rowIds[r];
-          const cid = colIds[c];
-          if (rid !== undefined && cid !== undefined) {
-            result.add(`${rid}-${cid}`);
-          }
-        }
-      }
-    } else {
-      // Normal cell selection
-      const r1 = rowIds.indexOf(selectionStart.rowId);
-      const r2 = rowIds.indexOf(selectionEnd.rowId);
-      const rMin = Math.min(r1, r2);
-      const rMax = Math.max(r1, r2);
-      for (let r = rMin; r <= rMax; r++) {
-        for (let c = cMin; c <= cMax; c++) {
-          const rid = rowIds[r];
-          const cid = colIds[c];
-          if (rid !== undefined && cid !== undefined) {
-            result.add(`${rid}-${cid}`);
-          }
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
+        const rid = rowIds[r];
+        const cid = colIds[c];
+        if (rid !== undefined && cid !== undefined) {
+          result.add(`${rid}-${cid}`);
         }
       }
     }
     return result;
   }, [selectionStart, selectionEnd, selectedCell, rows, columns]);
-
-  // Check if a column header is selected
-  const isColumnSelected = useCallback(
-    (columnId: number): boolean => {
-      if (!selectionStart || !selectionEnd) return false;
-      const includesHeader = selectionStart.rowId === HEADER_ROW_ID || selectionEnd.rowId === HEADER_ROW_ID;
-      if (!includesHeader) return false;
-
-      const colIds = columns.map((c) => c.id);
-      const c1 = colIds.indexOf(selectionStart.columnId);
-      const c2 = colIds.indexOf(selectionEnd.columnId);
-      const cMin = Math.min(c1, c2);
-      const cMax = Math.max(c1, c2);
-      const cIndex = colIds.indexOf(columnId);
-
-      return cIndex >= cMin && cIndex <= cMax;
-    },
-    [selectionStart, selectionEnd, columns],
-  );
 
   const handleMouseDown = useCallback(
     (rowId: number, columnId: number, e: React.MouseEvent) => {
@@ -989,12 +950,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
               {/* Primary column header */}
               {primaryColumn && (
                 <div
-                  className={`relative flex items-center ${
-                    isColumnSelected(primaryColumn.id) ? "bg-blue-100" : "bg-gray-50"
-                  }`}
+                  className="relative flex items-center bg-gray-50"
                   style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
-                  onMouseDown={(e) => handleMouseDown(HEADER_ROW_ID, primaryColumn.id, e)}
-                  onMouseEnter={() => handleMouseEnter(HEADER_ROW_ID, primaryColumn.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     onContextMenu?.({
@@ -1098,12 +1055,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                     return (
                       <div
                         key={header.id}
-                        className={`relative border-r border-gray-200 ${
-                          isColumnSelected(col.id) ? "bg-blue-100" : "bg-gray-50"
-                        }`}
+                        className="relative border-r border-gray-200 bg-gray-50"
                         style={{ width: header.getSize(), height: HEADER_HEIGHT }}
-                        onMouseDown={(e) => handleMouseDown(HEADER_ROW_ID, col.id, e)}
-                        onMouseEnter={() => handleMouseEnter(HEADER_ROW_ID, col.id)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           onContextMenu?.({
