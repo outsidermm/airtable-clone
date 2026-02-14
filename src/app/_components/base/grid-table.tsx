@@ -257,9 +257,8 @@ function SortableRow(props: SortableRowProps) {
 
   const style: CSSProperties = {
     height: currentRowHeight,
-    transform: transform
-      ? `translate3d(0, ${virtualStart + transform.y}px, 0)`
-      : `translateY(${virtualStart}px)`,
+    transform: CSS.Translate.toString(transform),
+    top: virtualStart,
     transition,
     opacity: isDragging ? 0.5 : 1,
     minWidth: "fit-content",
