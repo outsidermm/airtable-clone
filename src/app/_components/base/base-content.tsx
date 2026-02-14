@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
 import { GridTable, type GridTableHandle } from "./grid-table";
 import { ViewSidebar } from "./view-sidebar";
@@ -400,16 +401,13 @@ export function BaseContent({
                   ? localRowOrder
                   : gridRows.map((r) => r.id);
 
-                const draggedIndex = currentOrder.indexOf(draggedRowId);
-                const targetIndex = currentOrder.indexOf(targetRowId);
+                const oldIndex = currentOrder.indexOf(draggedRowId);
+                const newIndex = currentOrder.indexOf(targetRowId);
 
-                if (draggedIndex === -1 || targetIndex === -1) return;
+                if (oldIndex === -1 || newIndex === -1) return;
 
-                const newOrder = [...currentOrder];
-                const [removed] = newOrder.splice(draggedIndex, 1);
-                newOrder.splice(targetIndex, 0, removed!);
-
-                setLocalRowOrder(newOrder);
+                // Use @dnd-kit's arrayMove utility for correct reordering
+                setLocalRowOrder(arrayMove(currentOrder, oldIndex, newIndex));
               }}
               onLoadMore={() => {
                 if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
