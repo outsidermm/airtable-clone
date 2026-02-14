@@ -9,7 +9,7 @@ interface ColumnContextMenuProps {
   onClose: () => void;
   onRename: (columnId: number) => void;
   onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
-  onSetPrimary: (columnId: number) => void;
+  onSetPrimary?: () => void;
   onHide: (columnId: number) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
@@ -49,14 +49,15 @@ export function ColumnContextMenu({
           onClose();
         }}
       />
-      <MenuItem
-        label="Set as primary field"
-        disabled={column.primary}
-        onClick={() => {
-          onSetPrimary(column.id);
-          onClose();
-        }}
-      />
+      {column.primary && onSetPrimary && (
+        <MenuItem
+          label="Change primary field"
+          onClick={() => {
+            onSetPrimary();
+            onClose();
+          }}
+        />
+      )}
       <MenuDivider />
       <MenuItem
         label="Hide field"

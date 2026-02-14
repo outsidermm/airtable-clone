@@ -9,6 +9,7 @@ import { BaseToolbar } from "./toolbar/base-toolbar";
 import { CellContextMenu } from "./context-menu/cell-context-menu";
 import { ColumnContextMenu } from "./context-menu/column-context-menu";
 import { RowContextMenu } from "./context-menu/row-context-menu";
+import { SetPrimaryModal } from "./set-primary-modal";
 import { useTableMutations } from "./hooks/use-table-mutations";
 import { useRowMutations } from "./hooks/use-row-mutations";
 import { useColumnMutations } from "./hooks/use-column-mutations";
@@ -52,6 +53,7 @@ export function BaseContent({
     Map<number, Set<number>>
   >(new Map());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [showPrimaryModal, setShowPrimaryModal] = useState(false);
 
   const utils = api.useUtils();
 
@@ -356,6 +358,11 @@ export function BaseContent({
               onReorderColumn={columnMutations.handleReorderColumn}
               onUpdateColumn={columnMutations.handleUpdateColumn}
               onSetPrimaryColumn={columnMutations.handleSetPrimaryColumn}
+              onReorderRow={(draggedRowId, targetRowId) => {
+                // Row reordering is local-only (visual feedback) - no backend persistence
+                // Rows are ordered by autoincrement ID in the database
+                console.log('Row reorder:', { draggedRowId, targetRowId });
+              }}
               onLoadMore={() => {
                 if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
                   void activeRowsQuery.fetchNextPage();
@@ -404,7 +411,11 @@ export function BaseContent({
             onClose={closeContextMenu}
             onRename={handleColumnRenameFromMenu}
             onChangeType={handleColumnChangeType}
-            onSetPrimary={columnMutations.handleSetPrimaryColumn}
+            onSetPrimary={
+              allColumns.find((c) => c.id === contextMenu.data.columnId)?.primary
+                ? () => setShowPrimaryModal(true)
+                : undefined
+            }
             onHide={handleColumnHide}
             onInsertLeft={handleInsertColumnLeft}
             onInsertRight={handleInsertColumnRight}
@@ -423,6 +434,19 @@ export function BaseContent({
             onDeleteRow={rowMutations.handleDeleteRow}
           />
         )}
+
+      {/* Set Primary Modal */}
+      {showPrimaryModal && (
+        <SetPrimaryModal
+          columns={allColumns}
+          currentPrimaryId={allColumns.find((c) => c.primary)?.id ?? allColumns[0]!.id}
+          onConfirm={(columnId) => {
+            columnMutations.handleSetPrimaryColumn(columnId);
+            setShowPrimaryModal(false);
+          }}
+          onClose={() => setShowPrimaryModal(false)}
+        />
+      )}
     </div>
   );
 }

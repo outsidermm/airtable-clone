@@ -69,6 +69,24 @@ export function SearchDropdown({
 
   const resultRows = useMemo(() => searchResults.data ?? [], [searchResults.data]);
 
+  // Count total matching cells
+  const totalCellCount = useMemo(() => {
+    if (!searchResults.data || debouncedQuery.length === 0) return 0;
+    let count = 0;
+    for (const row of searchResults.data) {
+      const cells = row.cells as Record<string, string | number | null>;
+      for (const [, value] of Object.entries(cells)) {
+        if (
+          value != null &&
+          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
+        ) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }, [searchResults.data, debouncedQuery]);
+
   const goToResult = useCallback(
     (index: number) => {
       if (resultRows[index]) {
@@ -164,7 +182,7 @@ export function SearchDropdown({
               <span>
                 {searchResults.isLoading
                   ? "Searching..."
-                  : `${resultRows.length} result${resultRows.length === 1 ? "" : "s"}`}
+                  : `${totalCellCount} cell${totalCellCount === 1 ? "" : "s"}`}
               </span>
               {resultRows.length > 0 && (
                 <div className="flex items-center gap-1">
