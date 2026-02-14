@@ -251,9 +251,22 @@ export function BaseContent({
     }));
 
     // Apply local row order if set
-    if (localRowOrder.length === baseRows.length) {
+    if (localRowOrder.length > 0) {
       const rowMap = new Map(baseRows.map((r) => [r.id, r]));
-      return localRowOrder.map((id) => rowMap.get(id)!).filter(Boolean);
+      const ordered: GridRow[] = [];
+      // First, add rows in the stored order
+      for (const id of localRowOrder) {
+        const r = rowMap.get(id);
+        if (r) {
+          ordered.push(r);
+          rowMap.delete(id);
+        }
+      }
+      // Then append any new rows not in the order
+      for (const r of rowMap.values()) {
+        ordered.push(r);
+      }
+      return ordered;
     }
 
     return baseRows;
@@ -339,10 +352,10 @@ export function BaseContent({
     setLocalRowOrder([]);
   }, [activeTableId]);
 
-  // Reset row order when switching views or when rows change
+  // Reset row order when switching views
   useEffect(() => {
     setLocalRowOrder([]);
-  }, [activeViewId, rows]);
+  }, [activeViewId]);
 
   const isLoading = tableQuery.isLoading || activeRowsQuery.isLoading;
 
