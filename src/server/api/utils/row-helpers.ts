@@ -71,6 +71,9 @@ export async function bulkCreateRows(
   options: {
     startingOrder?: string;
     cellsJson?: Record<string, unknown>;
+    generateVariedData?: boolean;
+    columnIds?: number[];
+    columnTypes?: string[];
   } = {},
 ): Promise<number[]> {
   const cellsJson = options.cellsJson ?? {};
@@ -83,26 +86,68 @@ export async function bulkCreateRows(
 
   const createdRowIds: number[] = [];
 
+  // Sample data for varied generation
+  const sampleTexts = [
+    "Sample", "Test", "Demo", "Example", "Data",
+    "Alpha", "Beta", "Gamma", "Delta", "Epsilon",
+    "Project", "Task", "Item", "Record", "Entry",
+    "Phase", "Stage", "Level", "Grade", "Score"
+  ];
+
   for (let i = 0; i < count; i += batchSize) {
     const currentBatchSize = Math.min(batchSize, count - i);
 
-    // Build parameterized placeholders: ($1, $2::jsonb, NOW()), ($3, $4::jsonb, NOW()), ...
-    const placeholders = Array.from({ length: currentBatchSize }, (_, idx) => {
-      const offset = idx * PARAMS_PER_ROW;
-      return `($${offset + 1}, $${offset + 2}::jsonb, NOW())`;
-    }).join(", ");
+    if (options.generateVariedData && options.columnIds && options.columnTypes) {
+      // Generate varied data for each row
+      const placeholders: string[] = [];
+      const params: (number | string)[] = [];
 
-    // Flatten parameters: [tableId, cellsJson, tableId, cellsJson, ...]
-    const params = Array.from({ length: currentBatchSize }).flatMap(() => [
-      tableId,
-      cellsJsonStr,
-    ]);
+      for (let idx = 0; idx < currentBatchSize; idx++) {
+        const offset = idx * PARAMS_PER_ROW;
+        placeholders.push(`($${offset + 1}, $${offset + 2}::jsonb, NOW())`);
 
-    const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
-      `INSERT INTO "Row" ("tableId", "cells", "createdAt") VALUES ${placeholders} RETURNING "id"`,
-      ...params,
-    );
-    createdRowIds.push(...rows.map((r) => r.id));
+        // Generate unique data for this row
+        const rowData: Record<string, unknown> = {};
+        for (let colIdx = 0; colIdx < options.columnIds.length; colIdx++) {
+          const colId = String(options.columnIds[colIdx]);
+          const colType = options.columnTypes[colIdx];
+
+          if (colType === "NUMBER") {
+            rowData[colId] = Math.floor(Math.random() * 10000);
+          } else {
+            // TEXT type
+            const text = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+            const number = (i + idx + 1);
+            rowData[colId] = `${text} ${number}`;
+          }
+        }
+
+        params.push(tableId, JSON.stringify(rowData));
+      }
+
+      const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `INSERT INTO "Row" ("tableId", "cells", "createdAt") VALUES ${placeholders.join(", ")} RETURNING "id"`,
+        ...params,
+      );
+      createdRowIds.push(...rows.map((r) => r.id));
+    } else {
+      // Original implementation for non-varied data
+      const placeholders = Array.from({ length: currentBatchSize }, (_, idx) => {
+        const offset = idx * PARAMS_PER_ROW;
+        return `($${offset + 1}, $${offset + 2}::jsonb, NOW())`;
+      }).join(", ");
+
+      const params = Array.from({ length: currentBatchSize }).flatMap(() => [
+        tableId,
+        cellsJsonStr,
+      ]);
+
+      const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `INSERT INTO "Row" ("tableId", "cells", "createdAt") VALUES ${placeholders} RETURNING "id"`,
+        ...params,
+      );
+      createdRowIds.push(...rows.map((r) => r.id));
+    }
   }
 
   return createdRowIds;

@@ -441,7 +441,7 @@ function SortableRow(props: SortableRowProps) {
 
       {/* Scrollable cells */}
       <div
-        className={`flex border-gray-200 border-b${
+        className={`flex border-b border-gray-200 ${
           isRowSelected
             ? "bg-blue-50"
             : isActiveRow || isHoveredRow
@@ -1108,7 +1108,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                       const col = nonPrimaryColumns.find(
                         (c) => String(c.id) === header.id,
                       );
-                      const isAddCol = header.id === "_add";
 
                       if (!col) return null;
 
@@ -1191,7 +1190,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               </DndContext>
               <div
                 key="_add"
-                className="flex items-center justify-center border-b border-gray-200 bg-gray-50"
+                className="flex items-center justify-center border border-gray-200 bg-gray-50"
                 style={{ width: 48, height: HEADER_HEIGHT }}
               >
                 <button

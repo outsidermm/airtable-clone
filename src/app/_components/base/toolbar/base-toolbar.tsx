@@ -7,6 +7,7 @@ import { FilterDropdown } from "./filter-dropdown";
 import { SortDropdown } from "./sort-dropdown";
 import { HideFieldsDropdown } from "./hide-fields-dropdown";
 import { SearchDropdown } from "./search-dropdown";
+import { api } from "~/trpc/react";
 
 type ToolbarDropdown =
   | "hideFields"
@@ -47,6 +48,25 @@ export function BaseToolbar({
   onScrollToRow,
 }: BaseToolbarProps) {
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const utils = api.useUtils();
+  const bulkCreateMutation = api.row.bulkCreate.useMutation({
+    onMutate: () => {
+      setIsSeeding(true);
+    },
+    onSuccess: (data) => {
+      setIsSeeding(false);
+      // Invalidate row queries to refetch with new data
+      void utils.row.getRows.invalidate({ tableId });
+      void utils.view.getData.invalidate();
+      alert(`Successfully created ${data.count.toLocaleString()} rows!`);
+    },
+    onError: (error) => {
+      setIsSeeding(false);
+      alert(`Failed to create rows: ${error.message}`);
+    },
+  });
 
   const toggleDropdown = useCallback(
     (dropdown: ToolbarDropdown) => {
@@ -86,6 +106,19 @@ export function BaseToolbar({
       closeDropdown();
     },
     [viewConfig, onUpdateViewConfig, closeDropdown],
+  );
+
+  const handleBulkSeed = useCallback(
+    (count: number) => {
+      if (isSeeding) return;
+      const confirmed = confirm(
+        `Are you sure you want to add ${count.toLocaleString()} rows? This may take a while.`
+      );
+      if (confirmed) {
+        bulkCreateMutation.mutate({ tableId, count });
+      }
+    },
+    [tableId, bulkCreateMutation, isSeeding],
   );
 
   const filterCount = viewConfig.filters?.length ?? 0;
@@ -254,6 +287,43 @@ export function BaseToolbar({
             />
           )}
         </div>
+
+        {/* Bulk Seed Buttons */}
+        <button
+          onClick={() => handleBulkSeed(1000)}
+          disabled={isSeeding}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Add 1,000 rows"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          +1K
+        </button>
+
+        <button
+          onClick={() => handleBulkSeed(100000)}
+          disabled={isSeeding}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Add 100,000 rows"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          +100K
+        </button>
+
+        <button
+          onClick={() => handleBulkSeed(1000000)}
+          disabled={isSeeding}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Add 1,000,000 rows"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          +1M
+        </button>
 
         {/* Filter */}
         <div className="relative">
