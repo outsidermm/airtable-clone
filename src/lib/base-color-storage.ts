@@ -2,9 +2,7 @@ import { getBaseColor } from "./base-icon-utils";
 
 const STORAGE_KEY = "baseColors";
 
-interface BaseColorMap {
-  [baseId: string]: string;
-}
+type BaseColorMap = Record<string, string>;
 
 export function getStoredBaseColor(baseId: string): string {
   if (typeof window === "undefined") return getBaseColor(baseId);
@@ -25,7 +23,7 @@ export function setStoredBaseColor(baseId: string, color: string): void {
 
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    const colorMap: BaseColorMap = stored ? JSON.parse(stored) : {};
+    const colorMap: BaseColorMap = stored ? (JSON.parse(stored) as BaseColorMap) : {};
     colorMap[baseId] = color;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colorMap));
   } catch {

@@ -156,7 +156,7 @@ export const viewRouter = createTRPCRouter({
         data: {
           name: `${view.name} (copy)`,
           tableId: view.tableId,
-          config: view.config,
+          config: view.config ?? undefined,
           order: view.order,
         },
       });

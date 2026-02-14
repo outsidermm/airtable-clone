@@ -34,15 +34,15 @@ export function useTableMutations(
     },
   });
 
-  const duplicateTable = api.table.duplicate.useMutation({
-    onSuccess: (newTable) => {
-      void utils.table.getAllByBase.invalidate({ baseId });
-      setActiveTableId(newTable.id);
-    },
-  });
+  // const duplicateTable = api.table.duplicate.useMutation({
+  //   onSuccess: (newTable) => {
+  //     void utils.table.getAllByBase.invalidate({ baseId });
+  //     setActiveTableId(newTable.id);
+  //   },
+  // });
 
-  const handleAddTable = useCallback((name?: string) => {
-    createTable.mutate({ baseId, name });
+  const handleAddTable = useCallback(() => {
+    createTable.mutate({ baseId });
   }, [baseId, createTable]);
 
   const handleRenameTable = useCallback(
@@ -71,12 +71,12 @@ export function useTableMutations(
     [activeTableId, deleteTable, tables, setActiveTableId],
   );
 
-  const handleDuplicateTable = useCallback(
-    (tableId: number) => {
-      duplicateTable.mutate({ id: tableId });
-    },
-    [duplicateTable],
-  );
+  // const handleDuplicateTable = useCallback(
+  //   (tableId: number) => {
+  //     duplicateTable.mutate({ id: tableId });
+  //   },
+  //   [duplicateTable],
+  // );
 
-  return { handleAddTable, handleRenameTable, handleDeleteTable, handleDuplicateTable };
+  return { handleAddTable, handleRenameTable, handleDeleteTable };
 }

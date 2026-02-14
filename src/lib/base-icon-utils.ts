@@ -20,5 +20,5 @@ export function getBaseColor(baseId: string): string {
     hash = baseId.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % BASE_COLORS.length;
-  return BASE_COLORS[index];
+  return BASE_COLORS[index] ?? BASE_COLORS[0]!;
 }

@@ -1248,7 +1248,7 @@ export function BaseHeader({
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h2 className="mb-2 text-lg font-semibold text-gray-900">Delete base?</h2>
             <p className="mb-4 text-sm text-gray-600">
-              This will permanently delete "{base.name}" and all its tables, columns, rows, and views. This action cannot be undone.
+              This will permanently delete &quot;{base.name}&quot; and all its tables, columns, rows, and views. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button

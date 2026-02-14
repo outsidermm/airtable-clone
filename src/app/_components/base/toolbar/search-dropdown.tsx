@@ -81,9 +81,10 @@ export function SearchDropdown({
 
   const goToResult = useCallback(
     (index: number) => {
-      if (matchingCells[index]) {
+      const cell = matchingCells[index];
+      if (cell) {
         setActiveIndex(index);
-        onScrollToRow?.(matchingCells[index]!.rowId);
+        onScrollToRow?.(cell.rowId);
       }
     },
     [matchingCells, onScrollToRow],

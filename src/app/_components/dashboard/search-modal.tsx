@@ -122,8 +122,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (uniqueResults[selectedIndex]) {
-          handleSelectBase(uniqueResults[selectedIndex]!);
+        const selected = uniqueResults[selectedIndex];
+        if (selected) {
+          handleSelectBase(selected);
         }
       }
     };

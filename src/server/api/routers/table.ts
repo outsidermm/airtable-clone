@@ -118,7 +118,6 @@ export const tableRouter = createTRPCRouter({
             data: {
               name: col.name,
               type: col.type,
-              width: col.width,
               order: col.order,
               primary: col.primary,
               tableId: newTable.id,

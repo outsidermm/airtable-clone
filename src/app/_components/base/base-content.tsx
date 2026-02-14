@@ -422,7 +422,7 @@ export function BaseContent({
         }}
         onRenameTable={tableMutations.handleRenameTable}
         onDeleteTable={tableMutations.handleDeleteTable}
-        onDuplicateTable={tableMutations.handleDuplicateTable}
+        // onDuplicateTable={tableMutations.handleDuplicateTable}
         onRenameBase={handleRenameBase}
       />
 
@@ -443,7 +443,7 @@ export function BaseContent({
           setSearchQuery(query ?? "");
         }}
         onScrollToRow={handleScrollToRow}
-        
+
       />
 
       {/* View sidebar + Grid + Footer */}
@@ -456,8 +456,8 @@ export function BaseContent({
           onAddView={viewMutations.handleAddView}
           onRenameView={viewMutations.handleRenameView}
           onDeleteView={viewMutations.handleDeleteView}
-          onDuplicateView={viewMutations.handleDuplicateView}
-          onReorderViews={viewMutations.handleReorderViews}
+          // onDuplicateView={viewMutations.handleDuplicateView}
+          // onReorderViews={viewMutations.handleReorderViews}
           onMouseEnter={handleSidebarHoverEnter}
           onMouseLeave={handleSidebarHoverLeave}
         />

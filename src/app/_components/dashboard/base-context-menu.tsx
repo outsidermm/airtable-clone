@@ -11,7 +11,7 @@ interface BaseContextMenuProps {
   };
   isOpen: boolean;
   onClose: () => void;
-  buttonRef: React.RefObject<HTMLButtonElement>;
+  buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 export function BaseContextMenu({
@@ -44,8 +44,8 @@ export function BaseContextMenu({
 
   // Calculate menu position
   useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
+    if (isOpen && buttonRef?.current) {
+      const rect = buttonRef?.current.getBoundingClientRect();
       setPosition({
         top: rect.bottom + 4,
         left: rect.left,
@@ -61,7 +61,7 @@ export function BaseContextMenu({
       if (
         menuRef.current &&
         !menuRef.current.contains(e.target as Node) &&
-        !buttonRef.current?.contains(e.target as Node)
+        !buttonRef?.current?.contains(e.target as Node)
       ) {
         onClose();
       }
@@ -158,7 +158,7 @@ export function BaseContextMenu({
         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-2 text-lg font-semibold text-gray-900">Delete base?</h2>
           <p className="mb-4 text-sm text-gray-600">
-            This will permanently delete "{base.name}" and all its tables, columns, and rows. This action cannot be undone.
+            This will permanently delete &quot;{base.name}&quot; and all its tables, columns, and rows. This action cannot be undone.
           </p>
           <div className="flex justify-end gap-2">
             <button
