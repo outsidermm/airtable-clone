@@ -64,7 +64,7 @@ export default async function DashboardPage() {
               </svg>
             </button>
             <div className="flex gap-1.5">
-              <button className="rounded-2xl p-1.5 hover:bg-gray-100">
+              <button className="rounded-2xl p-1.5 hover:bg-gray-100" title="List view">
                 <svg
                   className="h-4 w-4 text-gray-600"
                   fill="none"
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
                   />
                 </svg>
               </button>
-              <button className="rounded-2xl bg-gray-200 p-1.5">
+              <button className="rounded-2xl bg-gray-200 p-1.5" title="Grid view">
                 <svg
                   className="h-4 w-4 text-gray-900"
                   fill="none"
