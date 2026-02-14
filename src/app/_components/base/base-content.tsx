@@ -11,6 +11,7 @@ import { ColumnContextMenu } from "./context-menu/column-context-menu";
 import { RowContextMenu } from "./context-menu/row-context-menu";
 import { SetPrimaryModal } from "./set-primary-modal";
 import { AddTableModal } from "./add-table-modal";
+import { AddColumnModal } from "./add-column-modal";
 import { useTableMutations } from "./hooks/use-table-mutations";
 import { useRowMutations } from "./hooks/use-row-mutations";
 import { useColumnMutations } from "./hooks/use-column-mutations";
@@ -56,6 +57,7 @@ export function BaseContent({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -379,7 +381,7 @@ export function BaseContent({
               onAddRow={rowMutations.handleAddRow}
               onDeleteRow={rowMutations.handleDeleteRow}
               onBulkDeleteRow={rowMutations.handleBulkDeleteRow}
-              onAddColumn={() => columnMutations.handleAddColumn()}
+              onAddColumn={() => setShowAddColumnModal(true)}
               onDeleteColumn={columnMutations.handleDeleteColumn}
               onReorderColumn={columnMutations.handleReorderColumn}
               onUpdateColumn={columnMutations.handleUpdateColumn}
@@ -494,6 +496,17 @@ export function BaseContent({
             setShowAddTableModal(false);
           }}
           onClose={() => setShowAddTableModal(false)}
+        />
+      )}
+
+      {/* Add Column Modal */}
+      {showAddColumnModal && (
+        <AddColumnModal
+          onConfirm={(name, type) => {
+            columnMutations.handleAddColumn({ name, type });
+            setShowAddColumnModal(false);
+          }}
+          onClose={() => setShowAddColumnModal(false)}
         />
       )}
     </div>
