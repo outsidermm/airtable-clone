@@ -133,6 +133,35 @@ export const viewRouter = createTRPCRouter({
       });
     }),
 
+  // Duplicate a view
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify user owns the table that owns this view
+      const view = await ctx.db.view.findUnique({
+        where: { id: input.id },
+        include: {
+          table: {
+            include: { base: true },
+          },
+        },
+      });
+
+      if (!view || view.table.base.userId !== ctx.session.user.id) {
+        throw new Error("View not found or access denied");
+      }
+
+      // Create duplicate with same config and name + " (copy)"
+      return ctx.db.view.create({
+        data: {
+          name: `${view.name} (copy)`,
+          tableId: view.tableId,
+          config: view.config ?? undefined,
+          order: view.order,
+        },
+      });
+    }),
+
   // Update view configuration (sorts, filters, hidden columns)
   update: protectedProcedure
     .input(
@@ -212,7 +241,7 @@ export const viewRouter = createTRPCRouter({
 
       return ctx.db.view.findMany({
         where: { tableId: input.tableId },
-        orderBy: { createdAt: "asc" },
+        orderBy: { order: "asc" },
       });
     }),
 
@@ -437,5 +466,39 @@ export const viewRouter = createTRPCRouter({
         rows: sortedRows,
         nextCursor,
       };
+    }),
+
+  // Reorder views
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.number().int(),
+        viewIds: z.array(z.number().int()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        // Verify user owns the table
+        const table = await tx.airtableTable.findUnique({
+          where: { id: input.tableId },
+          include: { base: true },
+        });
+
+        if (!table || table.base.userId !== ctx.session.user.id) {
+          throw new Error("Table not found or access denied");
+        }
+
+        // Update order for each view using LexoRank-like spacing
+        // Generate equally spaced order values
+        const updates = input.viewIds.map((viewId, index) => {
+          const order = String.fromCharCode(97 + Math.floor(index / 26)) + String.fromCharCode(97 + (index % 26));
+          return tx.view.update({
+            where: { id: viewId },
+            data: { order },
+          });
+        });
+
+        await Promise.all(updates);
+      });
     }),
 });

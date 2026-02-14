@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { getBaseColor, BASE_COLORS } from "~/lib/base-icon-utils";
+import { getStoredBaseColor, setStoredBaseColor } from "~/lib/base-color-storage";
+import { api } from "~/trpc/react";
 
 interface Table {
   id: number;
@@ -21,19 +26,24 @@ interface BaseHeaderProps {
   tables?: Table[];
   activeTableId?: number;
   onTableChange?: (tableId: number) => void;
-  onAddTable?: () => void;
+  onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
+  onDuplicateTable?: (tableId: number) => void;
+  onRenameBase?: (newName: string) => void;
 }
 
 export function BaseHeader({
   base,
+  user,
   tables = [],
   activeTableId,
   onTableChange,
   onAddTable,
   onRenameTable,
   onDeleteTable,
+  onDuplicateTable,
+  onRenameBase,
 }: BaseHeaderProps) {
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
@@ -43,13 +53,60 @@ export function BaseHeader({
   const [isImportSubOpen, setIsImportSubOpen] = useState(false);
   const [isTableSearchOpen, setIsTableSearchOpen] = useState(false);
   const [tableSearchQuery, setTableSearchQuery] = useState("");
+  const [showBaseMenu, setShowBaseMenu] = useState(false);
+  const [isRenamingBase, setIsRenamingBase] = useState(false);
+  const [baseNameValue, setBaseNameValue] = useState(base.name);
+  const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
+  const [renamingTableValue, setRenamingTableValue] = useState("");
+  const [showBaseSubMenu, setShowBaseSubMenu] = useState(false);
+  const [appearanceTab, setAppearanceTab] = useState<"color" | "icon">("color");
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+  const [isBaseGuideOpen, setIsBaseGuideOpen] = useState(true);
+  const [baseGuideValue, setBaseGuideValue] = useState("Add context to help collaborators understand what this base is for and how to use it.");
+  const [iconColor, setIconColor] = useState(getStoredBaseColor(base.id));
+  const [showDeleteBaseConfirm, setShowDeleteBaseConfirm] = useState(false);
   const tableSearchRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const utils = api.useUtils();
+
+  const deleteBaseMutation = api.base.delete.useMutation({
+    onSuccess: () => {
+      void utils.base.getAll.invalidate();
+      router.push("/dashboard");
+    },
+  });
+
+  const handleColorChange = (color: string) => {
+    setIconColor(color);
+    setStoredBaseColor(base.id, color);
+  };
+
+  const handleDuplicateBase = () => {
+    setShowBaseSubMenu(false);
+    alert("Base duplication coming soon. This will create a copy of all tables, columns, rows, and views.");
+  };
+
+  const handleDeleteBase = () => {
+    setShowBaseSubMenu(false);
+    setShowDeleteBaseConfirm(true);
+  };
+
+  const handleDeleteBaseConfirm = () => {
+    deleteBaseMutation.mutate({ id: base.id });
+  };
 
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
       tableSearchRef.current.focus();
     }
   }, [isTableSearchOpen]);
+
+  useEffect(() => {
+    if (renamingTableId !== null && renameInputRef.current) {
+      renameInputRef.current.focus();
+    }
+  }, [renamingTableId]);
 
   const closeMenu = useCallback(() => {
     setTableMenuId(null);
@@ -66,24 +123,270 @@ export function BaseHeader({
         {/* Top Bar */}
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           {/* Left: Back & Base Name */}
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100">
-              <span className="text-base">{base.icon}</span>
-              {base.name}
-              <svg
-                className="h-3.5 w-3.5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
+          <div className="relative flex items-center gap-2">
+            {isRenamingBase ? (
+              <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}>
+                  <Image
+                    src="/airtable-black.svg"
+                    alt="Base icon"
+                    width={16}
+                    height={16}
+                    className="brightness-0 invert"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={baseNameValue}
+                  onChange={(e) => setBaseNameValue(e.target.value)}
+                  onBlur={() => {
+                    if (baseNameValue.trim() && baseNameValue !== base.name) {
+                      onRenameBase?.(baseNameValue.trim());
+                    }
+                    setIsRenamingBase(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (baseNameValue.trim() && baseNameValue !== base.name) {
+                        onRenameBase?.(baseNameValue.trim());
+                      }
+                      setIsRenamingBase(false);
+                    } else if (e.key === "Escape") {
+                      setBaseNameValue(base.name);
+                      setIsRenamingBase(false);
+                    }
+                  }}
+                  className="rounded border border-blue-500 px-2 py-0.5 text-sm font-semibold text-gray-900 ring-1 ring-blue-500 outline-none"
+                  autoFocus
                 />
-              </svg>
-            </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowBaseMenu(!showBaseMenu)}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100"
+              >
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}>
+                  <Image
+                    src="/airtable-black.svg"
+                    alt="Base icon"
+                    width={16}
+                    height={16}
+                    className="brightness-0 invert"
+                  />
+                </div>
+                {base.name}
+                <svg
+                  className="h-3.5 w-3.5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            )}
+
+            {/* Base Menu Dropdown */}
+            {showBaseMenu && !isRenamingBase && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => {
+                    setShowBaseMenu(false);
+                    setShowBaseSubMenu(false);
+                  }}
+                />
+                <div className="absolute top-full left-0 z-[100] mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                  {/* Base name input */}
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      value={baseNameValue}
+                      onChange={(e) => setBaseNameValue(e.target.value)}
+                      onBlur={() => {
+                        if (baseNameValue.trim() && baseNameValue !== base.name) {
+                          onRenameBase?.(baseNameValue.trim());
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          if (baseNameValue.trim() && baseNameValue !== base.name) {
+                            onRenameBase?.(baseNameValue.trim());
+                          }
+                        }
+                      }}
+                      className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      Star base
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowBaseSubMenu(!showBaseSubMenu)}
+                        className="rounded-md p-1 text-gray-700 hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {/* Sub menu */}
+                      {showBaseSubMenu && (
+                        <div className="absolute top-full right-0 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                          <button
+                            onClick={handleDuplicateBase}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Duplicate base
+                          </button>
+                          <button
+                            onClick={() => setShowBaseSubMenu(false)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            Slack notifications
+                          </button>
+                          <button
+                            onClick={handleDeleteBase}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete base
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-3">
+                    {/* Appearance expander */}
+                    <div className="mb-2">
+                      <button
+                        onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}
+                        className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Appearance
+                        <svg
+                          className={`h-4 w-4 transition-transform ${isAppearanceOpen ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isAppearanceOpen && (
+                        <div className="mt-2 px-2">
+                          {/* Tabs */}
+                          <div className="mb-3 flex gap-1 border-b border-gray-200">
+                            <button
+                              onClick={() => setAppearanceTab("color")}
+                              className={`px-3 py-1.5 text-xs font-medium ${
+                                appearanceTab === "color"
+                                  ? "border-b-2 border-blue-500 text-blue-600"
+                                  : "text-gray-600 hover:text-gray-800"
+                              }`}
+                            >
+                              Color
+                            </button>
+                            <button
+                              onClick={() => setAppearanceTab("icon")}
+                              className={`px-3 py-1.5 text-xs font-medium ${
+                                appearanceTab === "icon"
+                                  ? "border-b-2 border-blue-500 text-blue-600"
+                                  : "text-gray-600 hover:text-gray-800"
+                              }`}
+                            >
+                              Icon
+                            </button>
+                          </div>
+
+                          {/* Color grid */}
+                          {appearanceTab === "color" && (
+                            <div className="grid grid-cols-6 gap-1.5">
+                              {BASE_COLORS.map((color, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => handleColorChange(color)}
+                                  className={`h-8 w-8 rounded border-2 transition-all hover:scale-110 ${
+                                    iconColor === color ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
+                                  } ${color}`}
+                                >
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <Image
+                                      src="/airtable-black.svg"
+                                      alt="Icon preview"
+                                      width={16}
+                                      height={16}
+                                      className="brightness-0 invert"
+                                    />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Icon selector placeholder */}
+                          {appearanceTab === "icon" && (
+                            <div className="text-xs text-gray-500">
+                              Icon selector coming soon...
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Base guide expander */}
+                    <div>
+                      <button
+                        onClick={() => setIsBaseGuideOpen(!isBaseGuideOpen)}
+                        className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Base guide
+                        <svg
+                          className={`h-4 w-4 transition-transform ${isBaseGuideOpen ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isBaseGuideOpen && (
+                        <div className="mt-2 px-2">
+                          <textarea
+                            value={baseGuideValue}
+                            onChange={(e) => setBaseGuideValue(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-xs resize-none focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            rows={4}
+                            placeholder="Add context to help collaborators..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Center: Navigation Tabs */}
@@ -95,13 +398,16 @@ export function BaseHeader({
                   <button
                     key={tabKey}
                     onClick={() => setActiveTab(tabKey)}
-                    className={`px-1 py-5 text-sm font-medium transition-colors ${
+                    className={`relative px-1 py-5 text-sm font-medium transition-colors ${
                       activeTab === tabKey
-                        ? "border-b-2 border-blue-600 text-gray-900"
+                        ? "text-gray-900"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {tab}
+                    {activeTab === tabKey && (
+                      <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${iconColor}`} />
+                    )}
                   </button>
                 );
               },
@@ -143,7 +449,7 @@ export function BaseHeader({
               Launch
             </button>
 
-            <button className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+            <button className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${iconColor} hover:opacity-90`}>
               Share
             </button>
           </div>
@@ -152,7 +458,7 @@ export function BaseHeader({
         {/* Table Tabs Row */}
         <div className="flex items-end bg-gray-100">
           {/* Table Tabs */}
-          <div className="flex items-end gap-0">
+          <div className="flex flex-1 items-end gap-0">
             {tables.map((table, index) => {
               const isActive = table.id === activeTableId;
               const isMenuOpen = tableMenuId === table.id;
@@ -166,42 +472,100 @@ export function BaseHeader({
                       <div className="mb-2 h-4 w-px bg-gray-300" />
                     )}
 
-                  <button
-                    onClick={() => onTableChange?.(table.id)}
+                  <div
                     className={`group relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? "rounded-t-md bg-white text-gray-900"
+                        ? `rounded-t-md bg-white text-gray-900 ${iconColor}/5`
                         : "text-gray-600 hover:rounded-t-md hover:bg-gray-200/70"
                     }`}
                   >
-                    {table.name}
-                    <span
-                      role="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTableMenuId(isMenuOpen ? null : table.id);
+                    <button
+                      onClick={() => onTableChange?.(table.id)}
+                      onDoubleClick={() => {
+                        setRenamingTableId(table.id);
+                        setRenamingTableValue(table.name);
+                        setTableMenuId(null);
                       }}
-                      className={`rounded p-0.5 ${
-                        isActive
-                          ? "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                          : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-300/50 hover:text-gray-600"
-                      }`}
+                      className="flex-1 text-left"
                     >
-                      <svg
-                        className="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      {table.name}
+                    </button>
+                    {isActive && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTableMenuId(isMenuOpen ? null : table.id);
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                        <svg
+                          className="h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Rename table popup */}
+                  {renamingTableId === table.id && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setRenamingTableId(null)}
+                      />
+                      <div className="absolute top-full left-0 z-[100] mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            Table name
+                          </label>
+                          <input
+                            ref={renameInputRef}
+                            type="text"
+                            value={renamingTableValue}
+                            onChange={(e) => setRenamingTableValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && renamingTableValue.trim()) {
+                                onRenameTable?.(table.id, renamingTableValue.trim());
+                                setRenamingTableId(null);
+                              } else if (e.key === "Escape") {
+                                setRenamingTableId(null);
+                              }
+                            }}
+                            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setRenamingTableId(null)}
+                            className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (renamingTableValue.trim()) {
+                                onRenameTable?.(table.id, renamingTableValue.trim());
+                                setRenamingTableId(null);
+                              }
+                            }}
+                            disabled={!renamingTableValue.trim()}
+                            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {index === tables.length - 1 &&
                     tables[index]?.id !== activeTableId && (
                       <div className="mb-2 h-4 w-px bg-gray-300" />
@@ -211,7 +575,7 @@ export function BaseHeader({
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={closeMenu} />
-                      <div className="absolute top-full left-0 z-40 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white py-4 px-2 shadow-lg">
+                      <div className="absolute top-full left-0 z-[100] mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                         {/* Import data - with submenu */}
                         <div className="relative">
                           <button
@@ -255,29 +619,29 @@ export function BaseHeader({
                             <div
                               onMouseEnter={() => setIsImportSubOpen(true)}
                               onMouseLeave={() => setIsImportSubOpen(false)}
-                              className="absolute top-0 left-full ml-0.5 w-56 rounded-lg border border-gray-200 bg-white py-4 px-2 shadow-lg"
+                              className="absolute top-0 left-full ml-0.5 w-56 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg"
                             >
                               <button
                                 onClick={closeMenu}
-                                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 justify-between"
+                                className="flex w-full items-center justify-between gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                               >
-                                  Airtable base
-                                                                  <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                                    <svg
-                                      className="h-2.5 w-2.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2.5}
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                                      />
-                                    </svg>
-                                    Team
-                                  </span>
+                                Airtable base
+                                <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
+                                  <svg
+                                    className="h-2.5 w-2.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2.5}
+                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                  </svg>
+                                  Team
+                                </span>
                               </button>
                               <button
                                 onClick={closeMenu}
@@ -285,7 +649,7 @@ export function BaseHeader({
                               >
                                 {/* CSV icon */}
                                 <svg
-                                  className="h-4 w-4 text-green-600"
+                                  className="h-4 w-4 text-gray-400"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -391,7 +755,11 @@ export function BaseHeader({
 
                         {/* Rename table */}
                         <button
-                          onClick={closeMenu}
+                          onClick={() => {
+                            closeMenu();
+                            setRenamingTableId(table.id);
+                            setRenamingTableValue(table.name);
+                          }}
                           className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <svg
@@ -472,7 +840,10 @@ export function BaseHeader({
 
                         {/* Duplicate table */}
                         <button
-                          onClick={closeMenu}
+                          onClick={() => {
+                            if (onDuplicateTable) onDuplicateTable(table.id);
+                            closeMenu();
+                          }}
                           className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <svg
@@ -498,7 +869,7 @@ export function BaseHeader({
                           onClick={closeMenu}
                           className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <span className="flex items-center gap-2 flex-row">
+                          <span className="flex flex-row items-center gap-2">
                             <svg
                               className="h-4 w-4 text-gray-400"
                               fill="none"
@@ -651,7 +1022,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setDeleteConfirmTableId(null)}
                       />
-                      <div className="absolute left-0 top-full z-40 mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-[100] mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-900">
                           Are you sure you want to delete this table?
                         </p>
@@ -713,7 +1084,7 @@ export function BaseHeader({
                     className="fixed inset-0 z-30"
                     onClick={() => setIsTableSearchOpen(false)}
                   />
-                  <div className="absolute top-full left-0 z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white py-4 px-4 shadow-lg">
+                  <div className="absolute top-full left-0 z-[100] mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
                     <div className="pb-2">
                       <div className="flex items-center gap-2 rounded-md border-b border-gray-200 px-2 py-1.5">
                         <svg
@@ -750,29 +1121,28 @@ export function BaseHeader({
                               setIsTableSearchOpen(false);
                               setTableSearchQuery("");
                             }}
-                            className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                            className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 transition-all hover:bg-gray-50"
                           >
                             <span className="flex items-center gap-2">
-                            {isActive ? (
-                              <svg
-                                className="h-4 w-4 text-gray-900"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2.5}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            ) : (
-                              <span className="h-4 w-4"/>
-                            )}
+                              {isActive ? (
+                                <svg
+                                  className="h-4 w-4 text-gray-900"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              ) : (
+                                <span className="h-4 w-4" />
+                              )}
                               {table.name}
                             </span>
-
                           </button>
                         );
                       })}
@@ -872,6 +1242,32 @@ export function BaseHeader({
         </div>
       </header>
 
+      {/* Delete Base Confirmation Dialog */}
+      {showDeleteBaseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-semibold text-gray-900">Delete base?</h2>
+            <p className="mb-4 text-sm text-gray-600">
+              This will permanently delete &quot;{base.name}&quot; and all its tables, columns, rows, and views. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteBaseConfirm(false)}
+                className="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteBaseConfirm}
+                disabled={deleteBaseMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteBaseMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

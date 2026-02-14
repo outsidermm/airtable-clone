@@ -12,12 +12,14 @@ interface DashboardTopBarProps {
   };
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onSearchClick?: () => void;
 }
 
 export function DashboardTopBar({
   user,
   isCollapsed = false,
   onToggleCollapse,
+  onSearchClick,
 }: DashboardTopBarProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
@@ -27,6 +29,7 @@ export function DashboardTopBar({
           onClick={onToggleCollapse}
           className="p-1"
           aria-label="Toggle sidebar"
+          title="Toggle sidebar"
         >
           <svg
             className="h-4 w-4 text-gray-600 hover:text-gray-900 transition-all"
@@ -61,7 +64,9 @@ export function DashboardTopBar({
           <input
             type="search"
             placeholder="Search..."
-            className="w-full rounded-2xl border border-gray-300 bg-white px-3 py-1.5 pr-14 pl-9 text-xs hover:shadow-md"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-3 py-1.5 pr-14 pl-9 text-xs hover:shadow-md cursor-pointer"
+            onClick={onSearchClick}
+            readOnly
           />
           <svg
             className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
@@ -85,7 +90,7 @@ export function DashboardTopBar({
       {/* Right: Actions & User Menu */}
       <div className="flex w-32 items-center justify-end gap-4">
         {/* Help */}
-        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100">
+        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100" title="Get help">
           <svg
             className="h-4 w-4"
             fill="none"
@@ -102,7 +107,7 @@ export function DashboardTopBar({
         </button>
 
         {/* Notifications */}
-        <button className="rounded-full border border-gray-100 p-1.5 text-gray-600 hover:bg-gray-100">
+        <button className="rounded-full border border-gray-100 p-1.5 text-gray-600 hover:bg-gray-100" title="Notifications">
           <svg
             className="h-4 w-4"
             fill="none"

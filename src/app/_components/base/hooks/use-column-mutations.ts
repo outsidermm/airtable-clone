@@ -21,19 +21,23 @@ export function useColumnMutations(activeTableId: number) {
 
   // Only send ONE of afterColumnId / beforeColumnId — backend rejects both
   const handleAddColumn = useCallback(
-    (opts?: { afterColumnId?: number; beforeColumnId?: number }) => {
+    (opts?: { afterColumnId?: number; beforeColumnId?: number; name?: string; type?: ColumnType }) => {
       if (opts?.afterColumnId != null) {
         createColumn.mutate({
           tableId: activeTableId,
           afterColumnId: opts.afterColumnId,
+          name: opts.name,
+          type: opts.type,
         });
       } else if (opts?.beforeColumnId != null) {
         createColumn.mutate({
           tableId: activeTableId,
           beforeColumnId: opts.beforeColumnId,
+          name: opts.name,
+          type: opts.type,
         });
       } else {
-        createColumn.mutate({ tableId: activeTableId });
+        createColumn.mutate({ tableId: activeTableId, name: opts?.name, type: opts?.type });
       }
     },
     [activeTableId, createColumn],

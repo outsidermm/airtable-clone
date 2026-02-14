@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
+import { ToastProvider } from "~/app/_components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Airtable Clone - Build Apps, Organize Data",
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <TRPCReactProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </TRPCReactProvider>
       </body>
     </html>
   );

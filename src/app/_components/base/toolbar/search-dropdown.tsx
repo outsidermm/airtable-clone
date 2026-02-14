@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 
 interface SearchDropdownProps {
   tableId: number;
-  onHighlight: (cells: Map<number, Set<number>>) => void;
+  onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
@@ -39,44 +39,55 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
-  // Build highlight map from results
+  // Build flat array of matching cells (must be before useEffect that uses it)
+  const matchingCells = useMemo(() => {
+    if (!searchResults.data || debouncedQuery.length === 0) return [];
+    const cells: Array<{ rowId: number; columnId: number }> = [];
+    for (const row of searchResults.data) {
+      const rowCells = row.cells as Record<string, string | number | null>;
+      for (const [key, value] of Object.entries(rowCells)) {
+        if (
+          value != null &&
+          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
+        ) {
+          cells.push({ rowId: row.id, columnId: Number(key) });
+        }
+      }
+    }
+    return cells;
+  }, [searchResults.data, debouncedQuery]);
+
+  // Build highlight map from results - highlight all matching cells
   useEffect(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) {
-      onHighlight(new Map());
+    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
+      onHighlight(new Map(), undefined, "");
       return;
     }
 
+    // Highlight all matching cells
     const highlights = new Map<number, Set<number>>();
-    for (const row of searchResults.data) {
-      const cells = row.cells as Record<string, string | number | null>;
-      const matchingCols = new Set<number>();
-      for (const [key, value] of Object.entries(cells)) {
-        if (
-          value != null &&
-          String(value)
-            .toLowerCase()
-            .includes(debouncedQuery.toLowerCase())
-        ) {
-          matchingCols.add(Number(key));
-        }
+    for (const cell of matchingCells) {
+      if (!highlights.has(cell.rowId)) {
+        highlights.set(cell.rowId, new Set());
       }
-      if (matchingCols.size > 0) {
-        highlights.set(row.id, matchingCols);
-      }
+      highlights.get(cell.rowId)!.add(cell.columnId);
     }
-    onHighlight(highlights);
-  }, [searchResults.data, debouncedQuery, onHighlight]);
 
-  const resultRows = useMemo(() => searchResults.data ?? [], [searchResults.data]);
+    // Pass the active cell and search query
+    const activeCell = matchingCells[activeIndex];
+    onHighlight(highlights, activeCell, debouncedQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
 
   const goToResult = useCallback(
     (index: number) => {
-      if (resultRows[index]) {
+      const cell = matchingCells[index];
+      if (cell) {
         setActiveIndex(index);
-        onScrollToRow?.(resultRows[index].id);
+        onScrollToRow?.(cell.rowId);
       }
     },
-    [resultRows, onScrollToRow],
+    [matchingCells, onScrollToRow],
   );
 
   const handleKeyDown = useCallback(
@@ -86,11 +97,11 @@ export function SearchDropdown({
         if (e.shiftKey) {
           goToResult(Math.max(0, activeIndex - 1));
         } else {
-          goToResult(Math.min(resultRows.length - 1, activeIndex + 1));
+          goToResult(Math.min(matchingCells.length - 1, activeIndex + 1));
         }
       }
     },
-    [activeIndex, resultRows.length, goToResult],
+    [activeIndex, matchingCells.length, goToResult],
   );
 
   useEffect(() => {
@@ -99,7 +110,7 @@ export function SearchDropdown({
 
   // Clear highlights on unmount
   useEffect(() => {
-    return () => onHighlight(new Map());
+    return () => onHighlight(new Map(), undefined, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -164,9 +175,9 @@ export function SearchDropdown({
               <span>
                 {searchResults.isLoading
                   ? "Searching..."
-                  : `${resultRows.length} result${resultRows.length === 1 ? "" : "s"}`}
+                  : `${matchingCells.length} cell${matchingCells.length === 1 ? "" : "s"}`}
               </span>
-              {resultRows.length > 0 && (
+              {matchingCells.length > 0 && (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() =>
@@ -190,15 +201,15 @@ export function SearchDropdown({
                     </svg>
                   </button>
                   <span>
-                    {activeIndex + 1}/{resultRows.length}
+                    {activeIndex + 1}/{matchingCells.length}
                   </span>
                   <button
                     onClick={() =>
                       goToResult(
-                        Math.min(resultRows.length - 1, activeIndex + 1),
+                        Math.min(matchingCells.length - 1, activeIndex + 1),
                       )
                     }
-                    disabled={activeIndex >= resultRows.length - 1}
+                    disabled={activeIndex >= matchingCells.length - 1}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
                     <svg

@@ -31,6 +31,7 @@ export const rowRouter = createTRPCRouter({
       z.object({
         tableId: z.number().int(),
         count: z.number().int().min(1).max(1000000),
+        seed: z.boolean().optional().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -39,8 +40,24 @@ export const rowRouter = createTRPCRouter({
           // Verify ownership
           await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
 
-          // Bulk create with optimizations
-          const rowIds = await bulkCreateRows(tx, input.tableId, input.count);
+          // Get table columns for seeding
+          let rowIds: number[];
+          if (input.seed) {
+            const columns = await tx.column.findMany({
+              where: { tableId: input.tableId },
+              orderBy: { order: "asc" },
+            });
+
+            // Bulk create with varied seeded data
+            rowIds = await bulkCreateRows(tx, input.tableId, input.count, {
+              generateVariedData: true,
+              columnIds: columns.map(c => c.id),
+              columnTypes: columns.map(c => c.type),
+            });
+          } else {
+            // Bulk create with empty cells
+            rowIds = await bulkCreateRows(tx, input.tableId, input.count);
+          }
 
           return { count: rowIds.length, rowIds };
         },

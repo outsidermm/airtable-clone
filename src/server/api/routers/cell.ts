@@ -18,7 +18,10 @@ export const cellRouter = createTRPCRouter({
         where: { id: input.rowId },
         include: {
           table: {
-            include: { base: true },
+            include: {
+              base: true,
+              columns: true,
+            },
           },
         },
       });
@@ -29,6 +32,29 @@ export const cellRouter = createTRPCRouter({
 
       if (row.table.base.userId !== ctx.session.user.id) {
         throw new Error("Access denied");
+      }
+
+      // Find the column to validate type
+      const column = row.table.columns.find((c) => c.id === input.columnId);
+      if (!column) {
+        throw new Error("Column not found");
+      }
+
+      // Validate value against column type
+      if (input.value !== null) {
+        if (column.type === "NUMBER") {
+          if (typeof input.value === "string") {
+            throw new Error("Cannot input a string into number fields");
+          }
+          if (typeof input.value === "number" && isNaN(input.value)) {
+            throw new Error("Invalid number value");
+          }
+        } else if (column.type === "TEXT") {
+          if (typeof input.value === "number") {
+            // Auto-convert numbers to strings for text fields
+            input.value = String(input.value);
+          }
+        }
       }
 
       const colKey = String(input.columnId);

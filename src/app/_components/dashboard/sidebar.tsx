@@ -2,26 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { CreateBaseModal } from "./create-base-modal";
+import { api } from "~/trpc/react";
+import { getStoredBaseColor } from "~/lib/base-color-storage";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onHoverEnter?: () => void;
+  onHoverLeave?: () => void;
 }
 
 export function Sidebar({
   currentPage = "home",
   isCollapsed = false,
   onToggleCollapse,
+  onHoverEnter,
+  onHoverLeave,
 }: SidebarProps) {
-  const [isStarredOpen, setIsStarredOpen] = useState(false);
+  const [isStarredOpen, setIsStarredOpen] = useState(true);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
+
+  const { data: starredBases = [] } = api.base.getStarred.useQuery();
 
   return (
     <aside
       className={`flex h-[100vh-14] flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-14" : "w-64"}`}
+      onMouseEnter={onHoverEnter}
+      onMouseLeave={onHoverLeave}
     >
       {/* Navigation Menu */}
       <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-3">
@@ -93,23 +104,47 @@ export function Sidebar({
             )}
           </button>
           {!isCollapsed && isStarredOpen && (
-            <div className="mt-1 ml-7 flex flex-row gap-4 items-center">
-              <svg
-                className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                />
-              </svg>
-              <p className="text-[10px] text-gray-500">
-                Your starred bases, interfaces, and workspaces will appear here
-              </p>
+            <div className="mt-1 ml-7 space-y-1">
+              {starredBases.length === 0 ? (
+                <div className="flex flex-row gap-4 items-center">
+                  <svg
+                    className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                    />
+                  </svg>
+                  <p className="text-[10px] text-gray-500">
+                    Your starred bases, interfaces, and workspaces will appear here
+                  </p>
+                </div>
+              ) : (
+                starredBases.map((base) => (
+                  <Link
+                    key={base.id}
+                    href={`/base/${base.id}`}
+                    className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                    title={base.name}
+                  >
+                    <div className={`h-5 w-5 shrink-0 rounded flex items-center justify-center ${getStoredBaseColor(base.id)}`}>
+                      <Image
+                        src="/airtable-black.svg"
+                        alt="Base icon"
+                        width={14}
+                        height={14}
+                        className="brightness-0 invert"
+                      />
+                    </div>
+                    <span className="truncate">{base.name}</span>
+                  </Link>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -164,7 +199,13 @@ export function Sidebar({
               {!isCollapsed && "Workspaces"}
             </div>
             {!isCollapsed && (
-              <button className="rounded p-0.5 hover:bg-gray-200">
+              <div
+                className="rounded p-0.5 hover:bg-gray-200 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // TODO: Add workspace creation logic
+                }}
+              >
                 <svg
                   className="h-3 w-3"
                   fill="none"
@@ -178,7 +219,7 @@ export function Sidebar({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-              </button>
+              </div>
             )}
           </button>
           {!isCollapsed && isWorkspacesOpen && (
