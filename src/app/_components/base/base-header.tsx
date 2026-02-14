@@ -50,6 +50,11 @@ export function BaseHeader({
   const [baseNameValue, setBaseNameValue] = useState(base.name);
   const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
   const [renamingTableValue, setRenamingTableValue] = useState("");
+  const [showBaseSubMenu, setShowBaseSubMenu] = useState(false);
+  const [appearanceTab, setAppearanceTab] = useState<"color" | "icon">("color");
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+  const [isBaseGuideOpen, setIsBaseGuideOpen] = useState(true);
+  const [baseGuideValue, setBaseGuideValue] = useState("Add context to help collaborators understand what this base is for and how to use it.");
   const tableSearchRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,31 +142,185 @@ export function BaseHeader({
               <>
                 <div
                   className="fixed inset-0 z-30"
-                  onClick={() => setShowBaseMenu(false)}
+                  onClick={() => {
+                    setShowBaseMenu(false);
+                    setShowBaseSubMenu(false);
+                  }}
                 />
-                <div className="absolute top-full left-0 z-40 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  <button
-                    onClick={() => {
-                      setShowBaseMenu(false);
-                      setIsRenamingBase(true);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                    Rename base
-                  </button>
+                <div className="absolute top-full left-0 z-40 mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                  {/* Base name input */}
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      value={baseNameValue}
+                      onChange={(e) => setBaseNameValue(e.target.value)}
+                      onBlur={() => {
+                        if (baseNameValue.trim() && baseNameValue !== base.name) {
+                          onRenameBase?.(baseNameValue.trim());
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          if (baseNameValue.trim() && baseNameValue !== base.name) {
+                            onRenameBase?.(baseNameValue.trim());
+                          }
+                        }
+                      }}
+                      className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      Star base
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowBaseSubMenu(!showBaseSubMenu)}
+                        className="rounded-md p-1 text-gray-700 hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {/* Sub menu */}
+                      {showBaseSubMenu && (
+                        <div className="absolute top-full right-0 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                          <button
+                            onClick={() => setShowBaseSubMenu(false)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Duplicate base
+                          </button>
+                          <button
+                            onClick={() => setShowBaseSubMenu(false)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            Slack notifications
+                          </button>
+                          <button
+                            onClick={() => setShowBaseSubMenu(false)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete base
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-3">
+                    {/* Appearance expander */}
+                    <div className="mb-2">
+                      <button
+                        onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}
+                        className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Appearance
+                        <svg
+                          className={`h-4 w-4 transition-transform ${isAppearanceOpen ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isAppearanceOpen && (
+                        <div className="mt-2 px-2">
+                          {/* Tabs */}
+                          <div className="mb-3 flex gap-1 border-b border-gray-200">
+                            <button
+                              onClick={() => setAppearanceTab("color")}
+                              className={`px-3 py-1.5 text-xs font-medium ${
+                                appearanceTab === "color"
+                                  ? "border-b-2 border-blue-500 text-blue-600"
+                                  : "text-gray-600 hover:text-gray-800"
+                              }`}
+                            >
+                              Color
+                            </button>
+                            <button
+                              onClick={() => setAppearanceTab("icon")}
+                              className={`px-3 py-1.5 text-xs font-medium ${
+                                appearanceTab === "icon"
+                                  ? "border-b-2 border-blue-500 text-blue-600"
+                                  : "text-gray-600 hover:text-gray-800"
+                              }`}
+                            >
+                              Icon
+                            </button>
+                          </div>
+
+                          {/* Color grid */}
+                          {appearanceTab === "color" && (
+                            <div className="grid grid-cols-10 gap-1.5">
+                              {[
+                                "#FFE4E4", "#FFE7CC", "#FFF4CC", "#E6F4D7", "#D4F1F4", "#D4E4F7", "#E4E0F7", "#F7D4E0", "#FFD4CC", "#E8E8E8",
+                                "#FF6B6B", "#FFA94D", "#FFE66D", "#A8E063", "#4ECDC4", "#4D96FF", "#9D84B7", "#FF6B9D", "#FF8474", "#B8B8B8"
+                              ].map((color, i) => (
+                                <button
+                                  key={i}
+                                  className="h-6 w-6 rounded border border-gray-200 hover:scale-110 transition-transform"
+                                  style={{ backgroundColor: color }}
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Icon selector placeholder */}
+                          {appearanceTab === "icon" && (
+                            <div className="text-xs text-gray-500">
+                              Icon selector coming soon...
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Base guide expander */}
+                    <div>
+                      <button
+                        onClick={() => setIsBaseGuideOpen(!isBaseGuideOpen)}
+                        className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Base guide
+                        <svg
+                          className={`h-4 w-4 transition-transform ${isBaseGuideOpen ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isBaseGuideOpen && (
+                        <div className="mt-2 px-2">
+                          <textarea
+                            value={baseGuideValue}
+                            onChange={(e) => setBaseGuideValue(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-xs resize-none focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            rows={4}
+                            placeholder="Add context to help collaborators..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </>
             )}
