@@ -9,12 +9,16 @@ interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onHoverEnter?: () => void;
+  onHoverLeave?: () => void;
 }
 
 export function Sidebar({
   currentPage = "home",
   isCollapsed = false,
   onToggleCollapse,
+  onHoverEnter,
+  onHoverLeave,
 }: SidebarProps) {
   const [isStarredOpen, setIsStarredOpen] = useState(true);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
@@ -25,6 +29,8 @@ export function Sidebar({
   return (
     <aside
       className={`flex h-[100vh-14] flex-col border-r border-gray-200 bg-white transition-all duration-300 ${isCollapsed ? "w-14" : "w-64"}`}
+      onMouseEnter={onHoverEnter}
+      onMouseLeave={onHoverLeave}
     >
       {/* Navigation Menu */}
       <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-3">
