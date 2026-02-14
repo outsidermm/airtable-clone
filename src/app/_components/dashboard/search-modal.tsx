@@ -5,6 +5,19 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 
+function getTimeAgo(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
 interface RecentBase {
   id: string;
   name: string;
@@ -20,11 +33,33 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentBases, setRecentBases] = useState<RecentBase[]>([]);
+  const [hoveredBaseId, setHoveredBaseId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const utils = api.useUtils();
 
   const { data: allBases = [] } = api.base.getAll.useQuery(undefined, {
     enabled: isOpen,
+  });
+
+  const toggleStarredMutation = api.base.toggleStarred.useMutation({
+    onMutate: async ({ id }) => {
+      await utils.base.getAll.cancel();
+      const previousBases = utils.base.getAll.getData();
+      utils.base.getAll.setData(undefined, (old) =>
+        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b))
+      );
+      return { previousBases };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousBases) {
+        utils.base.getAll.setData(undefined, context.previousBases);
+      }
+    },
+    onSettled: () => {
+      void utils.base.getAll.invalidate();
+      void utils.base.getStarred.invalidate();
+    },
   });
 
   // Load recent bases from localStorage
@@ -117,10 +152,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black bg-opacity-50 pt-32"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-32 pointer-events-none"
       onClick={handleClickOutside}
     >
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+      <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl pointer-events-auto">
         {/* Search Input */}
         <div className="border-b border-gray-200 p-4">
           <div className="relative">
@@ -162,24 +197,56 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   <div className="px-3 py-2 text-xs font-semibold text-gray-500">
                     Recently opened
                   </div>
-                  {validRecentBases.map((base, index) => (
-                    <button
-                      key={base.id}
-                      onClick={() => handleSelectBase(base)}
-                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
-                        selectedIndex === index
-                          ? "bg-blue-50 text-blue-900"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                          {base.name.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="font-medium">{base.name}</span>
+                  {validRecentBases.map((base, index) => {
+                    const recentBase = recentBases.find((r) => r.id === base.id);
+                    const timeAgo = recentBase ? getTimeAgo(recentBase.timestamp) : "";
+                    return (
+                      <div
+                        key={base.id}
+                        className={`group relative w-full rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                          selectedIndex === index
+                            ? "bg-blue-50"
+                            : "hover:bg-gray-100"
+                        }`}
+                        onMouseEnter={() => setHoveredBaseId(base.id)}
+                        onMouseLeave={() => setHoveredBaseId(null)}
+                      >
+                        <button
+                          onClick={() => handleSelectBase(base)}
+                          className="flex w-full items-center gap-3 text-left"
+                        >
+                          <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                            {base.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900">{base.name}</div>
+                            {timeAgo && (
+                              <div className="text-xs text-gray-500">{timeAgo}</div>
+                            )}
+                          </div>
+                        </button>
+                        {hoveredBaseId === base.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleStarredMutation.mutate({ id: base.id });
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded"
+                          >
+                            {base.starred ? (
+                              <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -196,23 +263,53 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       searchQuery === ""
                         ? validRecentBases.length + index
                         : index;
+                    const recentBase = recentBases.find((r) => r.id === base.id);
+                    const timeAgo = recentBase ? getTimeAgo(recentBase.timestamp) : "";
                     return (
-                      <button
+                      <div
                         key={base.id}
-                        onClick={() => handleSelectBase(base)}
-                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                        className={`group relative w-full rounded-lg px-3 py-2.5 text-sm transition-colors ${
                           selectedIndex === resultIndex
-                            ? "bg-blue-50 text-blue-900"
-                            : "text-gray-700 hover:bg-gray-100"
+                            ? "bg-blue-50"
+                            : "hover:bg-gray-100"
                         }`}
+                        onMouseEnter={() => setHoveredBaseId(base.id)}
+                        onMouseLeave={() => setHoveredBaseId(null)}
                       >
-                        <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleSelectBase(base)}
+                          className="flex w-full items-center gap-3 text-left"
+                        >
                           <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
                             {base.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <span className="font-medium">{base.name}</span>
-                        </div>
-                      </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900">{base.name}</div>
+                            {timeAgo && (
+                              <div className="text-xs text-gray-500">{timeAgo}</div>
+                            )}
+                          </div>
+                        </button>
+                        {hoveredBaseId === base.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleStarredMutation.mutate({ id: base.id });
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded"
+                          >
+                            {base.starred ? (
+                              <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
