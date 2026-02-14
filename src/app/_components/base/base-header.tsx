@@ -48,13 +48,22 @@ export function BaseHeader({
   const [showBaseMenu, setShowBaseMenu] = useState(false);
   const [isRenamingBase, setIsRenamingBase] = useState(false);
   const [baseNameValue, setBaseNameValue] = useState(base.name);
+  const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
+  const [renamingTableValue, setRenamingTableValue] = useState("");
   const tableSearchRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
       tableSearchRef.current.focus();
     }
   }, [isTableSearchOpen]);
+
+  useEffect(() => {
+    if (renamingTableId !== null && renameInputRef.current) {
+      renameInputRef.current.focus();
+    }
+  }, [renamingTableId]);
 
   const closeMenu = useCallback(() => {
     setTableMenuId(null);
@@ -247,6 +256,11 @@ export function BaseHeader({
                   >
                     <button
                       onClick={() => onTableChange?.(table.id)}
+                      onDoubleClick={() => {
+                        setRenamingTableId(table.id);
+                        setRenamingTableValue(table.name);
+                        setTableMenuId(null);
+                      }}
                       className="flex-1 text-left"
                     >
                       {table.name}
@@ -275,6 +289,58 @@ export function BaseHeader({
                       </button>
                     )}
                   </div>
+
+                  {/* Rename table popup */}
+                  {renamingTableId === table.id && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setRenamingTableId(null)}
+                      />
+                      <div className="absolute top-full left-0 z-40 mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            Table name
+                          </label>
+                          <input
+                            ref={renameInputRef}
+                            type="text"
+                            value={renamingTableValue}
+                            onChange={(e) => setRenamingTableValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && renamingTableValue.trim()) {
+                                onRenameTable?.(table.id, renamingTableValue.trim());
+                                setRenamingTableId(null);
+                              } else if (e.key === "Escape") {
+                                setRenamingTableId(null);
+                              }
+                            }}
+                            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setRenamingTableId(null)}
+                            className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (renamingTableValue.trim()) {
+                                onRenameTable?.(table.id, renamingTableValue.trim());
+                                setRenamingTableId(null);
+                              }
+                            }}
+                            disabled={!renamingTableValue.trim()}
+                            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {index === tables.length - 1 &&
                     tables[index]?.id !== activeTableId && (
                       <div className="mb-2 h-4 w-px bg-gray-300" />
@@ -464,7 +530,11 @@ export function BaseHeader({
 
                         {/* Rename table */}
                         <button
-                          onClick={closeMenu}
+                          onClick={() => {
+                            closeMenu();
+                            setRenamingTableId(table.id);
+                            setRenamingTableValue(table.name);
+                          }}
                           className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <svg
