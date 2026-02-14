@@ -18,7 +18,7 @@ export function BaseIconSidebar({ user }: UserProps) {
       {/* Home/Back icon */}
       <Link
         href="/dashboard"
-        className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
+        className="group mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 relative"
         title="Back to home"
       >
         <Image
@@ -26,7 +26,21 @@ export function BaseIconSidebar({ user }: UserProps) {
           alt="Back to home"
           width={20}
           height={20}
+          className="group-hover:opacity-0 transition-opacity"
         />
+        <svg
+          className="h-5 w-5 absolute opacity-0 group-hover:opacity-100 transition-opacity"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
       </Link>
 
       {/* Spacer */}
