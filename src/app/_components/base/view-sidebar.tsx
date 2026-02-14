@@ -44,6 +44,8 @@ interface ViewSidebarProps {
   onRenameView: (viewId: number, newName: string) => void;
   onDeleteView: (viewId: number) => void;
   onReorderViews: (viewIds: number[]) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 // --- Sortable View Item ---
@@ -91,8 +93,13 @@ function SortableViewItem({
     id: view.id,
   });
 
+  // Only apply vertical transform, ignore horizontal
+  const constrainedTransform = transform
+    ? { ...transform, x: 0 }
+    : transform;
+
   const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Translate.toString(constrainedTransform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
@@ -243,6 +250,8 @@ export function ViewSidebar({
   onRenameView,
   onDeleteView,
   onReorderViews,
+  onMouseEnter,
+  onMouseLeave,
 }: ViewSidebarProps) {
   const [editingViewId, setEditingViewId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -311,6 +320,8 @@ export function ViewSidebar({
       className={`flex h-full shrink-0 flex-col border-r border-gray-200 bg-white transition-all duration-200 ease-in-out overflow-hidden ${
         isOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"
       }`}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div className="flex-1 overflow-y-auto p-2 min-w-64">
         {/* Create new view */}

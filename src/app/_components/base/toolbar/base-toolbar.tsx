@@ -26,6 +26,8 @@ interface BaseToolbarProps {
   tableId: number;
   onUpdateViewConfig: (config: ViewConfig) => void;
   onToggleSidebar: () => void;
+  onSidebarHoverEnter?: () => void;
+  onSidebarHoverLeave?: () => void;
   activeViewName: string;
   onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
   onScrollToRow?: (rowId: number) => void;
@@ -37,6 +39,8 @@ export function BaseToolbar({
   tableId,
   onUpdateViewConfig,
   onToggleSidebar,
+  onSidebarHoverEnter,
+  onSidebarHoverLeave,
   activeViewName,
   onHighlight,
   onScrollToRow,
@@ -93,7 +97,8 @@ export function BaseToolbar({
       {/* Hamburger toggle */}
       <button
         onClick={onToggleSidebar}
-        onMouseEnter={onToggleSidebar}
+        onMouseEnter={onSidebarHoverEnter}
+        onMouseLeave={onSidebarHoverLeave}
         className="rounded-md bg-none p-1.5 hover:bg-gray-100"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

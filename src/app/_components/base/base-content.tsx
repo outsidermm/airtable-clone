@@ -67,6 +67,7 @@ export function BaseContent({
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
+  const sidebarHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
 
@@ -349,6 +350,21 @@ export function BaseContent({
     gridTableRef.current?.scrollToRow(rowId);
   }, []);
 
+  // Sidebar hover handlers
+  const handleSidebarHoverEnter = useCallback(() => {
+    if (sidebarHoverTimeoutRef.current) {
+      clearTimeout(sidebarHoverTimeoutRef.current);
+      sidebarHoverTimeoutRef.current = null;
+    }
+    setIsSidebarOpen(true);
+  }, []);
+
+  const handleSidebarHoverLeave = useCallback(() => {
+    sidebarHoverTimeoutRef.current = setTimeout(() => {
+      setIsSidebarOpen(false);
+    }, 300);
+  }, []);
+
   // Reset view and row order when switching tables
   useEffect(() => {
     setActiveViewId(null);
@@ -388,6 +404,8 @@ export function BaseContent({
         tableId={activeTableId}
         onUpdateViewConfig={handleUpdateViewConfig}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onSidebarHoverEnter={handleSidebarHoverEnter}
+        onSidebarHoverLeave={handleSidebarHoverLeave}
         activeViewName={activeViewName}
         onHighlight={(cells, activeCell, query) => {
           setHighlightedCells(cells);
@@ -408,6 +426,8 @@ export function BaseContent({
           onRenameView={viewMutations.handleRenameView}
           onDeleteView={viewMutations.handleDeleteView}
           onReorderViews={viewMutations.handleReorderViews}
+          onMouseEnter={handleSidebarHoverEnter}
+          onMouseLeave={handleSidebarHoverLeave}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
