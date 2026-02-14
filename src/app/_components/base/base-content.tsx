@@ -10,6 +10,7 @@ import { CellContextMenu } from "./context-menu/cell-context-menu";
 import { ColumnContextMenu } from "./context-menu/column-context-menu";
 import { RowContextMenu } from "./context-menu/row-context-menu";
 import { SetPrimaryModal } from "./set-primary-modal";
+import { AddTableModal } from "./add-table-modal";
 import { useTableMutations } from "./hooks/use-table-mutations";
 import { useRowMutations } from "./hooks/use-row-mutations";
 import { useColumnMutations } from "./hooks/use-column-mutations";
@@ -54,6 +55,7 @@ export function BaseContent({
   >(new Map());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
+  const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -333,7 +335,7 @@ export function BaseContent({
         tables={tables}
         activeTableId={activeTableId}
         onTableChange={setActiveTableId}
-        onAddTable={tableMutations.handleAddTable}
+        onAddTable={() => setShowAddTableModal(true)}
         onRenameTable={tableMutations.handleRenameTable}
         onDeleteTable={tableMutations.handleDeleteTable}
       />
@@ -481,6 +483,17 @@ export function BaseContent({
             setShowPrimaryModal(false);
           }}
           onClose={() => setShowPrimaryModal(false)}
+        />
+      )}
+
+      {/* Add Table Modal */}
+      {showAddTableModal && (
+        <AddTableModal
+          onConfirm={(name) => {
+            tableMutations.handleAddTable(name);
+            setShowAddTableModal(false);
+          }}
+          onClose={() => setShowAddTableModal(false)}
         />
       )}
     </div>

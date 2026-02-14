@@ -34,8 +34,8 @@ export function useTableMutations(
     },
   });
 
-  const handleAddTable = useCallback(() => {
-    createTable.mutate({ baseId });
+  const handleAddTable = useCallback((name?: string) => {
+    createTable.mutate({ baseId, name });
   }, [baseId, createTable]);
 
   const handleRenameTable = useCallback(
