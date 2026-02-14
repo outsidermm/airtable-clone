@@ -39,33 +39,23 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
-  // Build highlight map from results
+  // Build highlight map from results - only highlight the active cell
   useEffect(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) {
+    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
       onHighlight(new Map());
       return;
     }
 
-    const highlights = new Map<number, Set<number>>();
-    for (const row of searchResults.data) {
-      const cells = row.cells as Record<string, string | number | null>;
-      const matchingCols = new Set<number>();
-      for (const [key, value] of Object.entries(cells)) {
-        if (
-          value != null &&
-          String(value)
-            .toLowerCase()
-            .includes(debouncedQuery.toLowerCase())
-        ) {
-          matchingCols.add(Number(key));
-        }
-      }
-      if (matchingCols.size > 0) {
-        highlights.set(row.id, matchingCols);
-      }
+    // Only highlight the currently active cell
+    const activeCell = matchingCells[activeIndex];
+    if (activeCell) {
+      const highlights = new Map<number, Set<number>>();
+      highlights.set(activeCell.rowId, new Set([activeCell.columnId]));
+      onHighlight(highlights);
+    } else {
+      onHighlight(new Map());
     }
-    onHighlight(highlights);
-  }, [searchResults.data, debouncedQuery, onHighlight]);
+  }, [searchResults.data, debouncedQuery, matchingCells, activeIndex, onHighlight]);
 
   // Build flat array of matching cells
   const matchingCells = useMemo(() => {
