@@ -14,9 +14,10 @@ interface BaseCardProps {
     starred: boolean;
     userId: string;
   };
+  viewMode?: "grid" | "list";
 }
 
-export function BaseCard({ base }: BaseCardProps) {
+export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const utils = api.useUtils();
@@ -61,10 +62,10 @@ export function BaseCard({ base }: BaseCardProps) {
   };
 
   return (
-    <div className="group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md">
-      <Link href={`/base/${base.id}`} className="block p-4">
+    <div className={`group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md ${viewMode === "list" ? "flex items-center" : ""}`}>
+      <Link href={`/base/${base.id}`} className={`${viewMode === "list" ? "flex flex-1 items-center p-3" : "block p-4"}`}>
         {/* Icon/Initials & Name */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-1">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-800 text-base font-semibold text-white">
             {base.name}
           </div>
@@ -78,7 +79,7 @@ export function BaseCard({ base }: BaseCardProps) {
       </Link>
 
       {/* Action Buttons (show on hover) */}
-      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className={`flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${viewMode === "list" ? "relative pr-3" : "absolute right-2 top-2"}`}>
         {/* Star Button */}
         <button
           onClick={handleStarClick}

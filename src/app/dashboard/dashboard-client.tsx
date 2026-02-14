@@ -126,7 +126,7 @@ export function DashboardClient({ user, initialBases }: DashboardClientProps) {
             }
           >
             {bases.map((base) => (
-              <BaseCard key={base.id} base={base} />
+              <BaseCard key={base.id} base={base} viewMode={viewMode} />
             ))}
           </div>
         </div>
