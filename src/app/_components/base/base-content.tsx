@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
-import { GridTable } from "./grid-table";
+import { GridTable, type GridTableHandle } from "./grid-table";
 import { ViewSidebar } from "./view-sidebar";
 import { BaseHeader } from "./base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
@@ -54,6 +54,8 @@ export function BaseContent({
   >(new Map());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
+
+  const gridTableRef = useRef<GridTableHandle>(null);
 
   const utils = api.useUtils();
 
@@ -295,6 +297,11 @@ export function BaseContent({
     [updateCell],
   );
 
+  // Scroll to row (for search)
+  const handleScrollToRow = useCallback((rowId: number) => {
+    gridTableRef.current?.scrollToRow(rowId);
+  }, []);
+
   // Reset view when switching tables
   useEffect(() => {
     setActiveViewId(null);
@@ -326,6 +333,7 @@ export function BaseContent({
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         activeViewName={activeViewName}
         onHighlight={setHighlightedCells}
+        onScrollToRow={handleScrollToRow}
       />
 
       {/* View sidebar + Grid + Footer */}
@@ -347,6 +355,7 @@ export function BaseContent({
             </div>
           ) : (
             <GridTable
+              ref={gridTableRef}
               columns={visibleColumns}
               rows={gridRows}
               onCellUpdate={handleCellUpdate}

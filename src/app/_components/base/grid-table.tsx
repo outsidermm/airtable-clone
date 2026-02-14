@@ -6,6 +6,8 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useImperativeHandle,
+  forwardRef,
   type CSSProperties,
 } from "react";
 import {
@@ -49,6 +51,10 @@ const PRIMARY_WIDTH = 250;
 interface CellAddress {
   rowId: number;
   columnId: number;
+}
+
+export interface GridTableHandle {
+  scrollToRow: (rowId: number) => void;
 }
 
 interface GridTableProps {
@@ -430,7 +436,7 @@ function SortableRow(props: SortableRowProps) {
 }
 
 // --- Main GridTable Component ---
-export function GridTable({
+export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function GridTable({
   columns,
   rows,
   onCellUpdate,
@@ -445,7 +451,7 @@ export function GridTable({
   rowHeight = "short",
   highlightedCells,
   onContextMenu,
-}: GridTableProps) {
+}, ref) {
   const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
 
   // --- Selection state ---
@@ -612,6 +618,21 @@ export function GridTable({
     estimateSize: () => currentRowHeight,
     overscan: 10,
   });
+
+  // Expose scrollToRow method via ref
+  useImperativeHandle(ref, () => ({
+    scrollToRow: (rowId: number) => {
+      const index = tableRows.findIndex((r) => r.original.id === rowId);
+      if (index !== -1) {
+        rowVirtualizer.scrollToIndex(index, { align: "center" });
+      }
+    },
+  }), [tableRows, rowVirtualizer]);
+
+  // Remeasure virtualizer when row height changes
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [currentRowHeight, rowVirtualizer]);
 
   // Load more
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -905,54 +926,60 @@ export function GridTable({
           </div>
 
           {/* === ROWS === */}
-          <SortableContext items={rowOrder} strategy={verticalListSortingStrategy}>
-            <div
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-                position: "relative",
-                minWidth: "fit-content",
-              }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = tableRows[virtualRow.index]!;
-                const rowData = row.original;
-                const isRowSelected = selectedRowIds.has(String(rowData.id));
-                const isActiveRow = rowData.id === activeRowId;
-                const isHoveredRow = rowData.id === hoveredRowId;
-                const rowBg = getRowBg(rowData.id);
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={rowOrder} strategy={verticalListSortingStrategy}>
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  position: "relative",
+                  minWidth: "fit-content",
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = tableRows[virtualRow.index]!;
+                  const rowData = row.original;
+                  const isRowSelected = selectedRowIds.has(String(rowData.id));
+                  const isActiveRow = rowData.id === activeRowId;
+                  const isHoveredRow = rowData.id === hoveredRowId;
+                  const rowBg = getRowBg(rowData.id);
 
-                return (
-                  <SortableRow
-                    key={row.id}
-                    rowId={rowData.id}
-                    virtualStart={virtualRow.start}
-                    virtualIndex={virtualRow.index}
-                    currentRowHeight={currentRowHeight}
-                    isRowSelected={isRowSelected}
-                    isActiveRow={isActiveRow}
-                    isHoveredRow={isHoveredRow}
-                    rowBg={rowBg}
-                    rowData={rowData}
-                    row={row}
-                    frozenWidth={frozenWidth}
-                    primaryColumn={primaryColumn}
-                    nonPrimaryColumns={nonPrimaryColumns}
-                    columnSizing={columnSizing}
-                    selectedCell={selectedCell}
-                    selectedCells={selectedCells}
-                    isMultiSelect={isMultiSelect}
-                    highlightedCells={highlightedCells}
-                    handleMouseDown={handleMouseDown}
-                    handleMouseEnter={handleMouseEnter}
-                    handleCellChange={handleCellChange}
-                    setHoveredRowId={setHoveredRowId}
-                    onContextMenu={onContextMenu}
-                    totalScrollableWidth={totalScrollableWidth}
-                  />
-                );
-              })}
-            </div>
-          </SortableContext>
+                  return (
+                    <SortableRow
+                      key={row.id}
+                      rowId={rowData.id}
+                      virtualStart={virtualRow.start}
+                      virtualIndex={virtualRow.index}
+                      currentRowHeight={currentRowHeight}
+                      isRowSelected={isRowSelected}
+                      isActiveRow={isActiveRow}
+                      isHoveredRow={isHoveredRow}
+                      rowBg={rowBg}
+                      rowData={rowData}
+                      row={row}
+                      frozenWidth={frozenWidth}
+                      primaryColumn={primaryColumn}
+                      nonPrimaryColumns={nonPrimaryColumns}
+                      columnSizing={columnSizing}
+                      selectedCell={selectedCell}
+                      selectedCells={selectedCells}
+                      isMultiSelect={isMultiSelect}
+                      highlightedCells={highlightedCells}
+                      handleMouseDown={handleMouseDown}
+                      handleMouseEnter={handleMouseEnter}
+                      handleCellChange={handleCellChange}
+                      setHoveredRowId={setHoveredRowId}
+                      onContextMenu={onContextMenu}
+                      totalScrollableWidth={totalScrollableWidth}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* Add row */}
           <div className="flex shrink-0" style={{ minWidth: "fit-content" }}>
@@ -981,4 +1008,4 @@ export function GridTable({
       </div>
     </div>
   );
-}
+});

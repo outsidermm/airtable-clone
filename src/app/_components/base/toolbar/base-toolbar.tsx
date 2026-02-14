@@ -28,6 +28,7 @@ interface BaseToolbarProps {
   onToggleSidebar: () => void;
   activeViewName: string;
   onHighlight: (cells: Map<number, Set<number>>) => void;
+  onScrollToRow?: (rowId: number) => void;
 }
 
 export function BaseToolbar({
@@ -38,6 +39,7 @@ export function BaseToolbar({
   onToggleSidebar,
   activeViewName,
   onHighlight,
+  onScrollToRow,
 }: BaseToolbarProps) {
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
 
@@ -327,6 +329,7 @@ export function BaseToolbar({
             <SearchDropdown
               tableId={tableId}
               onHighlight={onHighlight}
+              onScrollToRow={onScrollToRow}
               onClose={closeDropdown}
             />
           )}
