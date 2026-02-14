@@ -51,6 +51,7 @@ export function BaseContent({
   const [activeTableId, setActiveTableId] = useState(initialTableId);
   const [activeViewId, setActiveViewId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarPersistent, setIsSidebarPersistent] = useState(false);
   const [highlightedCells, setHighlightedCells] = useState<
     Map<number, Set<number>>
   >(new Map());
@@ -356,14 +357,37 @@ export function BaseContent({
       clearTimeout(sidebarHoverTimeoutRef.current);
       sidebarHoverTimeoutRef.current = null;
     }
-    setIsSidebarOpen(true);
-  }, []);
+    // Only open on hover if not in persistent mode
+    if (!isSidebarPersistent) {
+      setIsSidebarOpen(true);
+    }
+  }, [isSidebarPersistent]);
 
   const handleSidebarHoverLeave = useCallback(() => {
-    sidebarHoverTimeoutRef.current = setTimeout(() => {
+    // Only close on hover leave if not in persistent mode
+    if (!isSidebarPersistent) {
+      sidebarHoverTimeoutRef.current = setTimeout(() => {
+        setIsSidebarOpen(false);
+      }, 300);
+    }
+  }, [isSidebarPersistent]);
+
+  const handleToggleSidebar = useCallback(() => {
+    if (sidebarHoverTimeoutRef.current) {
+      clearTimeout(sidebarHoverTimeoutRef.current);
+      sidebarHoverTimeoutRef.current = null;
+    }
+
+    if (isSidebarPersistent) {
+      // Currently persistent - exit persistent mode and close
+      setIsSidebarPersistent(false);
       setIsSidebarOpen(false);
-    }, 300);
-  }, []);
+    } else {
+      // Not persistent - enter persistent mode and ensure open
+      setIsSidebarPersistent(true);
+      setIsSidebarOpen(true);
+    }
+  }, [isSidebarPersistent]);
 
   // Reset view and row order when switching tables
   useEffect(() => {
@@ -403,7 +427,7 @@ export function BaseContent({
         viewConfig={viewConfig}
         tableId={activeTableId}
         onUpdateViewConfig={handleUpdateViewConfig}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onToggleSidebar={handleToggleSidebar}
         onSidebarHoverEnter={handleSidebarHoverEnter}
         onSidebarHoverLeave={handleSidebarHoverLeave}
         activeViewName={activeViewName}

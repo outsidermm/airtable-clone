@@ -482,8 +482,8 @@ function SortableRow(props: SortableRowProps) {
         })}
 
         {/* Add column spacer */}
-        <div className="border-r-0 relative" style={{ width: 48 }}>
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-white" />
+        <div className="border-r-0 relative bg-gray-50" style={{ width: 48 }}>
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-50" />
         </div>
       </div>
     </div>
@@ -650,6 +650,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
         setSelectedCell(null);
         setSelectionStart(null);
         setSelectionEnd(null);
+        // Also blur any focused input to remove focus ring
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
       }
     };
 
@@ -1171,7 +1175,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
             <div className="flex bg-white" style={{ height: HEADER_HEIGHT, width: totalScrollableWidth - 48 }}>
               {/* Scrollable area - extends to last column */}
             </div>
-            <div className="flex items-center justify-center border border-gray-200 bg-white" style={{ width: 48, height: HEADER_HEIGHT }}>
+            <div className="flex items-center justify-center border border-gray-200 bg-gray-50" style={{ width: 48, height: HEADER_HEIGHT }}>
               <button onClick={onAddRow} className="text-gray-400 hover:text-gray-600">
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

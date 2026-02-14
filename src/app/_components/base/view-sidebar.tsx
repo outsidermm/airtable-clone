@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
 import {
   DndContext,
   closestCenter,
@@ -263,6 +263,8 @@ export function ViewSidebar({
   const [newViewType, setNewViewType] = useState<string>("grid");
   const [whoCanEdit, setWhoCanEdit] = useState<"collaborative" | "personal" | "locked">("collaborative");
   const [viewMenuId, setViewMenuId] = useState<number | null>(null);
+  const [createMenuPosition, setCreateMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [localViewOrder, setLocalViewOrder] = useState<number[]>([]);
   const editInputRef = useRef<HTMLInputElement>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -279,14 +281,16 @@ export function ViewSidebar({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = views.findIndex((v) => v.id === active.id);
-    const newIndex = views.findIndex((v) => v.id === over.id);
+    const currentOrder = localViewOrder.length > 0 ? localViewOrder : views.map((v) => v.id);
+    const oldIndex = currentOrder.indexOf(active.id as number);
+    const newIndex = currentOrder.indexOf(over.id as number);
 
     if (oldIndex !== -1 && newIndex !== -1) {
-      const newViews = [...views];
-      const [movedView] = newViews.splice(oldIndex, 1);
-      newViews.splice(newIndex, 0, movedView!);
-      onReorderViews(newViews.map((v) => v.id));
+      const newOrder = [...currentOrder];
+      const [movedId] = newOrder.splice(oldIndex, 1);
+      newOrder.splice(newIndex, 0, movedId!);
+      setLocalViewOrder(newOrder);
+      // Frontend only - no backend persistence
     }
   };
 
@@ -309,11 +313,35 @@ export function ViewSidebar({
     setEditingViewId(null);
   };
 
+  // Apply local view order (frontend only, no backend persistence)
+  const orderedViews = useMemo(() => {
+    if (localViewOrder.length === 0) return views;
+
+    const viewMap = new Map(views.map((v) => [v.id, v]));
+    const ordered: View[] = [];
+
+    // Add views in the stored order
+    for (const id of localViewOrder) {
+      const view = viewMap.get(id);
+      if (view) {
+        ordered.push(view);
+        viewMap.delete(id);
+      }
+    }
+
+    // Add any new views not in the order
+    for (const view of viewMap.values()) {
+      ordered.push(view);
+    }
+
+    return ordered;
+  }, [views, localViewOrder]);
+
   const filteredViews = searchQuery
-    ? views.filter((v) =>
+    ? orderedViews.filter((v) =>
         v.name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
-    : views;
+    : orderedViews;
 
   return (
     <aside
@@ -330,6 +358,15 @@ export function ViewSidebar({
             ref={createButtonRef}
             onClick={(e) => {
               e.stopPropagation();
+              if (!showCreateMenu && createButtonRef.current) {
+                const rect = createButtonRef.current.getBoundingClientRect();
+                setCreateMenuPosition({
+                  top: rect.top,
+                  left: rect.right + 8,
+                });
+              } else {
+                setCreateMenuPosition(null);
+              }
               setShowCreateMenu(!showCreateMenu);
             }}
             className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100"
@@ -351,10 +388,13 @@ export function ViewSidebar({
           </button>
 
           {/* View type selection popup */}
-          {showCreateMenu && !showCreateForm && (
+          {showCreateMenu && !showCreateForm && createMenuPosition && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setShowCreateMenu(false)} />
-              <div className="absolute left-full top-0 z-40 ml-2 w-56 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+              <div className="fixed inset-0 z-30" onClick={() => { setShowCreateMenu(false); setCreateMenuPosition(null); }} />
+              <div
+                className="fixed z-40 w-56 rounded-lg border border-gray-200 bg-white py-2 shadow-lg"
+                style={{ top: createMenuPosition.top, left: createMenuPosition.left }}
+              >
                 {[
                   { id: "grid", name: "Grid", icon: "M3 10h18M3 14h18M3 6h18M3 18h18" },
                   { id: "calendar", name: "Calendar", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
@@ -373,6 +413,7 @@ export function ViewSidebar({
                       setNewViewName(`${viewType.name} view`);
                       setShowCreateMenu(false);
                       setShowCreateForm(true);
+                      // Keep createMenuPosition for the form
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
@@ -387,10 +428,13 @@ export function ViewSidebar({
           )}
 
           {/* Create view form popup */}
-          {showCreateForm && (
+          {showCreateForm && createMenuPosition && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setShowCreateForm(false)} />
-              <div className="absolute left-full top-0 z-40 ml-2 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+              <div className="fixed inset-0 z-30" onClick={() => { setShowCreateForm(false); setCreateMenuPosition(null); }} />
+              <div
+                className="fixed z-40 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
+                style={{ top: createMenuPosition.top, left: createMenuPosition.left }}
+              >
                 <div className="mb-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
                     Name
@@ -433,7 +477,10 @@ export function ViewSidebar({
 
                 <div className="flex justify-end gap-2">
                   <button
-                    onClick={() => setShowCreateForm(false)}
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setCreateMenuPosition(null);
+                    }}
                     className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Cancel
@@ -442,6 +489,7 @@ export function ViewSidebar({
                     onClick={() => {
                       onAddView();
                       setShowCreateForm(false);
+                      setCreateMenuPosition(null);
                       setNewViewName("Grid view");
                       setNewViewType("grid");
                       setWhoCanEdit("collaborative");
