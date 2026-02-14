@@ -58,6 +58,8 @@ export function BaseContent({
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
+  const [addColumnAnchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
+  const [addTableAnchor, setAddTableAnchor] = useState<HTMLElement | null>(null);
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -337,7 +339,10 @@ export function BaseContent({
         tables={tables}
         activeTableId={activeTableId}
         onTableChange={setActiveTableId}
-        onAddTable={() => setShowAddTableModal(true)}
+        onAddTable={(e) => {
+          setAddTableAnchor(e?.currentTarget ?? null);
+          setShowAddTableModal(true);
+        }}
         onRenameTable={tableMutations.handleRenameTable}
         onDeleteTable={tableMutations.handleDeleteTable}
       />
@@ -381,7 +386,10 @@ export function BaseContent({
               onAddRow={rowMutations.handleAddRow}
               onDeleteRow={rowMutations.handleDeleteRow}
               onBulkDeleteRow={rowMutations.handleBulkDeleteRow}
-              onAddColumn={() => setShowAddColumnModal(true)}
+              onAddColumn={(e) => {
+                setAddColumnAnchor(e?.currentTarget ?? null);
+                setShowAddColumnModal(true);
+              }}
               onDeleteColumn={columnMutations.handleDeleteColumn}
               onReorderColumn={columnMutations.handleReorderColumn}
               onUpdateColumn={columnMutations.handleUpdateColumn}
@@ -491,22 +499,32 @@ export function BaseContent({
       {/* Add Table Modal */}
       {showAddTableModal && (
         <AddTableModal
+          anchorEl={addTableAnchor}
           onConfirm={(name) => {
             tableMutations.handleAddTable(name);
             setShowAddTableModal(false);
+            setAddTableAnchor(null);
           }}
-          onClose={() => setShowAddTableModal(false)}
+          onClose={() => {
+            setShowAddTableModal(false);
+            setAddTableAnchor(null);
+          }}
         />
       )}
 
       {/* Add Column Modal */}
       {showAddColumnModal && (
         <AddColumnModal
+          anchorEl={addColumnAnchor}
           onConfirm={(name, type) => {
             columnMutations.handleAddColumn({ name, type });
             setShowAddColumnModal(false);
+            setAddColumnAnchor(null);
           }}
-          onClose={() => setShowAddColumnModal(false)}
+          onClose={() => {
+            setShowAddColumnModal(false);
+            setAddColumnAnchor(null);
+          }}
         />
       )}
     </div>

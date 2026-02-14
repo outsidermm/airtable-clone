@@ -21,7 +21,7 @@ interface BaseHeaderProps {
   tables?: Table[];
   activeTableId?: number;
   onTableChange?: (tableId: number) => void;
-  onAddTable?: () => void;
+  onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
 }

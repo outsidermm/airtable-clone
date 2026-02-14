@@ -64,7 +64,7 @@ interface GridTableProps {
   onAddRow: () => void;
   onDeleteRow: (rowId: number) => void;
   onBulkDeleteRow: (rowIds: number[]) => void;
-  onAddColumn: () => void;
+  onAddColumn: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onDeleteColumn: (columnId: number) => void;
   onReorderColumn: (
     columnId: number,

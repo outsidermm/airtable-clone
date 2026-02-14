@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ColumnType } from "generated/prisma/enums";
 
 interface AddColumnModalProps {
   onConfirm: (name: string, type: ColumnType) => void;
   onClose: () => void;
+  anchorEl?: HTMLElement | null;
 }
 
-export function AddColumnModal({ onConfirm, onClose }: AddColumnModalProps) {
+export function AddColumnModal({ onConfirm, onClose, anchorEl }: AddColumnModalProps) {
   const [columnName, setColumnName] = useState("");
   const [columnType, setColumnType] = useState<ColumnType>("TEXT");
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [anchorEl]);
 
   const handleConfirm = () => {
     if (columnName.trim()) {
@@ -26,13 +39,21 @@ export function AddColumnModal({ onConfirm, onClose }: AddColumnModalProps) {
     }
   };
 
+  const isDropdown = !!anchorEl && !!position;
+
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 z-50" onClick={onClose} style={{ background: isDropdown ? 'transparent' : 'rgba(0,0,0,0.5)' }} />
 
       {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 z-50 w-96 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white shadow-xl">
+      <div
+        ref={modalRef}
+        className={`z-50 w-96 rounded-lg border border-gray-200 bg-white shadow-xl ${
+          isDropdown ? 'fixed' : 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'
+        }`}
+        style={isDropdown ? { top: position.top, left: position.left } : undefined}
+      >
         {/* Header */}
         <div className="border-b border-gray-200 px-4 py-3">
           <h2 className="text-base font-semibold text-gray-900">Add field</h2>
