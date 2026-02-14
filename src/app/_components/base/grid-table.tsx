@@ -607,6 +607,59 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
+  // --- Auto-scroll when mouse near edges ---
+  useEffect(() => {
+    if (!isSelecting || !parentRef.current) return;
+
+    let animationId: number;
+    let lastMouseX = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMouseX = e.clientX;
+    };
+
+    const autoScroll = () => {
+      if (!parentRef.current) return;
+
+      const container = parentRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const frozenEdge = containerRect.left + frozenWidth;
+      const rightEdge = containerRect.right;
+
+      const EDGE_THRESHOLD = 100; // Distance from edge to trigger scroll
+      const MAX_SCROLL_SPEED = 20; // Max pixels per frame
+
+      let scrollDelta = 0;
+
+      // Check left edge (near frozen primary column)
+      if (lastMouseX < frozenEdge + EDGE_THRESHOLD && lastMouseX > frozenEdge) {
+        const distance = frozenEdge + EDGE_THRESHOLD - lastMouseX;
+        const intensity = Math.min(distance / EDGE_THRESHOLD, 1);
+        scrollDelta = -intensity * MAX_SCROLL_SPEED;
+      }
+      // Check right edge
+      else if (lastMouseX > rightEdge - EDGE_THRESHOLD && lastMouseX < rightEdge) {
+        const distance = rightEdge - lastMouseX;
+        const intensity = Math.min((EDGE_THRESHOLD - distance) / EDGE_THRESHOLD, 1);
+        scrollDelta = intensity * MAX_SCROLL_SPEED;
+      }
+
+      if (scrollDelta !== 0) {
+        container.scrollLeft += scrollDelta;
+      }
+
+      animationId = requestAnimationFrame(autoScroll);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    animationId = requestAnimationFrame(autoScroll);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationId);
+    };
+  }, [isSelecting, frozenWidth]);
+
   // --- TanStack Table column defs (NO selectedCell dep!) ---
   const columnDefs = useMemo<ColumnDef<GridRow>[]>(() => {
     const defs: ColumnDef<GridRow>[] = [];
