@@ -133,6 +133,35 @@ export const viewRouter = createTRPCRouter({
       });
     }),
 
+  // Duplicate a view
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify user owns the table that owns this view
+      const view = await ctx.db.view.findUnique({
+        where: { id: input.id },
+        include: {
+          table: {
+            include: { base: true },
+          },
+        },
+      });
+
+      if (!view || view.table.base.userId !== ctx.session.user.id) {
+        throw new Error("View not found or access denied");
+      }
+
+      // Create duplicate with same config and name + " (copy)"
+      return ctx.db.view.create({
+        data: {
+          name: `${view.name} (copy)`,
+          tableId: view.tableId,
+          config: view.config,
+          order: view.order,
+        },
+      });
+    }),
+
   // Update view configuration (sorts, filters, hidden columns)
   update: protectedProcedure
     .input(

@@ -39,6 +39,13 @@ export function useViewMutations(
     },
   });
 
+  const duplicateView = api.view.duplicate.useMutation({
+    onSuccess: (newView) => {
+      invalidate();
+      setActiveViewId(newView.id);
+    },
+  });
+
   const reorderViews = api.view.reorder.useMutation({
     onSuccess: () => {
       invalidate();
@@ -80,6 +87,13 @@ export function useViewMutations(
     [activeViewId, deleteView, setActiveViewId],
   );
 
+  const handleDuplicateView = useCallback(
+    (viewId: number) => {
+      duplicateView.mutate({ id: viewId });
+    },
+    [duplicateView],
+  );
+
   const handleReorderViews = useCallback(
     (viewIds: number[]) => {
       reorderViews.mutate({ tableId: activeTableId, viewIds });
@@ -92,6 +106,7 @@ export function useViewMutations(
     handleRenameView,
     handleUpdateView,
     handleDeleteView,
+    handleDuplicateView,
     handleReorderViews,
   };
 }

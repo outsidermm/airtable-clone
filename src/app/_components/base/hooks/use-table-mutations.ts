@@ -34,6 +34,13 @@ export function useTableMutations(
     },
   });
 
+  const duplicateTable = api.table.duplicate.useMutation({
+    onSuccess: (newTable) => {
+      void utils.table.getAllByBase.invalidate({ baseId });
+      setActiveTableId(newTable.id);
+    },
+  });
+
   const handleAddTable = useCallback((name?: string) => {
     createTable.mutate({ baseId, name });
   }, [baseId, createTable]);
@@ -64,5 +71,12 @@ export function useTableMutations(
     [activeTableId, deleteTable, tables, setActiveTableId],
   );
 
-  return { handleAddTable, handleRenameTable, handleDeleteTable };
+  const handleDuplicateTable = useCallback(
+    (tableId: number) => {
+      duplicateTable.mutate({ id: tableId });
+    },
+    [duplicateTable],
+  );
+
+  return { handleAddTable, handleRenameTable, handleDeleteTable, handleDuplicateTable };
 }

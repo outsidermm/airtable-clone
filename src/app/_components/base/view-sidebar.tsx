@@ -43,6 +43,7 @@ interface ViewSidebarProps {
   onAddView: () => void;
   onRenameView: (viewId: number, newName: string) => void;
   onDeleteView: (viewId: number) => void;
+  onDuplicateView: (viewId: number) => void;
   onReorderViews: (viewIds: number[]) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -63,6 +64,7 @@ interface SortableViewItemProps {
   onSetEditingViewId: (id: number | null) => void;
   onSetViewMenuId: (id: number | null) => void;
   onDeleteView: (viewId: number) => void;
+  onDuplicateView: (viewId: number) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -80,6 +82,7 @@ function SortableViewItem({
   onSetEditingViewId,
   onSetViewMenuId,
   onDeleteView,
+  onDuplicateView,
   editInputRef,
 }: SortableViewItemProps) {
   const {
@@ -210,7 +213,10 @@ function SortableViewItem({
                   Rename view
                 </button>
                 <button
-                  onClick={() => onSetViewMenuId(null)}
+                  onClick={() => {
+                    onDuplicateView(view.id);
+                    onSetViewMenuId(null);
+                  }}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,6 +255,7 @@ export function ViewSidebar({
   onAddView,
   onRenameView,
   onDeleteView,
+  onDuplicateView,
   onReorderViews,
   onMouseEnter,
   onMouseLeave,
@@ -582,6 +589,7 @@ export function ViewSidebar({
                 onSetEditingViewId={setEditingViewId}
                 onSetViewMenuId={setViewMenuId}
                 onDeleteView={onDeleteView}
+                onDuplicateView={onDuplicateView}
                 editInputRef={editInputRef}
               />
             ))}

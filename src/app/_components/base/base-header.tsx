@@ -29,6 +29,7 @@ interface BaseHeaderProps {
   onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
+  onDuplicateTable?: (tableId: number) => void;
   onRenameBase?: (newName: string) => void;
 }
 
@@ -41,6 +42,7 @@ export function BaseHeader({
   onAddTable,
   onRenameTable,
   onDeleteTable,
+  onDuplicateTable,
   onRenameBase,
 }: BaseHeaderProps) {
   const [activeTab, setActiveTab] = useState("data");
@@ -838,7 +840,10 @@ export function BaseHeader({
 
                         {/* Duplicate table */}
                         <button
-                          onClick={closeMenu}
+                          onClick={() => {
+                            if (onDuplicateTable) onDuplicateTable(table.id);
+                            closeMenu();
+                          }}
                           className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <svg
