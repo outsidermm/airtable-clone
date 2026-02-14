@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CreateBaseModal } from "./create-base-modal";
+import { api } from "~/trpc/react";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -15,9 +16,11 @@ export function Sidebar({
   isCollapsed = false,
   onToggleCollapse,
 }: SidebarProps) {
-  const [isStarredOpen, setIsStarredOpen] = useState(false);
+  const [isStarredOpen, setIsStarredOpen] = useState(true);
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
+
+  const { data: starredBases = [] } = api.base.getStarred.useQuery();
 
   return (
     <aside
@@ -93,23 +96,41 @@ export function Sidebar({
             )}
           </button>
           {!isCollapsed && isStarredOpen && (
-            <div className="mt-1 ml-7 flex flex-row gap-4 items-center">
-              <svg
-                className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                />
-              </svg>
-              <p className="text-[10px] text-gray-500">
-                Your starred bases, interfaces, and workspaces will appear here
-              </p>
+            <div className="mt-1 ml-7 space-y-1">
+              {starredBases.length === 0 ? (
+                <div className="flex flex-row gap-4 items-center">
+                  <svg
+                    className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                    />
+                  </svg>
+                  <p className="text-[10px] text-gray-500">
+                    Your starred bases, interfaces, and workspaces will appear here
+                  </p>
+                </div>
+              ) : (
+                starredBases.map((base) => (
+                  <Link
+                    key={base.id}
+                    href={`/base/${base.id}`}
+                    className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                    title={base.name}
+                  >
+                    <div className="h-5 w-5 shrink-0 rounded bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600">
+                      {base.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <span className="truncate">{base.name}</span>
+                  </Link>
+                ))
+              )}
             </div>
           )}
         </div>
