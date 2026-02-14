@@ -382,18 +382,31 @@ function SortableRow(props: SortableRowProps) {
               });
             }}
           >
-            <input
-              type="text"
-              defaultValue={
-                rowData.cells[String(primaryColumn.id)] != null
-                  ? String(rowData.cells[String(primaryColumn.id)])
-                  : ""
-              }
-              className="w-full bg-transparent text-xs text-gray-900 outline-none"
-              onChange={(e) =>
-                handleCellChange(rowData.id, primaryColumn.id, e.target.value)
-              }
-            />
+            {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) && searchQuery ? (
+              <div className="w-full text-xs text-gray-900">
+                <HighlightedText
+                  text={
+                    rowData.cells[String(primaryColumn.id)] != null
+                      ? String(rowData.cells[String(primaryColumn.id)])
+                      : ""
+                  }
+                  query={searchQuery}
+                />
+              </div>
+            ) : (
+              <input
+                type="text"
+                defaultValue={
+                  rowData.cells[String(primaryColumn.id)] != null
+                    ? String(rowData.cells[String(primaryColumn.id)])
+                    : ""
+                }
+                className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                onChange={(e) =>
+                  handleCellChange(rowData.id, primaryColumn.id, e.target.value)
+                }
+              />
+            )}
           </div>
         )}
       </div>

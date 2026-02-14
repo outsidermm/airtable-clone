@@ -60,7 +60,7 @@ export function SearchDropdown({
   // Build highlight map from results - highlight all matching cells
   useEffect(() => {
     if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
-      onHighlight(new Map());
+      onHighlight(new Map(), undefined, "");
       return;
     }
 
@@ -76,7 +76,8 @@ export function SearchDropdown({
     // Pass the active cell and search query
     const activeCell = matchingCells[activeIndex];
     onHighlight(highlights, activeCell, debouncedQuery);
-  }, [searchResults.data, debouncedQuery, matchingCells, activeIndex, onHighlight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
 
   const goToResult = useCallback(
     (index: number) => {
