@@ -30,7 +30,13 @@ export function ViewSidebar({
   const [editingName, setEditingName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newViewName, setNewViewName] = useState("Grid view");
+  const [newViewType, setNewViewType] = useState<string>("grid");
+  const [whoCanEdit, setWhoCanEdit] = useState<"collaborative" | "personal" | "locked">("collaborative");
   const editInputRef = useRef<HTMLInputElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (editingViewId && editInputRef.current) {
@@ -65,25 +71,133 @@ export function ViewSidebar({
     >
       <div className="flex-1 overflow-y-auto p-2 min-w-64">
         {/* Create new view */}
-        <button
-          onClick={onAddView}
-          className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 mb-2"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="relative mb-2">
+          <button
+            ref={createButtonRef}
+            onClick={() => setShowCreateMenu(!showCreateMenu)}
+            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Create new...
-        </button>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Create new...
+          </button>
+
+          {/* View type selection popup */}
+          {showCreateMenu && !showCreateForm && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setShowCreateMenu(false)} />
+              <div className="absolute left-full top-0 z-40 ml-2 w-56 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+                {[
+                  { id: "grid", name: "Grid", icon: "M3 10h18M3 14h18M3 6h18M3 18h18" },
+                  { id: "calendar", name: "Calendar", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+                  { id: "gallery", name: "Gallery", icon: "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" },
+                  { id: "kanban", name: "Kanban", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
+                  { id: "timeline", name: "Timeline", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
+                  { id: "list", name: "List", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" },
+                  { id: "gantt", name: "Gantt", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+                  { id: "form", name: "Form", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+                  { id: "section", name: "Section", icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" },
+                ].map((viewType) => (
+                  <button
+                    key={viewType.id}
+                    onClick={() => {
+                      setNewViewType(viewType.id);
+                      setNewViewName(`${viewType.name} view`);
+                      setShowCreateMenu(false);
+                      setShowCreateForm(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={viewType.icon} />
+                    </svg>
+                    {viewType.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Create view form popup */}
+          {showCreateForm && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setShowCreateForm(false)} />
+              <div className="absolute left-full top-0 z-40 ml-2 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newViewName}
+                    onChange={(e) => setNewViewName(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    Who can edit
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { id: "collaborative" as const, label: "Collaborative", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
+                      { id: "personal" as const, label: "Personal", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+                      { id: "locked" as const, label: "Locked", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setWhoCanEdit(option.id)}
+                        className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                          whoCanEdit === option.id
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={option.icon} />
+                        </svg>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowCreateForm(false)}
+                    className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      onAddView();
+                      setShowCreateForm(false);
+                      setNewViewName("Grid view");
+                      setNewViewType("grid");
+                      setWhoCanEdit("collaborative");
+                    }}
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                  >
+                    Create new view
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Search views */}
         <div className="mb-2">
