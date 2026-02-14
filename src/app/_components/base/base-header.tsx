@@ -96,7 +96,7 @@ export function BaseHeader({
                       setIsRenamingBase(false);
                     }
                   }}
-                  className="rounded border border-blue-500 px-2 py-0.5 text-sm font-semibold text-gray-900 outline-none ring-1 ring-blue-500"
+                  className="rounded border border-blue-500 px-2 py-0.5 text-sm font-semibold text-gray-900 ring-1 ring-blue-500 outline-none"
                   autoFocus
                 />
               </div>
@@ -126,7 +126,10 @@ export function BaseHeader({
             {/* Base Menu Dropdown */}
             {showBaseMenu && !isRenamingBase && (
               <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowBaseMenu(false)} />
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowBaseMenu(false)}
+                />
                 <div className="absolute top-full left-0 z-40 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                   <button
                     onClick={() => {
@@ -135,8 +138,18 @@ export function BaseHeader({
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                     Rename base
                   </button>
@@ -225,42 +238,43 @@ export function BaseHeader({
                       <div className="mb-2 h-4 w-px bg-gray-300" />
                     )}
 
-                  <button
-                    onClick={() => onTableChange?.(table.id)}
+                  <div
                     className={`group relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
                         ? "rounded-t-md bg-white text-gray-900"
                         : "text-gray-600 hover:rounded-t-md hover:bg-gray-200/70"
                     }`}
                   >
-                    {table.name}
-                    <span
-                      role="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTableMenuId(isMenuOpen ? null : table.id);
-                      }}
-                      className={`rounded p-0.5 ${
-                        isActive
-                          ? "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                          : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-300/50 hover:text-gray-600"
-                      }`}
+                    <button
+                      onClick={() => onTableChange?.(table.id)}
+                      className="flex-1 text-left"
                     >
-                      <svg
-                        className="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      {table.name}
+                    </button>
+                    {isActive && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTableMenuId(isMenuOpen ? null : table.id);
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                        <svg
+                          className="h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                   {index === tables.length - 1 &&
                     tables[index]?.id !== activeTableId && (
                       <div className="mb-2 h-4 w-px bg-gray-300" />
@@ -270,7 +284,7 @@ export function BaseHeader({
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={closeMenu} />
-                      <div className="absolute top-full left-0 z-40 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white py-4 px-2 shadow-lg">
+                      <div className="absolute top-full left-0 z-40 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                         {/* Import data - with submenu */}
                         <div className="relative">
                           <button
@@ -314,29 +328,29 @@ export function BaseHeader({
                             <div
                               onMouseEnter={() => setIsImportSubOpen(true)}
                               onMouseLeave={() => setIsImportSubOpen(false)}
-                              className="absolute top-0 left-full ml-0.5 w-56 rounded-lg border border-gray-200 bg-white py-4 px-2 shadow-lg"
+                              className="absolute top-0 left-full ml-0.5 w-56 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg"
                             >
                               <button
                                 onClick={closeMenu}
-                                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 justify-between"
+                                className="flex w-full items-center justify-between gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                               >
-                                  Airtable base
-                                                                  <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                                    <svg
-                                      className="h-2.5 w-2.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2.5}
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                                      />
-                                    </svg>
-                                    Team
-                                  </span>
+                                Airtable base
+                                <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
+                                  <svg
+                                    className="h-2.5 w-2.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2.5}
+                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                  </svg>
+                                  Team
+                                </span>
                               </button>
                               <button
                                 onClick={closeMenu}
@@ -344,7 +358,7 @@ export function BaseHeader({
                               >
                                 {/* CSV icon */}
                                 <svg
-                                  className="h-4 w-4 text-green-600"
+                                  className="h-4 w-4 text-gray-400"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -557,7 +571,7 @@ export function BaseHeader({
                           onClick={closeMenu}
                           className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <span className="flex items-center gap-2 flex-row">
+                          <span className="flex flex-row items-center gap-2">
                             <svg
                               className="h-4 w-4 text-gray-400"
                               fill="none"
@@ -710,7 +724,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setDeleteConfirmTableId(null)}
                       />
-                      <div className="absolute left-0 top-full z-40 mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-40 mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-900">
                           Are you sure you want to delete this table?
                         </p>
@@ -772,7 +786,7 @@ export function BaseHeader({
                     className="fixed inset-0 z-30"
                     onClick={() => setIsTableSearchOpen(false)}
                   />
-                  <div className="absolute top-full left-0 z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white py-4 px-4 shadow-lg">
+                  <div className="absolute top-full left-0 z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
                     <div className="pb-2">
                       <div className="flex items-center gap-2 rounded-md border-b border-gray-200 px-2 py-1.5">
                         <svg
@@ -809,29 +823,28 @@ export function BaseHeader({
                               setIsTableSearchOpen(false);
                               setTableSearchQuery("");
                             }}
-                            className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                            className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 transition-all hover:bg-gray-50"
                           >
                             <span className="flex items-center gap-2">
-                            {isActive ? (
-                              <svg
-                                className="h-4 w-4 text-gray-900"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2.5}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            ) : (
-                              <span className="h-4 w-4"/>
-                            )}
+                              {isActive ? (
+                                <svg
+                                  className="h-4 w-4 text-gray-900"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              ) : (
+                                <span className="h-4 w-4" />
+                              )}
                               {table.name}
                             </span>
-
                           </button>
                         );
                       })}
@@ -930,7 +943,6 @@ export function BaseHeader({
           </div>
         </div>
       </header>
-
     </>
   );
 }
