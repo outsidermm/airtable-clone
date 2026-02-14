@@ -16,12 +16,27 @@ export function AddColumnModal({ onConfirm, onClose, anchorEl }: AddColumnModalP
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (anchorEl) {
+    if (anchorEl && modalRef.current) {
       const rect = anchorEl.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-      });
+      const modalWidth = 384; // w-96 = 24rem = 384px
+      const modalHeight = modalRef.current.offsetHeight || 300;
+      const padding = 8;
+
+      let top = rect.bottom + 4;
+      let left = rect.left;
+
+      // Clamp to viewport bounds
+      if (left + modalWidth > window.innerWidth - padding) {
+        left = window.innerWidth - modalWidth - padding;
+      }
+      if (left < padding) {
+        left = padding;
+      }
+      if (top + modalHeight > window.innerHeight - padding) {
+        top = rect.top - modalHeight - 4;
+      }
+
+      setPosition({ top, left });
     }
   }, [anchorEl]);
 
