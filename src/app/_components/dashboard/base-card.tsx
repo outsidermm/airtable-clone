@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
+import { BaseContextMenu } from "./base-context-menu";
 
 interface BaseCardProps {
   base: {
@@ -17,6 +18,7 @@ interface BaseCardProps {
 
 export function BaseCard({ base }: BaseCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const utils = api.useUtils();
 
   const toggleStarredMutation = api.base.toggleStarred.useMutation({
@@ -112,6 +114,7 @@ export function BaseCard({ base }: BaseCardProps) {
 
         {/* Three-dot Menu Button */}
         <button
+          ref={menuButtonRef}
           onClick={handleMenuClick}
           className="rounded p-1 hover:bg-gray-100"
           title="More options"
@@ -125,6 +128,14 @@ export function BaseCard({ base }: BaseCardProps) {
           </svg>
         </button>
       </div>
+
+      {/* Context Menu */}
+      <BaseContextMenu
+        base={base}
+        isOpen={showContextMenu}
+        onClose={() => setShowContextMenu(false)}
+        buttonRef={menuButtonRef}
+      />
     </div>
   );
 }
