@@ -223,6 +223,7 @@ interface SortableRowProps {
   row: Row<GridRow>;
   frozenWidth: number;
   primaryColumn: GridColumn | null;
+  primaryColumnWidth: number;
   nonPrimaryColumns: GridColumn[];
   columnSizing: Record<string, number>;
   selectedCell: CellAddress | null;
@@ -253,6 +254,7 @@ function SortableRow(props: SortableRowProps) {
     row,
     frozenWidth,
     primaryColumn,
+    primaryColumnWidth,
     nonPrimaryColumns,
     columnSizing,
     selectedCell,
@@ -370,7 +372,7 @@ function SortableRow(props: SortableRowProps) {
                   ? "bg-yellow-100"
                   : ""
             }`}
-            style={{ width: PRIMARY_WIDTH }}
+            style={{ width: primaryColumnWidth }}
             onMouseDown={(e) => handleMouseDown(rowData.id, primaryColumn.id, e)}
             onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
             onContextMenu={(e) => {
@@ -518,9 +520,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [editingHeaderValue, setEditingHeaderValue] = useState("");
   const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
+  const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
 
   const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const parentRef = useRef<HTMLDivElement>(null);
+  const primaryResizeStartWidth = useRef<number>(0);
+  const primaryResizeStartX = useRef<number>(0);
 
   // Find primary column
   const primaryColumn = useMemo(
@@ -533,7 +538,27 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
   );
 
   // Width of frozen section (checkbox + primary column)
-  const frozenWidth = CHECKBOX_WIDTH + (primaryColumn ? PRIMARY_WIDTH : 0);
+  const frozenWidth = CHECKBOX_WIDTH + (primaryColumn ? primaryColumnWidth : 0);
+
+  // Primary column resize handlers
+  const handlePrimaryResizeStart = useCallback((e: React.MouseEvent) => {
+    primaryResizeStartWidth.current = primaryColumnWidth;
+    primaryResizeStartX.current = e.clientX;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - primaryResizeStartX.current;
+      const newWidth = Math.max(80, primaryResizeStartWidth.current + delta);
+      setPrimaryColumnWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [primaryColumnWidth]);
 
   const handleCellChange = useCallback(
     (rowId: number, columnId: number, value: string) => {
@@ -921,8 +946,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
               {/* Primary column header */}
               {primaryColumn && (
                 <div
-                  className="flex items-center bg-gray-50"
-                  style={{ width: PRIMARY_WIDTH, height: HEADER_HEIGHT }}
+                  className="relative flex items-center bg-gray-50"
+                  style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     onContextMenu?.({
@@ -972,6 +997,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                       </div>
                     </div>
                   )}
+
+                  {/* Resize handle */}
+                  <div
+                    onMouseDown={handlePrimaryResizeStart}
+                    className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
+                  />
                 </div>
               )}
             </div>
@@ -1109,6 +1140,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                       row={row}
                       frozenWidth={frozenWidth}
                       primaryColumn={primaryColumn}
+                      primaryColumnWidth={primaryColumnWidth}
                       nonPrimaryColumns={nonPrimaryColumns}
                       columnSizing={columnSizing}
                       selectedCell={selectedCell}
