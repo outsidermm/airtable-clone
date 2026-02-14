@@ -39,6 +39,24 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
+  // Build flat array of matching cells (must be before useEffect that uses it)
+  const matchingCells = useMemo(() => {
+    if (!searchResults.data || debouncedQuery.length === 0) return [];
+    const cells: Array<{ rowId: number; columnId: number }> = [];
+    for (const row of searchResults.data) {
+      const rowCells = row.cells as Record<string, string | number | null>;
+      for (const [key, value] of Object.entries(rowCells)) {
+        if (
+          value != null &&
+          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
+        ) {
+          cells.push({ rowId: row.id, columnId: Number(key) });
+        }
+      }
+    }
+    return cells;
+  }, [searchResults.data, debouncedQuery]);
+
   // Build highlight map from results - only highlight the active cell
   useEffect(() => {
     if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
@@ -56,24 +74,6 @@ export function SearchDropdown({
       onHighlight(new Map());
     }
   }, [searchResults.data, debouncedQuery, matchingCells, activeIndex, onHighlight]);
-
-  // Build flat array of matching cells
-  const matchingCells = useMemo(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) return [];
-    const cells: Array<{ rowId: number; columnId: number }> = [];
-    for (const row of searchResults.data) {
-      const rowCells = row.cells as Record<string, string | number | null>;
-      for (const [key, value] of Object.entries(rowCells)) {
-        if (
-          value != null &&
-          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
-        ) {
-          cells.push({ rowId: row.id, columnId: Number(key) });
-        }
-      }
-    }
-    return cells;
-  }, [searchResults.data, debouncedQuery]);
 
   const goToResult = useCallback(
     (index: number) => {
