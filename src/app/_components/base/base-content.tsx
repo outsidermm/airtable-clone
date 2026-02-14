@@ -443,6 +443,7 @@ export function BaseContent({
           setSearchQuery(query ?? "");
         }}
         onScrollToRow={handleScrollToRow}
+        
       />
 
       {/* View sidebar + Grid + Footer */}
