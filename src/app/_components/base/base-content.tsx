@@ -40,7 +40,6 @@ const DEFAULT_VIEW_CONFIG: ViewConfig = {
   filters: [],
   hiddenColumns: [],
   rowHeight: "short",
-  headerHeight: 36,
 };
 
 export function BaseContent({
@@ -153,7 +152,6 @@ export function BaseContent({
       filters: cfg.filters ?? [],
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
-      headerHeight: cfg.headerHeight ?? 36,
     };
   }, [viewQuery.data?.config]);
 
@@ -516,10 +514,6 @@ export function BaseContent({
               hasNextPage={activeRowsQuery.hasNextPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
-              headerHeight={viewConfig.headerHeight ?? 36}
-              onUpdateHeaderHeight={(height: number) => {
-                handleUpdateViewConfig({ ...viewConfig, headerHeight: height });
-              }}
               highlightedCells={highlightedCells}
               activeSearchCell={activeSearchCell}
               searchQuery={searchQuery}
