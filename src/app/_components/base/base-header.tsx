@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { getBaseColor, BASE_COLORS } from "~/lib/base-icon-utils";
+import { getStoredBaseColor, setStoredBaseColor } from "~/lib/base-color-storage";
+import { UserMenu } from "../dashboard/user-menu";
 
 interface Table {
   id: number;
@@ -31,6 +33,7 @@ interface BaseHeaderProps {
 
 export function BaseHeader({
   base,
+  user,
   tables = [],
   activeTableId,
   onTableChange,
@@ -57,9 +60,14 @@ export function BaseHeader({
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [isBaseGuideOpen, setIsBaseGuideOpen] = useState(true);
   const [baseGuideValue, setBaseGuideValue] = useState("Add context to help collaborators understand what this base is for and how to use it.");
-  const [iconColor, setIconColor] = useState(getBaseColor(base.id));
+  const [iconColor, setIconColor] = useState(getStoredBaseColor(base.id));
   const tableSearchRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const handleColorChange = (color: string) => {
+    setIconColor(color);
+    setStoredBaseColor(base.id, color);
+  };
 
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
@@ -166,7 +174,7 @@ export function BaseHeader({
                     setShowBaseSubMenu(false);
                   }}
                 />
-                <div className="absolute top-full left-0 z-40 mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                <div className="absolute top-full left-0 z-[60] mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                   {/* Base name input */}
                   <div className="mb-3">
                     <input
@@ -291,7 +299,7 @@ export function BaseHeader({
                               {BASE_COLORS.map((color, i) => (
                                 <button
                                   key={i}
-                                  onClick={() => setIconColor(color)}
+                                  onClick={() => handleColorChange(color)}
                                   className={`h-8 w-8 rounded border-2 transition-all hover:scale-110 ${
                                     iconColor === color ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
                                   } ${color}`}
@@ -363,13 +371,16 @@ export function BaseHeader({
                   <button
                     key={tabKey}
                     onClick={() => setActiveTab(tabKey)}
-                    className={`px-1 py-5 text-sm font-medium transition-colors ${
+                    className={`relative px-1 py-5 text-sm font-medium transition-colors ${
                       activeTab === tabKey
-                        ? "border-b-2 border-blue-600 text-gray-900"
+                        ? "text-gray-900"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {tab}
+                    {activeTab === tabKey && (
+                      <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${iconColor}`} />
+                    )}
                   </button>
                 );
               },
@@ -411,9 +422,11 @@ export function BaseHeader({
               Launch
             </button>
 
-            <button className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+            <button className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${iconColor} hover:opacity-90`}>
               Share
             </button>
+
+            <UserMenu user={user} />
           </div>
         </div>
 
@@ -437,7 +450,7 @@ export function BaseHeader({
                   <div
                     className={`group relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? "rounded-t-md bg-white text-gray-900"
+                        ? `rounded-t-md bg-white text-gray-900 ${iconColor}/5`
                         : "text-gray-600 hover:rounded-t-md hover:bg-gray-200/70"
                     }`}
                   >
@@ -484,7 +497,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setRenamingTableId(null)}
                       />
-                      <div className="absolute top-full left-0 z-40 mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                      <div className="absolute top-full left-0 z-[60] mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
                         <div className="mb-2">
                           <label className="block text-xs font-medium text-gray-700 mb-1.5">
                             Table name
@@ -537,7 +550,7 @@ export function BaseHeader({
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={closeMenu} />
-                      <div className="absolute top-full left-0 z-40 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-[60] mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                         {/* Import data - with submenu */}
                         <div className="relative">
                           <button
@@ -981,7 +994,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setDeleteConfirmTableId(null)}
                       />
-                      <div className="absolute top-full left-0 z-40 mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-[60] mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-900">
                           Are you sure you want to delete this table?
                         </p>
@@ -1043,7 +1056,7 @@ export function BaseHeader({
                     className="fixed inset-0 z-30"
                     onClick={() => setIsTableSearchOpen(false)}
                   />
-                  <div className="absolute top-full left-0 z-40 mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
+                  <div className="absolute top-full left-0 z-[60] mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
                     <div className="pb-2">
                       <div className="flex items-center gap-2 rounded-md border-b border-gray-200 px-2 py-1.5">
                         <svg
