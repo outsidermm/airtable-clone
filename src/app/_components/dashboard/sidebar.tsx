@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { CreateBaseModal } from "./create-base-modal";
 import { api } from "~/trpc/react";
+import { getBaseColor } from "~/lib/base-icon-utils";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -130,8 +132,14 @@ export function Sidebar({
                     className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                     title={base.name}
                   >
-                    <div className="h-5 w-5 shrink-0 rounded bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600">
-                      {base.name.substring(0, 2).toUpperCase()}
+                    <div className={`h-5 w-5 shrink-0 rounded flex items-center justify-center ${getBaseColor(base.id)}`}>
+                      <Image
+                        src="/airtable-black.svg"
+                        alt="Base icon"
+                        width={14}
+                        height={14}
+                        className="brightness-0 invert"
+                      />
                     </div>
                     <span className="truncate">{base.name}</span>
                   </Link>

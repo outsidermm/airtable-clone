@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
+import { getBaseColor } from "~/lib/base-icon-utils";
 
 interface BaseCardProps {
   base: {
@@ -64,10 +66,16 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
   return (
     <div className={`group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md ${viewMode === "list" ? "flex items-center" : ""}`}>
       <Link href={`/base/${base.id}`} className={`${viewMode === "list" ? "flex flex-1 items-center p-3" : "block p-4"}`}>
-        {/* Icon/Initials & Name */}
+        {/* Icon & Name */}
         <div className="flex items-center gap-2.5 flex-1">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-800 text-base font-semibold text-white">
-            {base.name}
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getBaseColor(base.id)}`}>
+            <Image
+              src="/airtable-black.svg"
+              alt="Base icon"
+              width={28}
+              height={28}
+              className="brightness-0 invert"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-medium text-gray-900">{base.name}</h3>
