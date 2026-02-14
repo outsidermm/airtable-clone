@@ -458,14 +458,23 @@ function SortableRow(props: SortableRowProps) {
                 });
               }}
             >
-              <input
-                type="text"
-                defaultValue={displayValue}
-                className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                onChange={(e) =>
-                  handleCellChange(rowData.id, col.id, e.target.value)
-                }
-              />
+              {isHighlighted && searchQuery ? (
+                <div className="w-full text-xs text-gray-900">
+                  <HighlightedText
+                    text={displayValue}
+                    query={searchQuery}
+                  />
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  defaultValue={displayValue}
+                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                  onChange={(e) =>
+                    handleCellChange(rowData.id, col.id, e.target.value)
+                  }
+                />
+              )}
             </div>
           );
         })}
