@@ -152,7 +152,7 @@ function SortableHeaderCell({
   });
 
   const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
+    transform: transform ? `translate3d(${transform.x}px, 0px, 0)` : undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 20 : undefined,
@@ -993,12 +993,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           >
             {/* === HEADER === */}
             <div
-              className="sticky top-0 z-10 flex shrink-0"
+              className="sticky top-0 z-40 flex shrink-0"
               style={{ minWidth: "fit-content" }}
             >
               {/* Frozen: checkbox + primary header */}
               <div
-                className="sticky left-0 z-30 flex shrink-0 border-b border-gray-200 bg-gray-50"
+                className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-gray-50"
                 style={{
                   width: frozenWidth,
                   height: HEADER_HEIGHT,
