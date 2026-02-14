@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { getBaseColor, BASE_COLORS } from "~/lib/base-icon-utils";
 
 interface Table {
   id: number;
@@ -55,6 +57,7 @@ export function BaseHeader({
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [isBaseGuideOpen, setIsBaseGuideOpen] = useState(true);
   const [baseGuideValue, setBaseGuideValue] = useState("Add context to help collaborators understand what this base is for and how to use it.");
+  const [iconColor, setIconColor] = useState(getBaseColor(base.id));
   const tableSearchRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +91,15 @@ export function BaseHeader({
           <div className="relative flex items-center gap-2">
             {isRenamingBase ? (
               <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
-                <span className="text-base">{base.icon}</span>
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}>
+                  <Image
+                    src="/airtable-black.svg"
+                    alt="Base icon"
+                    width={16}
+                    height={16}
+                    className="brightness-0 invert"
+                  />
+                </div>
                 <input
                   type="text"
                   value={baseNameValue}
@@ -119,7 +130,15 @@ export function BaseHeader({
                 onClick={() => setShowBaseMenu(!showBaseMenu)}
                 className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100"
               >
-                <span className="text-base">{base.icon}</span>
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}>
+                  <Image
+                    src="/airtable-black.svg"
+                    alt="Base icon"
+                    width={16}
+                    height={16}
+                    className="brightness-0 invert"
+                  />
+                </div>
                 {base.name}
                 <svg
                   className="h-3.5 w-3.5 text-gray-400"
@@ -268,16 +287,25 @@ export function BaseHeader({
 
                           {/* Color grid */}
                           {appearanceTab === "color" && (
-                            <div className="grid grid-cols-10 gap-1.5">
-                              {[
-                                "#FFE4E4", "#FFE7CC", "#FFF4CC", "#E6F4D7", "#D4F1F4", "#D4E4F7", "#E4E0F7", "#F7D4E0", "#FFD4CC", "#E8E8E8",
-                                "#FF6B6B", "#FFA94D", "#FFE66D", "#A8E063", "#4ECDC4", "#4D96FF", "#9D84B7", "#FF6B9D", "#FF8474", "#B8B8B8"
-                              ].map((color, i) => (
+                            <div className="grid grid-cols-6 gap-1.5">
+                              {BASE_COLORS.map((color, i) => (
                                 <button
                                   key={i}
-                                  className="h-6 w-6 rounded border border-gray-200 hover:scale-110 transition-transform"
-                                  style={{ backgroundColor: color }}
-                                />
+                                  onClick={() => setIconColor(color)}
+                                  className={`h-8 w-8 rounded border-2 transition-all hover:scale-110 ${
+                                    iconColor === color ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
+                                  } ${color}`}
+                                >
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <Image
+                                      src="/airtable-black.svg"
+                                      alt="Icon preview"
+                                      width={16}
+                                      height={16}
+                                      className="brightness-0 invert"
+                                    />
+                                  </div>
+                                </button>
                               ))}
                             </div>
                           )}
