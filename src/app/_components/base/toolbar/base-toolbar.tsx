@@ -93,6 +93,7 @@ export function BaseToolbar({
       {/* Hamburger toggle */}
       <button
         onClick={onToggleSidebar}
+        onMouseEnter={onToggleSidebar}
         className="rounded-md bg-none p-1.5 hover:bg-gray-100"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
