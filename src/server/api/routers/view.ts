@@ -34,6 +34,7 @@ const viewConfigSchema = z.object({
   filters: z.array(filterConfigSchema).optional().default([]),
   hiddenColumns: z.array(z.number().int()).optional().default([]),
   rowHeight: z.enum(["short", "medium", "tall", "extraTall"]).optional().default("short"),
+  headerHeight: z.number().int().min(36).max(200).optional().default(36),
 });
 
 export type SortConfig = z.infer<typeof sortConfigSchema>;

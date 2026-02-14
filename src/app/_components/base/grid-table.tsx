@@ -83,6 +83,8 @@ interface GridTableProps {
   hasNextPage?: boolean;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
+  headerHeight?: number;
+  onUpdateHeaderHeight?: (height: number) => void;
   highlightedCells?: Map<number, Set<number>>;
   activeSearchCell?: { rowId: number; columnId: number };
   searchQuery?: string;
@@ -505,12 +507,15 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
   hasNextPage,
   sorts = [],
   rowHeight = "short",
+  headerHeight = 36,
+  onUpdateHeaderHeight,
   highlightedCells,
   activeSearchCell,
   searchQuery = "",
   onContextMenu,
 }, ref) {
   const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
+  const currentHeaderHeight = headerHeight;
 
   // --- Selection state ---
   const [selectedCell, setSelectedCell] = useState<CellAddress | null>(null);
@@ -560,6 +565,33 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
   }, [primaryColumnWidth]);
+
+  // Header height resize handlers
+  const headerResizeStartY = useRef<number>(0);
+  const headerResizeStartHeight = useRef<number>(0);
+
+  const handleHeaderResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onUpdateHeaderHeight) return;
+      headerResizeStartHeight.current = currentHeaderHeight;
+      headerResizeStartY.current = e.clientY;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientY - headerResizeStartY.current;
+        const newHeight = Math.max(36, Math.min(200, headerResizeStartHeight.current + delta));
+        onUpdateHeaderHeight(newHeight);
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [currentHeaderHeight, onUpdateHeaderHeight],
+  );
 
   const handleCellChange = useCallback(
     (rowId: number, columnId: number, value: string) => {
@@ -964,11 +996,11 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
       <div ref={parentRef} className="flex-1 overflow-auto">
         <div className="flex min-h-full flex-col" style={{ minWidth: "fit-content" }}>
           {/* === HEADER === */}
-          <div className="sticky top-0 z-10 flex shrink-0" style={{ minWidth: "fit-content" }}>
+          <div className="sticky top-0 z-10 flex shrink-0" style={{ minWidth: "fit-content", position: "relative" }}>
             {/* Frozen: checkbox + primary header */}
             <div
               className="sticky left-0 z-30 flex shrink-0 border-b border-gray-200 bg-gray-50"
-              style={{ width: frozenWidth, height: HEADER_HEIGHT, borderRight: "2px solid rgb(209, 213, 219)" }}
+              style={{ width: frozenWidth, height: currentHeaderHeight, borderRight: "2px solid rgb(209, 213, 219)" }}
             >
               {/* Checkbox header — use same layout as rows for alignment */}
               <div
@@ -992,7 +1024,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                   className={`relative flex items-center ${
                     isColumnSelected(primaryColumn.id) ? "bg-blue-100" : "bg-gray-50"
                   }`}
-                  style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
+                  style={{ width: primaryColumnWidth, height: currentHeaderHeight }}
                   onMouseDown={(e) => handleMouseDown(HEADER_ROW_ID, primaryColumn.id, e)}
                   onMouseEnter={() => handleMouseEnter(HEADER_ROW_ID, primaryColumn.id)}
                   onContextMenu={(e) => {
@@ -1079,7 +1111,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                         <div
                           key="_add"
                           className="flex items-center justify-center bg-gray-50 border-b-0"
-                          style={{ width: header.getSize(), height: HEADER_HEIGHT }}
+                          style={{ width: header.getSize(), height: currentHeaderHeight }}
                         >
                           <button
                             onClick={onAddColumn}
@@ -1101,7 +1133,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                         className={`relative border-r border-gray-200 ${
                           isColumnSelected(col.id) ? "bg-blue-100" : "bg-gray-50"
                         }`}
-                        style={{ width: header.getSize(), height: HEADER_HEIGHT }}
+                        style={{ width: header.getSize(), height: currentHeaderHeight }}
                         onMouseDown={(e) => handleMouseDown(HEADER_ROW_ID, col.id, e)}
                         onMouseEnter={() => handleMouseEnter(HEADER_ROW_ID, col.id)}
                         onContextMenu={(e) => {
@@ -1152,6 +1184,14 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                 </div>
               </SortableContext>
             </DndContext>
+
+            {/* Header height resize handle */}
+            {onUpdateHeaderHeight && (
+              <div
+                onMouseDown={handleHeaderResizeStart}
+                className="absolute bottom-0 left-0 right-0 z-20 h-1 cursor-row-resize bg-transparent hover:bg-blue-500"
+              />
+            )}
           </div>
 
           {/* === ROWS === */}
@@ -1217,12 +1257,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
           <div className="flex shrink-0" style={{ minWidth: "fit-content" }}>
             <div
               className="sticky left-0 z-10 bg-white"
-              style={{ width: frozenWidth, height: HEADER_HEIGHT, borderRight: "2px solid rgb(209, 213, 219)" }}
+              style={{ width: frozenWidth, height: currentHeaderHeight, borderRight: "2px solid rgb(209, 213, 219)" }}
             />
-            <div className="flex bg-white" style={{ height: HEADER_HEIGHT, width: totalScrollableWidth - 48 }}>
+            <div className="flex bg-white" style={{ height: currentHeaderHeight, width: totalScrollableWidth - 48 }}>
               {/* Scrollable area - extends to last column */}
             </div>
-            <div className="flex items-center justify-center border border-gray-200 bg-gray-50" style={{ width: 48, height: HEADER_HEIGHT }}>
+            <div className="flex items-center justify-center border border-gray-200 bg-gray-50" style={{ width: 48, height: currentHeaderHeight }}>
               <button onClick={onAddRow} className="text-gray-400 hover:text-gray-600">
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
