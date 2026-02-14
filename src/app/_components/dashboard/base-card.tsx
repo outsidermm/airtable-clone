@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
-import { getBaseColor } from "~/lib/base-icon-utils";
+import { getStoredBaseColor } from "~/lib/base-color-storage";
 
 interface BaseCardProps {
   base: {
@@ -48,6 +48,7 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     onSettled: () => {
       // Refetch to ensure consistency
       void utils.base.getAll.invalidate();
+      void utils.base.getStarred.invalidate();
     },
   });
 
@@ -68,7 +69,7 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
       <Link href={`/base/${base.id}`} className={`${viewMode === "list" ? "flex flex-1 items-center p-3" : "block p-4"}`}>
         {/* Icon & Name */}
         <div className="flex items-center gap-2.5 flex-1">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getBaseColor(base.id)}`}>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}>
             <Image
               src="/airtable-black.svg"
               alt="Base icon"

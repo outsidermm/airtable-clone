@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CreateBaseModal } from "./create-base-modal";
 import { api } from "~/trpc/react";
-import { getBaseColor } from "~/lib/base-icon-utils";
+import { getStoredBaseColor } from "~/lib/base-color-storage";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
@@ -132,7 +132,7 @@ export function Sidebar({
                     className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                     title={base.name}
                   >
-                    <div className={`h-5 w-5 shrink-0 rounded flex items-center justify-center ${getBaseColor(base.id)}`}>
+                    <div className={`h-5 w-5 shrink-0 rounded flex items-center justify-center ${getStoredBaseColor(base.id)}`}>
                       <Image
                         src="/airtable-black.svg"
                         alt="Base icon"
