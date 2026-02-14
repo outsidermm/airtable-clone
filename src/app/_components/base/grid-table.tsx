@@ -540,9 +540,21 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
     (rowId: number, columnId: number) => {
       if (isSelecting) {
         setSelectionEnd({ rowId, columnId });
+
+        // Auto-scroll left when selecting into the primary column area
+        const col = columns.find((c) => c.id === columnId);
+        if (col?.primary && parentRef.current) {
+          const scrollEl = parentRef.current;
+          if (scrollEl.scrollLeft > 0) {
+            scrollEl.scrollTo({
+              left: 0,
+              behavior: "smooth",
+            });
+          }
+        }
       }
     },
-    [isSelecting],
+    [isSelecting, columns],
   );
 
   useEffect(() => {
