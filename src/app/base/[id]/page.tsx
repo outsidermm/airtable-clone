@@ -3,6 +3,7 @@ import { auth } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { BaseIconSidebar } from "~/app/_components/base/base-icon-sidebar";
 import { BaseContent } from "~/app/_components/base/base-content";
+import { RecentBaseTracker } from "~/app/_components/base/recent-base-tracker";
 
 interface BasePageProps {
   params: Promise<{ id: string }>;
@@ -32,6 +33,7 @@ export default async function BasePage({ params }: BasePageProps) {
 
   return (
     <div className="flex h-screen bg-white">
+      <RecentBaseTracker baseId={base.id} baseName={base.name} />
       <BaseIconSidebar user={session.user}/>
 
       <BaseContent
