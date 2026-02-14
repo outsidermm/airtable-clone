@@ -164,7 +164,13 @@ export function Sidebar({
               {!isCollapsed && "Workspaces"}
             </div>
             {!isCollapsed && (
-              <button className="rounded p-0.5 hover:bg-gray-200">
+              <div
+                className="rounded p-0.5 hover:bg-gray-200 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // TODO: Add workspace creation logic
+                }}
+              >
                 <svg
                   className="h-3 w-3"
                   fill="none"
@@ -178,7 +184,7 @@ export function Sidebar({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-              </button>
+              </div>
             )}
           </button>
           {!isCollapsed && isWorkspacesOpen && (
