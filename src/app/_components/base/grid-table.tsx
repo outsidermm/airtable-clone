@@ -83,6 +83,8 @@ interface GridTableProps {
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
   highlightedCells?: Map<number, Set<number>>;
+  activeSearchCell?: { rowId: number; columnId: number };
+  searchQuery?: string;
   onContextMenu?: (state: ContextMenuState) => void;
 }
 
@@ -97,6 +99,25 @@ function DragHandle({ className, ...props }: { className?: string } & React.HTML
       <circle cx="9" cy="18" r="1.5" />
       <circle cx="15" cy="18" r="1.5" />
     </svg>
+  );
+}
+
+// --- Highlighted Text Component ---
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const index = lowerText.indexOf(lowerQuery);
+
+  if (index === -1) return <>{text}</>;
+
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark className="bg-yellow-400 font-medium">{text.slice(index, index + query.length)}</mark>
+      {text.slice(index + query.length)}
+    </>
   );
 }
 
@@ -208,6 +229,8 @@ interface SortableRowProps {
   selectedCells: Set<string>;
   isMultiSelect: boolean;
   highlightedCells?: Map<number, Set<number>>;
+  activeSearchCell?: { rowId: number; columnId: number };
+  searchQuery?: string;
   handleMouseDown: (rowId: number, columnId: number, e: React.MouseEvent) => void;
   handleMouseEnter: (rowId: number, columnId: number) => void;
   handleCellChange: (rowId: number, columnId: number, value: string) => void;
@@ -236,6 +259,8 @@ function SortableRow(props: SortableRowProps) {
     selectedCells,
     isMultiSelect,
     highlightedCells,
+    activeSearchCell,
+    searchQuery,
     handleMouseDown,
     handleMouseEnter,
     handleCellChange,
@@ -339,9 +364,11 @@ function SortableRow(props: SortableRowProps) {
                 ? "bg-blue-50/70"
                 : ""
             } ${
-              highlightedCells?.get(rowData.id)?.has(primaryColumn.id)
-                ? "bg-yellow-100"
-                : ""
+              activeSearchCell?.rowId === rowData.id && activeSearchCell?.columnId === primaryColumn.id
+                ? "bg-yellow-300"
+                : highlightedCells?.get(rowData.id)?.has(primaryColumn.id)
+                  ? "bg-yellow-100"
+                  : ""
             }`}
             style={{ width: PRIMARY_WIDTH }}
             onMouseDown={(e) => handleMouseDown(rowData.id, primaryColumn.id, e)}
@@ -383,12 +410,15 @@ function SortableRow(props: SortableRowProps) {
           const cellKey = `${rowData.id}-${col.id}`;
           const isOriginCell = selectedCell?.rowId === rowData.id && selectedCell?.columnId === col.id;
           const isInSelection = selectedCells.has(cellKey);
+          const isActiveSearchCell = activeSearchCell?.rowId === rowData.id && activeSearchCell?.columnId === col.id;
           const isHighlighted = highlightedCells?.get(rowData.id)?.has(col.id);
           const cellValue = rowData.cells[String(col.id)];
           const displayValue = cellValue != null ? String(cellValue) : "";
 
           let cellBg = "";
-          if (isHighlighted) {
+          if (isActiveSearchCell) {
+            cellBg = "bg-yellow-300";
+          } else if (isHighlighted) {
             cellBg = "bg-yellow-100";
           } else if (isMultiSelect && isInSelection && !isOriginCell) {
             cellBg = "bg-blue-50/70";
@@ -449,6 +479,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
   sorts = [],
   rowHeight = "short",
   highlightedCells,
+  activeSearchCell,
+  searchQuery = "",
   onContextMenu,
 }, ref) {
   const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
@@ -979,6 +1011,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                       selectedCells={selectedCells}
                       isMultiSelect={isMultiSelect}
                       highlightedCells={highlightedCells}
+                      activeSearchCell={activeSearchCell}
+                      searchQuery={searchQuery}
                       handleMouseDown={handleMouseDown}
                       handleMouseEnter={handleMouseEnter}
                       handleCellChange={handleCellChange}

@@ -55,6 +55,10 @@ export function BaseContent({
   const [highlightedCells, setHighlightedCells] = useState<
     Map<number, Set<number>>
   >(new Map());
+  const [activeSearchCell, setActiveSearchCell] = useState<
+    { rowId: number; columnId: number } | undefined
+  >(undefined);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
@@ -386,7 +390,11 @@ export function BaseContent({
         onUpdateViewConfig={handleUpdateViewConfig}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         activeViewName={activeViewName}
-        onHighlight={setHighlightedCells}
+        onHighlight={(cells, activeCell, query) => {
+          setHighlightedCells(cells);
+          setActiveSearchCell(activeCell);
+          setSearchQuery(query ?? "");
+        }}
         onScrollToRow={handleScrollToRow}
       />
 
@@ -447,6 +455,8 @@ export function BaseContent({
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
               highlightedCells={highlightedCells}
+              activeSearchCell={activeSearchCell}
+              searchQuery={searchQuery}
               onContextMenu={handleContextMenu}
             />
           )}
@@ -527,8 +537,8 @@ export function BaseContent({
       {showAddTableModal && (
         <AddTableModal
           anchorEl={addTableAnchor}
-          onConfirm={(name) => {
-            tableMutations.handleAddTable(name);
+          onConfirm={() => {
+            tableMutations.handleAddTable();
             setShowAddTableModal(false);
             setAddTableAnchor(null);
           }}

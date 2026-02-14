@@ -27,7 +27,7 @@ interface BaseToolbarProps {
   onUpdateViewConfig: (config: ViewConfig) => void;
   onToggleSidebar: () => void;
   activeViewName: string;
-  onHighlight: (cells: Map<number, Set<number>>) => void;
+  onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
   onScrollToRow?: (rowId: number) => void;
 }
 

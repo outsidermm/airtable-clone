@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 
 interface SearchDropdownProps {
   tableId: number;
-  onHighlight: (cells: Map<number, Set<number>>) => void;
+  onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
@@ -57,22 +57,25 @@ export function SearchDropdown({
     return cells;
   }, [searchResults.data, debouncedQuery]);
 
-  // Build highlight map from results - only highlight the active cell
+  // Build highlight map from results - highlight all matching cells
   useEffect(() => {
     if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
       onHighlight(new Map());
       return;
     }
 
-    // Only highlight the currently active cell
-    const activeCell = matchingCells[activeIndex];
-    if (activeCell) {
-      const highlights = new Map<number, Set<number>>();
-      highlights.set(activeCell.rowId, new Set([activeCell.columnId]));
-      onHighlight(highlights);
-    } else {
-      onHighlight(new Map());
+    // Highlight all matching cells
+    const highlights = new Map<number, Set<number>>();
+    for (const cell of matchingCells) {
+      if (!highlights.has(cell.rowId)) {
+        highlights.set(cell.rowId, new Set());
+      }
+      highlights.get(cell.rowId)!.add(cell.columnId);
     }
+
+    // Pass the active cell and search query
+    const activeCell = matchingCells[activeIndex];
+    onHighlight(highlights, activeCell, debouncedQuery);
   }, [searchResults.data, debouncedQuery, matchingCells, activeIndex, onHighlight]);
 
   const goToResult = useCallback(
@@ -105,7 +108,7 @@ export function SearchDropdown({
 
   // Clear highlights on unmount
   useEffect(() => {
-    return () => onHighlight(new Map());
+    return () => onHighlight(new Map(), undefined, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
