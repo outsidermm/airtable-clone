@@ -41,7 +41,7 @@ export function BaseIconSidebar({ user }: UserProps) {
       {/* Bottom icons */}
       <div className="flex flex-col gap-4">
         {/* Help */}
-        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100">
+        <button className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100" title="Get help">
           <svg
             className="h-4 w-4"
             fill="none"
@@ -58,7 +58,7 @@ export function BaseIconSidebar({ user }: UserProps) {
         </button>
 
         {/* Notifications */}
-        <button className="rounded-full border border-gray-100 p-1.5 text-gray-600 hover:bg-gray-100">
+        <button className="rounded-full border border-gray-100 p-1.5 text-gray-600 hover:bg-gray-100" title="Notifications">
           <svg
             className="h-4 w-4"
             fill="none"
