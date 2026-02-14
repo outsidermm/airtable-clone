@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getBaseColor, BASE_COLORS } from "~/lib/base-icon-utils";
 import { getStoredBaseColor, setStoredBaseColor } from "~/lib/base-color-storage";
-import { UserMenu } from "../dashboard/user-menu";
+import { api } from "~/trpc/react";
 
 interface Table {
   id: number;
@@ -61,12 +62,36 @@ export function BaseHeader({
   const [isBaseGuideOpen, setIsBaseGuideOpen] = useState(true);
   const [baseGuideValue, setBaseGuideValue] = useState("Add context to help collaborators understand what this base is for and how to use it.");
   const [iconColor, setIconColor] = useState(getStoredBaseColor(base.id));
+  const [showDeleteBaseConfirm, setShowDeleteBaseConfirm] = useState(false);
   const tableSearchRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const utils = api.useUtils();
+
+  const deleteBaseMutation = api.base.delete.useMutation({
+    onSuccess: () => {
+      void utils.base.getAll.invalidate();
+      router.push("/dashboard");
+    },
+  });
 
   const handleColorChange = (color: string) => {
     setIconColor(color);
     setStoredBaseColor(base.id, color);
+  };
+
+  const handleDuplicateBase = () => {
+    setShowBaseSubMenu(false);
+    alert("Base duplication coming soon. This will create a copy of all tables, columns, rows, and views.");
+  };
+
+  const handleDeleteBase = () => {
+    setShowBaseSubMenu(false);
+    setShowDeleteBaseConfirm(true);
+  };
+
+  const handleDeleteBaseConfirm = () => {
+    deleteBaseMutation.mutate({ id: base.id });
   };
 
   useEffect(() => {
@@ -174,7 +199,7 @@ export function BaseHeader({
                     setShowBaseSubMenu(false);
                   }}
                 />
-                <div className="absolute top-full left-0 z-[60] mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                <div className="absolute top-full left-0 z-[100] mt-1 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                   {/* Base name input */}
                   <div className="mb-3">
                     <input
@@ -219,7 +244,7 @@ export function BaseHeader({
                       {showBaseSubMenu && (
                         <div className="absolute top-full right-0 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                           <button
-                            onClick={() => setShowBaseSubMenu(false)}
+                            onClick={handleDuplicateBase}
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,7 +262,7 @@ export function BaseHeader({
                             Slack notifications
                           </button>
                           <button
-                            onClick={() => setShowBaseSubMenu(false)}
+                            onClick={handleDeleteBase}
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
                           >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,15 +450,13 @@ export function BaseHeader({
             <button className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${iconColor} hover:opacity-90`}>
               Share
             </button>
-
-            <UserMenu user={user} />
           </div>
         </div>
 
         {/* Table Tabs Row */}
         <div className="flex items-end bg-gray-100">
           {/* Table Tabs */}
-          <div className="flex items-end gap-0">
+          <div className="flex flex-1 items-end gap-0">
             {tables.map((table, index) => {
               const isActive = table.id === activeTableId;
               const isMenuOpen = tableMenuId === table.id;
@@ -497,7 +520,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setRenamingTableId(null)}
                       />
-                      <div className="absolute top-full left-0 z-[60] mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                      <div className="absolute top-full left-0 z-[100] mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
                         <div className="mb-2">
                           <label className="block text-xs font-medium text-gray-700 mb-1.5">
                             Table name
@@ -550,7 +573,7 @@ export function BaseHeader({
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={closeMenu} />
-                      <div className="absolute top-full left-0 z-[60] mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-[100] mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                         {/* Import data - with submenu */}
                         <div className="relative">
                           <button
@@ -994,7 +1017,7 @@ export function BaseHeader({
                         className="fixed inset-0 z-30"
                         onClick={() => setDeleteConfirmTableId(null)}
                       />
-                      <div className="absolute top-full left-0 z-[60] mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                      <div className="absolute top-full left-0 z-[100] mt-0.5 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-900">
                           Are you sure you want to delete this table?
                         </p>
@@ -1056,7 +1079,7 @@ export function BaseHeader({
                     className="fixed inset-0 z-30"
                     onClick={() => setIsTableSearchOpen(false)}
                   />
-                  <div className="absolute top-full left-0 z-[60] mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
+                  <div className="absolute top-full left-0 z-[100] mt-1 w-96 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
                     <div className="pb-2">
                       <div className="flex items-center gap-2 rounded-md border-b border-gray-200 px-2 py-1.5">
                         <svg
@@ -1213,6 +1236,33 @@ export function BaseHeader({
           </div>
         </div>
       </header>
+
+      {/* Delete Base Confirmation Dialog */}
+      {showDeleteBaseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-semibold text-gray-900">Delete base?</h2>
+            <p className="mb-4 text-sm text-gray-600">
+              This will permanently delete "{base.name}" and all its tables, columns, rows, and views. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteBaseConfirm(false)}
+                className="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteBaseConfirm}
+                disabled={deleteBaseMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteBaseMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

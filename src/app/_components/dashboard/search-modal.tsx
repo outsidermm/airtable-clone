@@ -143,19 +143,20 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   };
 
   const handleClickOutside = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    onClose();
   };
 
   if (!isOpen) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-32 pointer-events-none"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-32"
       onClick={handleClickOutside}
     >
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl pointer-events-auto">
+      <div
+        className="w-full max-w-2xl rounded-lg bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Search Input */}
         <div className="border-b border-gray-200 p-4">
           <div className="relative">

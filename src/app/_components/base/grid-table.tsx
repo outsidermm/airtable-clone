@@ -233,6 +233,7 @@ interface SortableRowProps {
   nonPrimaryColumns: GridColumn[];
   columnSizing: Record<string, number>;
   selectedCell: CellAddress | null;
+  editingCell: CellAddress | null;
   selectedCells: Set<string>;
   isMultiSelect: boolean;
   highlightedCells?: Map<number, Set<number>>;
@@ -245,6 +246,7 @@ interface SortableRowProps {
   ) => void;
   handleMouseEnter: (rowId: number, columnId: number) => void;
   handleCellChange: (rowId: number, columnId: number, value: string) => void;
+  setEditingCell: (cell: CellAddress | null) => void;
   setHoveredRowId: (id: number | null) => void;
   onContextMenu?: (state: ContextMenuState) => void;
   totalScrollableWidth: number;
@@ -268,6 +270,7 @@ function SortableRow(props: SortableRowProps) {
     nonPrimaryColumns,
     columnSizing,
     selectedCell,
+    editingCell,
     selectedCells,
     isMultiSelect,
     highlightedCells,
@@ -276,6 +279,7 @@ function SortableRow(props: SortableRowProps) {
     handleMouseDown,
     handleMouseEnter,
     handleCellChange,
+    setEditingCell,
     setHoveredRowId,
     onContextMenu,
     totalScrollableWidth,
@@ -430,7 +434,14 @@ function SortableRow(props: SortableRowProps) {
                     ? String(rowData.cells[String(primaryColumn.id)])
                     : ""
                 }
+                readOnly={
+                  editingCell?.rowId !== rowData.id ||
+                  editingCell?.columnId !== primaryColumn.id
+                }
                 className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                onDoubleClick={() =>
+                  setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
+                }
                 onChange={(e) =>
                   handleCellChange(rowData.id, primaryColumn.id, e.target.value)
                 }
@@ -507,7 +518,14 @@ function SortableRow(props: SortableRowProps) {
                 <input
                   type="text"
                   defaultValue={displayValue}
+                  readOnly={
+                    editingCell?.rowId !== rowData.id ||
+                    editingCell?.columnId !== col.id
+                  }
                   className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                  onDoubleClick={() =>
+                    setEditingCell({ rowId: rowData.id, columnId: col.id })
+                  }
                   onChange={(e) =>
                     handleCellChange(rowData.id, col.id, e.target.value)
                   }
@@ -549,6 +567,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     // --- Selection state ---
     const [selectedCell, setSelectedCell] = useState<CellAddress | null>(null);
+    const [editingCell, setEditingCell] = useState<CellAddress | null>(null);
     const [selectionStart, setSelectionStart] = useState<CellAddress | null>(
       null,
     );
@@ -699,6 +718,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           !parentRef.current.contains(event.target as Node)
         ) {
           setSelectedCell(null);
+          setEditingCell(null);
           setSelectionStart(null);
           setSelectionEnd(null);
           // Also blur any focused input to remove focus ring
@@ -713,19 +733,27 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // --- Focus input when entering edit mode ---
+    useEffect(() => {
+      if (editingCell) {
+        const cellId = `cell-${editingCell.rowId}-${editingCell.columnId}`;
+        const cellElement = document.getElementById(cellId);
+        if (cellElement) {
+          const input = cellElement.querySelector("input");
+          if (input) {
+            input.focus();
+            // Move cursor to end of input
+            input.setSelectionRange(input.value.length, input.value.length);
+          }
+        }
+      }
+    }, [editingCell]);
+
     // --- Arrow key navigation between cells ---
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Only navigate if no input is focused (except inputs inside the table)
-        const activeElement = document.activeElement;
-        const isInputFocused =
-          activeElement instanceof HTMLInputElement ||
-          activeElement instanceof HTMLTextAreaElement;
-        const isInsideTable =
-          parentRef.current?.contains(activeElement as Node) ?? false;
-
-        // Allow navigation when inside table inputs, but not when typing
-        if (isInputFocused && !isInsideTable) return;
+        // Only navigate if not in edit mode
+        if (editingCell) return;
 
         const isArrowKey = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
         const isTabKey = e.key === "Tab";
@@ -779,12 +807,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 inline: "nearest",
                 behavior: "smooth",
               });
-
-              // Focus the input inside the cell
-              const input = cellElement.querySelector("input");
-              if (input) {
-                input.focus();
-              }
             }
           }, 0);
         }
@@ -792,7 +814,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedCell, rows, primaryColumn, nonPrimaryColumns]);
+    }, [selectedCell, editingCell, rows, primaryColumn, nonPrimaryColumns]);
 
     // --- Auto-scroll when mouse near edges ---
     useEffect(() => {
@@ -1343,6 +1365,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         nonPrimaryColumns={nonPrimaryColumns}
                         columnSizing={columnSizing}
                         selectedCell={selectedCell}
+                        editingCell={editingCell}
                         selectedCells={selectedCells}
                         isMultiSelect={isMultiSelect}
                         highlightedCells={highlightedCells}
@@ -1351,6 +1374,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         handleMouseDown={handleMouseDown}
                         handleMouseEnter={handleMouseEnter}
                         handleCellChange={handleCellChange}
+                        setEditingCell={setEditingCell}
                         setHoveredRowId={setHoveredRowId}
                         onContextMenu={onContextMenu}
                         totalScrollableWidth={totalScrollableWidth}
