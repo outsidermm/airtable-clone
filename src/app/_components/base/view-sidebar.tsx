@@ -328,7 +328,10 @@ export function ViewSidebar({
         <div className="relative mb-2">
           <button
             ref={createButtonRef}
-            onClick={() => setShowCreateMenu(!showCreateMenu)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowCreateMenu(!showCreateMenu);
+            }}
             className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100"
           >
             <svg

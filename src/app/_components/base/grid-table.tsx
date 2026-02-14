@@ -471,7 +471,9 @@ function SortableRow(props: SortableRowProps) {
         })}
 
         {/* Add column spacer */}
-        <div className="border-r-0" style={{ width: 48 }} />
+        <div className="border-r-0 relative" style={{ width: 48 }}>
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-white" />
+        </div>
       </div>
     </div>
   );
