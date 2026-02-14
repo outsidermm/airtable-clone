@@ -116,6 +116,7 @@ model View {
     table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
     config     Json?
+    order      String        @default("a0")
 
     createdAt  DateTime      @default(now())
     updatedAt  DateTime      @updatedAt

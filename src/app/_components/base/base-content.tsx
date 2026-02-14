@@ -408,6 +408,7 @@ export function BaseContent({
           onAddView={viewMutations.handleAddView}
           onRenameView={viewMutations.handleRenameView}
           onDeleteView={viewMutations.handleDeleteView}
+          onReorderViews={viewMutations.handleReorderViews}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">

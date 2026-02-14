@@ -39,6 +39,12 @@ export function useViewMutations(
     },
   });
 
+  const reorderViews = api.view.reorder.useMutation({
+    onSuccess: () => {
+      invalidate();
+    },
+  });
+
   const handleAddView = useCallback(() => {
     createView.mutate({ tableId: activeTableId });
   }, [activeTableId, createView]);
@@ -74,10 +80,18 @@ export function useViewMutations(
     [activeViewId, deleteView, setActiveViewId],
   );
 
+  const handleReorderViews = useCallback(
+    (viewIds: number[]) => {
+      reorderViews.mutate({ tableId: activeTableId, viewIds });
+    },
+    [activeTableId, reorderViews],
+  );
+
   return {
     handleAddView,
     handleRenameView,
     handleUpdateView,
     handleDeleteView,
+    handleReorderViews,
   };
 }
