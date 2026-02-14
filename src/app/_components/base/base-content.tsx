@@ -536,6 +536,9 @@ export function BaseContent({
             onInsertLeft={handleInsertColumnLeft}
             onInsertRight={handleInsertColumnRight}
             onDelete={columnMutations.handleDeleteColumn}
+            onUpdate={(columnId, name, type) => {
+              columnMutations.handleUpdateColumn(columnId, name, type);
+            }}
           />
         )}
 
