@@ -67,34 +67,32 @@ export function SearchDropdown({
     onHighlight(highlights);
   }, [searchResults.data, debouncedQuery, onHighlight]);
 
-  const resultRows = useMemo(() => searchResults.data ?? [], [searchResults.data]);
-
-  // Count total matching cells
-  const totalCellCount = useMemo(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) return 0;
-    let count = 0;
+  // Build flat array of matching cells
+  const matchingCells = useMemo(() => {
+    if (!searchResults.data || debouncedQuery.length === 0) return [];
+    const cells: Array<{ rowId: number; columnId: number }> = [];
     for (const row of searchResults.data) {
-      const cells = row.cells as Record<string, string | number | null>;
-      for (const [, value] of Object.entries(cells)) {
+      const rowCells = row.cells as Record<string, string | number | null>;
+      for (const [key, value] of Object.entries(rowCells)) {
         if (
           value != null &&
           String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
         ) {
-          count++;
+          cells.push({ rowId: row.id, columnId: Number(key) });
         }
       }
     }
-    return count;
+    return cells;
   }, [searchResults.data, debouncedQuery]);
 
   const goToResult = useCallback(
     (index: number) => {
-      if (resultRows[index]) {
+      if (matchingCells[index]) {
         setActiveIndex(index);
-        onScrollToRow?.(resultRows[index].id);
+        onScrollToRow?.(matchingCells[index]!.rowId);
       }
     },
-    [resultRows, onScrollToRow],
+    [matchingCells, onScrollToRow],
   );
 
   const handleKeyDown = useCallback(
@@ -104,11 +102,11 @@ export function SearchDropdown({
         if (e.shiftKey) {
           goToResult(Math.max(0, activeIndex - 1));
         } else {
-          goToResult(Math.min(resultRows.length - 1, activeIndex + 1));
+          goToResult(Math.min(matchingCells.length - 1, activeIndex + 1));
         }
       }
     },
-    [activeIndex, resultRows.length, goToResult],
+    [activeIndex, matchingCells.length, goToResult],
   );
 
   useEffect(() => {
@@ -182,9 +180,9 @@ export function SearchDropdown({
               <span>
                 {searchResults.isLoading
                   ? "Searching..."
-                  : `${totalCellCount} cell${totalCellCount === 1 ? "" : "s"}`}
+                  : `${matchingCells.length} cell${matchingCells.length === 1 ? "" : "s"}`}
               </span>
-              {resultRows.length > 0 && (
+              {matchingCells.length > 0 && (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() =>
@@ -208,15 +206,15 @@ export function SearchDropdown({
                     </svg>
                   </button>
                   <span>
-                    {activeIndex + 1}/{resultRows.length}
+                    {activeIndex + 1}/{matchingCells.length}
                   </span>
                   <button
                     onClick={() =>
                       goToResult(
-                        Math.min(resultRows.length - 1, activeIndex + 1),
+                        Math.min(matchingCells.length - 1, activeIndex + 1),
                       )
                     }
-                    disabled={activeIndex >= resultRows.length - 1}
+                    disabled={activeIndex >= matchingCells.length - 1}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
                     <svg
