@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
+import { useToast } from "~/app/_components/ui/toast";
 import { GridTable, type GridTableHandle } from "./grid-table";
 import { ViewSidebar } from "./view-sidebar";
 import { BaseHeader } from "./base-header";
@@ -71,6 +72,7 @@ export function BaseContent({
   const sidebarHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
+  const toast = useToast();
 
   // --- Base ---
   const renameBase = api.base.rename.useMutation({
@@ -226,6 +228,9 @@ export function BaseContent({
       } else {
         void utils.row.getRows.invalidate({ tableId: activeTableId });
       }
+    },
+    onError: (error: { message: string }) => {
+      toast.error(error.message);
     },
   });
 
@@ -560,7 +565,7 @@ export function BaseContent({
             onInsertLeft={handleInsertColumnLeft}
             onInsertRight={handleInsertColumnRight}
             onDelete={columnMutations.handleDeleteColumn}
-            onUpdate={(columnId, name, type) => {
+            onUpdate={(columnId: number, name: string, type: ColumnType) => {
               columnMutations.handleUpdateColumn(columnId, name, type);
             }}
           />
