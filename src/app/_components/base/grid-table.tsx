@@ -429,7 +429,7 @@ function SortableRow(props: SortableRowProps) {
         })}
 
         {/* Add column spacer */}
-        <div style={{ width: 48 }} />
+        <div className="border-r-0" style={{ width: 48 }} />
       </div>
     </div>
   );
@@ -865,7 +865,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                       return (
                         <div
                           key="_add"
-                          className="flex items-center justify-center bg-gray-50"
+                          className="flex items-center justify-center bg-gray-50 border-b-0"
                           style={{ width: header.getSize(), height: HEADER_HEIGHT }}
                         >
                           <button
@@ -1005,7 +1005,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(function Gr
                 </svg>
               </button>
             </div>
-            <div className="flex-1 border-b border-gray-200" style={{ height: HEADER_HEIGHT }} />
+            <div className="flex-1" style={{ height: HEADER_HEIGHT, width: totalScrollableWidth }} />
           </div>
 
           {/* Filler — extends the frozen divider to the bottom of the viewport */}
