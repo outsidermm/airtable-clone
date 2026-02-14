@@ -54,6 +54,7 @@ export function BaseContent({
   >(new Map());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
+  const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
 
@@ -222,11 +223,19 @@ export function BaseContent({
 
   // --- Grid rows ---
   const gridRows = useMemo<GridRow[]>(() => {
-    return rows.map((row) => ({
+    const baseRows = rows.map((row) => ({
       id: row.id,
       cells: row.cells as Record<string, string | number | null>,
     }));
-  }, [rows]);
+
+    // Apply local row order if set
+    if (localRowOrder.length === baseRows.length) {
+      const rowMap = new Map(baseRows.map((r) => [r.id, r]));
+      return localRowOrder.map((id) => rowMap.get(id)!).filter(Boolean);
+    }
+
+    return baseRows;
+  }, [rows, localRowOrder]);
 
   // --- Context menu handlers ---
   const handleContextMenu = useCallback((state: ContextMenuState) => {
@@ -302,10 +311,16 @@ export function BaseContent({
     gridTableRef.current?.scrollToRow(rowId);
   }, []);
 
-  // Reset view when switching tables
+  // Reset view and row order when switching tables
   useEffect(() => {
     setActiveViewId(null);
+    setLocalRowOrder([]);
   }, [activeTableId]);
+
+  // Reset row order when switching views or when rows change
+  useEffect(() => {
+    setLocalRowOrder([]);
+  }, [activeViewId, rows]);
 
   const isLoading = tableQuery.isLoading || activeRowsQuery.isLoading;
 
@@ -368,9 +383,21 @@ export function BaseContent({
               onUpdateColumn={columnMutations.handleUpdateColumn}
               onSetPrimaryColumn={columnMutations.handleSetPrimaryColumn}
               onReorderRow={(draggedRowId, targetRowId) => {
-                // Row reordering is local-only (visual feedback) - no backend persistence
-                // Rows are ordered by autoincrement ID in the database
-                console.log('Row reorder:', { draggedRowId, targetRowId });
+                // Row reordering is local-only (session-based) - no backend persistence
+                const currentOrder = localRowOrder.length === gridRows.length
+                  ? localRowOrder
+                  : gridRows.map((r) => r.id);
+
+                const draggedIndex = currentOrder.indexOf(draggedRowId);
+                const targetIndex = currentOrder.indexOf(targetRowId);
+
+                if (draggedIndex === -1 || targetIndex === -1) return;
+
+                const newOrder = [...currentOrder];
+                const [removed] = newOrder.splice(draggedIndex, 1);
+                newOrder.splice(targetIndex, 0, removed!);
+
+                setLocalRowOrder(newOrder);
               }}
               onLoadMore={() => {
                 if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
