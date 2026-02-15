@@ -55,7 +55,7 @@ export function AIPlaysSection() {
             >
               {/* Gradient background */}
               <div
-                className={`absolute inset-0 bg-gradient-to-br ${play.gradient} opacity-10 transition-opacity group-hover:opacity-20`}
+                className={`absolute inset-0 bg-linear-to-br ${play.gradient} opacity-10 transition-opacity group-hover:opacity-20`}
               />
 
               {/* Content */}

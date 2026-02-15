@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import Image from "next/image";
 
 export function Navigation() {
-  const [platformOpen, setPlatformOpen] = useState(false);
-  const [solutionsOpen, setSolutionsOpen] = useState(false);
-  const [resourcesOpen, setResourcesOpen] = useState(false);
-
   return (
     <header className="sticky top-0 z-50 bg-white">
       {/* Top Banner */}
@@ -31,37 +27,19 @@ export function Navigation() {
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
               {/* Airtable cube logo */}
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 200 170"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M100 0L0 57.735v57.735l100 57.735 100-57.735V57.735L100 0z"
-                  fill="#FCB400"
-                />
-                <path
-                  d="M100 57.735l-50 28.868v57.735l50-28.868V57.735z"
-                  fill="#18BFFF"
-                />
-                <path
-                  d="M100 57.735l50 28.868v57.735l-50-28.868V57.735z"
-                  fill="#F82B60"
-                />
-              </svg>
+              <Image
+                src="/airtable-color.svg"
+                alt="Airtable logo"
+                width={32}
+                height={32}
+              />
               <span className="text-xl font-bold text-gray-900">Airtable</span>
             </Link>
 
             {/* Nav Links */}
             <div className="hidden items-center gap-6 lg:flex">
               <div className="relative">
-                <button
-                  className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
-                  onMouseEnter={() => setPlatformOpen(true)}
-                  onMouseLeave={() => setPlatformOpen(false)}
-                >
+                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
                   Platform
                   <svg
                     className="h-4 w-4"
@@ -80,11 +58,7 @@ export function Navigation() {
               </div>
 
               <div className="relative">
-                <button
-                  className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
-                  onMouseEnter={() => setSolutionsOpen(true)}
-                  onMouseLeave={() => setSolutionsOpen(false)}
-                >
+                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
                   Solutions
                   <svg
                     className="h-4 w-4"
@@ -103,11 +77,7 @@ export function Navigation() {
               </div>
 
               <div className="relative">
-                <button
-                  className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
-                  onMouseEnter={() => setResourcesOpen(true)}
-                  onMouseLeave={() => setResourcesOpen(false)}
-                >
+                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
                   Resources
                   <svg
                     className="h-4 w-4"

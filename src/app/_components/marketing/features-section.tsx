@@ -105,11 +105,11 @@ export function FeaturesSection() {
 
           {/* Visual/Demo Area */}
           <div className="relative">
-            <div className="aspect-square overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-8 shadow-xl">
+            <div className="aspect-square overflow-hidden rounded-2xl bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 p-8 shadow-xl">
               <div className="flex h-full items-center justify-center">
                 {/* Placeholder for animated demo */}
                 <div className="text-center">
-                  <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+                  <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg">
                     <svg
                       className="h-10 w-10 text-white"
                       fill="none"

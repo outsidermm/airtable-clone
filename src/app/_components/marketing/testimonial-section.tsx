@@ -22,7 +22,7 @@ export function TestimonialSection() {
 
           {/* Testimonial Content */}
           <div className="text-white">
-            <blockquote className="mb-8 text-2xl font-medium leading-relaxed md:text-3xl">
+            <blockquote className="mb-8 text-2xl leading-relaxed font-medium md:text-3xl">
               &quot;Airtable makes it easy to deliver AI insights to every team
               quickly and without complex builds.&quot;
             </blockquote>

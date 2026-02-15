@@ -34,9 +34,9 @@ export function Hero() {
         {/* Hero Image/Video Placeholder */}
         <div className="mt-12">
           <div className="mx-auto max-w-6xl overflow-hidden rounded-xl shadow-2xl">
-            <div className="relative aspect-video w-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+            <div className="relative aspect-video w-full bg-linear-to-br from-slate-900 via-blue-900 to-indigo-900">
               {/* Animated grid background */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f46e520_1px,transparent_1px),linear-gradient(to_bottom,#4f46e520_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f46e520_1px,transparent_1px),linear-gradient(to_bottom,#4f46e520_1px,transparent_1px)] bg-size-[4rem_4rem]" />
 
               {/* Content overlay */}
               <div className="relative flex h-full items-center justify-center p-12">
@@ -57,7 +57,7 @@ export function Hero() {
               </div>
 
               {/* Bottom gradient overlay */}
-              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-900/50 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-slate-900/50 to-transparent" />
             </div>
           </div>
         </div>
