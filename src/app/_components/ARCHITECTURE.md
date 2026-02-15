@@ -42,8 +42,10 @@ src/server/
 
 ### ⚠️ Areas for Improvement
 
-1. **Grid Table** (grid-table.tsx - 1545 lines)
-   - ✅ **IMPROVED**: Extracted constants, types, utilities
+1. **Grid Table** (grid-table.tsx)
+   - ✅ **COMPLETED**: Extracted constants, types, utilities
+   - ✅ **COMPLETED**: Using centralized icon components
+   - ✅ **COMPLETED**: Removed duplicate inline SVG definitions
    - 🔄 **TODO**: Extract SortableRow component
    - 🔄 **TODO**: Extract keyboard navigation hooks
    - 🔄 **TODO**: Extract header cell components
@@ -88,29 +90,47 @@ src/server/
 - Utilities separated from components
 - Constants in dedicated files
 
+## Recent Improvements
+
+1. **Centralized Icon Library** ✅
+   - Created `src/components/icons/index.tsx`
+   - Added 20+ common SVG icons
+   - Updated grid-table and toast components to use centralized icons
+   - Reduces code duplication and ensures consistency
+
+2. **Grid Table Modularization** ✅
+   - Extracted to `grid-table/` directory with constants, types, utilities
+   - Removed duplicate code
+   - Updated imports and maintained backward compatibility
+
 ## Recommended Next Steps
 
-1. **Complete Grid Table Refactoring**
+1. **Continue Icon Migration**
+   - Update remaining components to use centralized icons
+   - Extract more icons as needed from dashboard components
+   - Remove inline SVG definitions
+
+2. **Complete Grid Table Refactoring**
    - Extract SortableRow to grid-table/sortable-row.tsx
    - Extract header cells to grid-table/header-cell.tsx
    - Create useKeyboardNavigation hook
 
-2. **Refactor Base Header**
+3. **Refactor Base Header**
    - Extract view dropdown to view-controls.tsx
    - Extract share button to share-button.tsx
    - Reduce main file to < 400 lines
 
-3. **Improve Toolbar**
+4. **Improve Toolbar**
    - Create toolbar context
    - Extract each tool button
    - Simplify main toolbar file
 
-4. **Add Component Documentation**
+5. **Add Component Documentation**
    - JSDoc comments for all public components
    - README files for complex modules
    - Usage examples in comments
 
-5. **Create Shared UI Library**
+6. **Create Shared UI Library**
    - Extract common patterns (buttons, dropdowns, modals)
    - Create consistent design system
    - Centralize styling utilities
