@@ -842,6 +842,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     }, [editingCell]);
 
     // --- Enter key behavior for editing and navigation ---
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         // Handle Shift+Enter to add new row
@@ -914,7 +915,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editingCell, selectedCell, rows, onAddRow, setCellTooltip, clearCellTooltip, setCellTooltips]);
+    }, [editingCell, selectedCell, rows, onAddRow]);
 
     // --- Arrow key navigation between cells ---
     useEffect(() => {
