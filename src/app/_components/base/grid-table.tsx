@@ -250,7 +250,7 @@ interface SortableRowProps {
   setHoveredRowId: (id: number | null) => void;
   onContextMenu?: (state: ContextMenuState) => void;
   totalScrollableWidth: number;
-  getCellTooltip: (rowId: number, columnId: number) => string | undefined;
+  showLastRowTooltip: boolean;
 }
 
 function SortableRow(props: SortableRowProps) {
@@ -284,7 +284,7 @@ function SortableRow(props: SortableRowProps) {
     setHoveredRowId,
     onContextMenu,
     totalScrollableWidth,
-    getCellTooltip,
+    showLastRowTooltip,
   } = props;
 
   const {
@@ -451,15 +451,14 @@ function SortableRow(props: SortableRowProps) {
                     handleCellChange(rowData.id, primaryColumn.id, e.target.value)
                   }
                 />
-                {(() => {
-                  const tooltipMessage = getCellTooltip(rowData.id, primaryColumn.id);
-                  return tooltipMessage ? (
+                {showLastRowTooltip &&
+                  editingCell?.rowId === rowData.id &&
+                  editingCell?.columnId === primaryColumn.id && (
                     <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
-                      {tooltipMessage}
+                      Shift+Enter to create new row
                       <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
                     </div>
-                  ) : null;
-                })()}
+                  )}
               </>
             )}
           </div>
@@ -547,15 +546,14 @@ function SortableRow(props: SortableRowProps) {
                       handleCellChange(rowData.id, col.id, e.target.value)
                     }
                   />
-                  {(() => {
-                    const tooltipMessage = getCellTooltip(rowData.id, col.id);
-                    return tooltipMessage ? (
+                  {showLastRowTooltip &&
+                    editingCell?.rowId === rowData.id &&
+                    editingCell?.columnId === col.id && (
                       <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
-                        {tooltipMessage}
+                        Shift+Enter to create new row
                         <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
                       </div>
-                    ) : null;
-                  })()}
+                    )}
                 </>
               )}
             </div>
@@ -606,54 +604,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [editingHeaderValue, setEditingHeaderValue] = useState("");
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
-    const [cellTooltips, setCellTooltips] = useState<Map<string, string>>(
-      new Map(),
-    );
+    const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
 
     const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
     const parentRef = useRef<HTMLDivElement>(null);
     const primaryResizeStartWidth = useRef<number>(0);
     const primaryResizeStartX = useRef<number>(0);
-
-    // Helper functions for managing cell tooltips
-    const setCellTooltip = useCallback(
-      (rowId: number, columnId: number, message: string, duration = 3000) => {
-        const key = `${rowId}-${columnId}`;
-        setCellTooltips((prev) => new Map(prev).set(key, message));
-
-        // Auto-clear after duration
-        if (duration > 0) {
-          setTimeout(() => {
-            setCellTooltips((prev) => {
-              const next = new Map(prev);
-              next.delete(key);
-              return next;
-            });
-          }, duration);
-        }
-      },
-      [],
-    );
-
-    const clearCellTooltip = useCallback(
-      (rowId: number, columnId: number) => {
-        const key = `${rowId}-${columnId}`;
-        setCellTooltips((prev) => {
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
-      },
-      [],
-    );
-
-    const getCellTooltip = useCallback(
-      (rowId: number, columnId: number): string | undefined => {
-        const key = `${rowId}-${columnId}`;
-        return cellTooltips.get(key);
-      },
-      [cellTooltips],
-    );
 
     // Find primary column
     const primaryColumn = useMemo(
@@ -697,27 +653,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     const handleCellChange = useCallback(
       (rowId: number, columnId: number, value: string) => {
-        // Validate column type
-        const column = [...(primaryColumn ? [primaryColumn] : []), ...nonPrimaryColumns].find(
-          (c) => c.id === columnId,
-        );
-
-        if (column?.type === "NUMBER" && value.trim() !== "") {
-          // Check if value is a valid number
-          const numValue = Number(value);
-          if (isNaN(numValue)) {
-            setCellTooltip(
-              rowId,
-              columnId,
-              "Invalid number format. Please enter a valid number.",
-              5000,
-            );
-          } else {
-            // Clear tooltip if value becomes valid
-            clearCellTooltip(rowId, columnId);
-          }
-        }
-
         const key = `${rowId}-${columnId}`;
         const existing = debounceTimers.current.get(key);
         if (existing) clearTimeout(existing);
@@ -729,7 +664,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           }, 300),
         );
       },
-      [onCellUpdate, primaryColumn, nonPrimaryColumns, setCellTooltip, clearCellTooltip],
+      [onCellUpdate],
     );
 
     // --- Multi-cell selection helpers ---
@@ -848,8 +783,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         if (e.key === "Enter" && e.shiftKey) {
           e.preventDefault();
           onAddRow();
-          // Clear all tooltips when adding new row
-          setCellTooltips(new Map());
+          setShowLastRowTooltip(false);
           return;
         }
 
@@ -887,11 +821,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               }
             } else {
               // On last row, show tooltip
-              setCellTooltip(
-                editingCell.rowId,
-                editingCell.columnId,
-                "Shift+Enter to create new row",
-              );
+              setShowLastRowTooltip(true);
+              setTimeout(() => setShowLastRowTooltip(false), 3000);
             }
           }
           return;
@@ -908,13 +839,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         if (editingCell && e.key === "Escape") {
           e.preventDefault();
           setEditingCell(null);
-          clearCellTooltip(editingCell.rowId, editingCell.columnId);
+          setShowLastRowTooltip(false);
         }
       };
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editingCell, selectedCell, rows, onAddRow, setCellTooltip, clearCellTooltip, setCellTooltips]);
+    }, [editingCell, selectedCell, rows, onAddRow]);
 
     // --- Arrow key navigation between cells ---
     useEffect(() => {
@@ -1545,7 +1476,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         setHoveredRowId={setHoveredRowId}
                         onContextMenu={onContextMenu}
                         totalScrollableWidth={totalScrollableWidth}
-                        getCellTooltip={getCellTooltip}
+                        showLastRowTooltip={showLastRowTooltip}
                       />
                     );
                   })}
