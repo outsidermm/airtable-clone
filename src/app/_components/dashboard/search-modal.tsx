@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { SearchIcon, StarIcon, StarOutlineIcon } from "~/components/icons";
 import { getTimeAgo } from "~/lib/date";
+import { useBaseMutations } from "./hooks/use-base-mutations";
 
 interface RecentBase {
   id: string;
@@ -25,31 +26,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [hoveredBaseId, setHoveredBaseId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const utils = api.useUtils();
+  const baseMutations = useBaseMutations();
 
   const { data: allBases = [] } = api.base.getAll.useQuery(undefined, {
     enabled: isOpen,
   });
 
-  const toggleStarredMutation = api.base.toggleStarred.useMutation({
-    onMutate: async ({ id }) => {
-      await utils.base.getAll.cancel();
-      const previousBases = utils.base.getAll.getData();
-      utils.base.getAll.setData(undefined, (old) =>
-        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b)),
-      );
-      return { previousBases };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousBases) {
-        utils.base.getAll.setData(undefined, context.previousBases);
-      }
-    },
-    onSettled: () => {
-      void utils.base.getAll.invalidate();
-      void utils.base.getStarred.invalidate();
-    },
-  });
 
   // Load recent bases from localStorage
   useEffect(() => {
@@ -217,7 +199,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleStarredMutation.mutate({ id: base.id });
+                              baseMutations.handleToggleStarred(base.id);
                             }}
                             className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-1 hover:bg-gray-200"
                           >
@@ -286,7 +268,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleStarredMutation.mutate({ id: base.id });
+                              baseMutations.handleToggleStarred(base.id);
                             }}
                             className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-1 hover:bg-gray-200"
                           >

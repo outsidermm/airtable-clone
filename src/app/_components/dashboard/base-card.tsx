@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useRef } from "react";
-import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
 import {
@@ -12,6 +11,7 @@ import {
   DotsHorizontalIcon,
 } from "~/components/icons";
 import { getTimeAgo } from "~/lib/date";
+import { useBaseMutations } from "./hooks/use-base-mutations";
 
 interface BaseCardProps {
   base: {
@@ -31,47 +31,12 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
   const [newName, setNewName] = useState(base.name);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const utils = api.useUtils();
-
-  const toggleStarredMutation = api.base.toggleStarred.useMutation({
-    onMutate: async ({ id }) => {
-      // Cancel outgoing fetches
-      await utils.base.getAll.cancel();
-
-      // Snapshot previous value
-      const previousBases = utils.base.getAll.getData();
-
-      // Optimistically update
-      utils.base.getAll.setData(undefined, (old) =>
-        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b)),
-      );
-
-      return { previousBases };
-    },
-    onError: (_err, _vars, context) => {
-      // Rollback on error
-      if (context?.previousBases) {
-        utils.base.getAll.setData(undefined, context.previousBases);
-      }
-    },
-    onSettled: () => {
-      // Refetch to ensure consistency
-      void utils.base.getAll.invalidate();
-      void utils.base.getStarred.invalidate();
-    },
-  });
-
-  const renameMutation = api.base.rename.useMutation({
-    onSuccess: () => {
-      void utils.base.getAll.invalidate();
-      setIsRenaming(false);
-    },
-  });
+  const baseMutations = useBaseMutations();
 
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleStarredMutation.mutate({ id: base.id });
+    baseMutations.handleToggleStarred(base.id);
   };
 
   const handleMenuClick = (e: React.MouseEvent) => {
@@ -91,10 +56,9 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     e.preventDefault();
     e.stopPropagation();
     if (newName.trim() && newName !== base.name) {
-      renameMutation.mutate({ id: base.id, name: newName.trim() });
-    } else {
-      setIsRenaming(false);
+      baseMutations.handleRename(base.id, newName.trim());
     }
+    setIsRenaming(false);
   };
 
   const handleRenameCancel = (e?: React.MouseEvent | React.KeyboardEvent) => {

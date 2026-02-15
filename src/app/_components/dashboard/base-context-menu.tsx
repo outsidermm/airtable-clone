@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "~/trpc/react";
 import { PencilIcon, DuplicateIcon, FolderIcon, ArrowCircleRightIcon, PaletteIcon, TrashIcon } from "~/components/icons";
+import { useBaseMutations } from "./hooks/use-base-mutations";
 
 interface BaseContextMenuProps {
   base: {
@@ -26,14 +26,7 @@ export function BaseContextMenu({
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const utils = api.useUtils();
-
-  const deleteMutation = api.base.delete.useMutation({
-    onSuccess: () => {
-      void utils.base.getAll.invalidate();
-      onClose();
-    },
-  });
+  const baseMutations = useBaseMutations();
 
   // Calculate menu position
   useEffect(() => {
@@ -87,9 +80,7 @@ export function BaseContextMenu({
     setShowDeleteConfirm(true);
   };
 
-  const handleDeleteConfirm = () => {
-    deleteMutation.mutate({ id: base.id });
-  };
+
 
   const showToast = (message: string) => {
     // Simple toast - could be replaced with a toast library
@@ -120,11 +111,14 @@ export function BaseContextMenu({
               Cancel
             </button>
             <button
-              onClick={handleDeleteConfirm}
-              disabled={deleteMutation.isPending}
+              onClick={() => {
+                baseMutations.handleDeleteConfirm(base.id);
+                onClose();
+              }}
+              disabled={baseMutations.deleteBaseMutation.isPending}
               className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {baseMutations.deleteBaseMutation.isPending ? "Deleting..." : "Delete"}
             </button>
           </div>
 

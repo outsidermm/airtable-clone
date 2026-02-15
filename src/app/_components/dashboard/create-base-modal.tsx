@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { api } from "~/trpc/react";
 import { XIcon } from "~/components/icons";
+import { useBaseMutations } from "./hooks/use-base-mutations";
 
 interface CreateBaseModalProps {
   isOpen: boolean;
@@ -11,16 +11,7 @@ interface CreateBaseModalProps {
 
 export function CreateBaseModal({ isOpen, onClose }: CreateBaseModalProps) {
   const router = useRouter();
-
-  const utils = api.useUtils();
-
-  const createBase = api.base.create.useMutation({
-    onSuccess: async (newBase) => {
-      await utils.base.getAll.invalidate();
-      router.push(`/base/${newBase.id}`);
-      onClose();
-    },
-  });
+  const baseMutations = useBaseMutations();
 
   if (!isOpen) return null;
 
@@ -66,10 +57,12 @@ export function CreateBaseModal({ isOpen, onClose }: CreateBaseModalProps) {
               <button
                 key={"own"}
                 className="flex flex-col items-center rounded-lg border border-gray-200 p-4 transition-all hover:shadow-md"
-                onClick={() => {
-                  createBase.mutate({});
+                onClick={async () => {
+                  const newBase = await baseMutations.handleCreateBase();
+                  router.push(`/base/${newBase.id}`);
+                  onClose();
                 }}
-                disabled={createBase.isPending}
+                disabled={baseMutations.createBaseMutation.isPending}
               >
                 <div className="mb-2 text-3xl">{"Test"}</div>
                 <div className="flex flex-col items-start">
