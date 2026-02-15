@@ -3,6 +3,20 @@
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
+import {
+  UserIcon,
+  UsersIcon,
+  BellIcon,
+  ColorIcon,
+  MailIcon,
+  LightningIcon,
+  ChatIcon,
+  SettingsIcon,
+  BuildingIcon,
+  TrashIcon,
+  LogoutIcon,
+  ChevronRightIcon,
+} from "~/components/icons";
 
 interface UserMenuProps {
   user: {
@@ -73,37 +87,13 @@ export function UserMenu({ user }: UserMenuProps) {
           {/* Account Section */}
           <div className="border-b border-gray-200 py-2 mx-4">
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
+              <UserIcon className="mr-3 h-5 w-5 text-gray-500" />
               Account
             </button>
 
             <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
-                <svg
-                  className="mr-3 h-5 w-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
+                <UsersIcon className="mr-3 h-5 w-5 text-gray-500" />
                 Manage groups
               </div>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
@@ -113,34 +103,10 @@ export function UserMenu({ user }: UserMenuProps) {
 
             <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
-                <svg
-                  className="mr-3 h-5 w-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
+                <BellIcon className="mr-3 h-5 w-5 text-gray-500" />
                 Notification preferences
               </div>
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
+              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
             </button>
 
             <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
@@ -160,36 +126,12 @@ export function UserMenu({ user }: UserMenuProps) {
                 </svg>
                 Language preferences
               </div>
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
+              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
             </button>
 
             <button className="flex w-full items-center justify-between px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               <div className="flex items-center">
-                <svg
-                  className="mr-3 h-5 w-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                  />
-                </svg>
+                <ColorIcon className="mr-3 h-5 w-5 text-gray-500" />
                 <div className="flex items-center gap-4">
                   Appearance
                   <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-700">
@@ -198,19 +140,7 @@ export function UserMenu({ user }: UserMenuProps) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <svg
-                  className="h-4 w-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <ChevronRightIcon className="h-4 w-4 text-gray-400" />
               </div>
             </button>
           </div>
@@ -218,53 +148,17 @@ export function UserMenu({ user }: UserMenuProps) {
           {/* Actions Section */}
           <div className="border-b border-gray-200 py- mx-4">
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
+              <MailIcon className="mr-3 h-5 w-5 text-gray-500" />
               Contact sales
             </button>
 
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+              <LightningIcon className="mr-3 h-5 w-5 text-gray-500" />
               Upgrade
             </button>
 
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
+              <ChatIcon className="mr-3 h-5 w-5 text-gray-500" />
               Tell a friend
             </button>
           </div>
@@ -272,36 +166,12 @@ export function UserMenu({ user }: UserMenuProps) {
           {/* Tools Section */}
           <div className="border-b border-gray-200 py-2 mx-4">
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
-                />
-              </svg>
+              <SettingsIcon className="mr-3 h-5 w-5 text-gray-500" />
               Integrations
             </button>
 
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
+              <BuildingIcon className="mr-3 h-5 w-5 text-gray-500" />
               Builder hub
             </button>
           </div>
@@ -309,19 +179,7 @@ export function UserMenu({ user }: UserMenuProps) {
           {/* Bottom Section */}
           <div className="py-2 mx-4">
             <button className="flex w-full items-center px-1 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
+              <TrashIcon className="mr-3 h-5 w-5 text-gray-500" />
               Trash
             </button>
 
@@ -329,19 +187,7 @@ export function UserMenu({ user }: UserMenuProps) {
               onClick={() => signOut({ callbackUrl: "/login" })}
               className="flex w-full items-center px-1.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
-              <svg
-                className="mr-3 h-5 w-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
+              <LogoutIcon className="mr-3 h-5 w-5 text-gray-500" />
               Log out
             </button>
           </div>
