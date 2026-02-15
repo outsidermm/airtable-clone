@@ -6,7 +6,11 @@ import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
-import { StarIcon, StarOutlineIcon, DotsVerticalIcon } from "~/components/icons";
+import {
+  StarIcon,
+  StarOutlineIcon,
+  DotsHorizontalIcon,
+} from "~/components/icons";
 
 interface BaseCardProps {
   base: {
@@ -22,7 +26,10 @@ interface BaseCardProps {
 
 export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(base.name);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const utils = api.useUtils();
 
   const toggleStarredMutation = api.base.toggleStarred.useMutation({
@@ -35,7 +42,7 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
 
       // Optimistically update
       utils.base.getAll.setData(undefined, (old) =>
-        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b))
+        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b)),
       );
 
       return { previousBases };
@@ -53,6 +60,13 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     },
   });
 
+  const renameMutation = api.base.rename.useMutation({
+    onSuccess: () => {
+      void utils.base.getAll.invalidate();
+      setIsRenaming(false);
+    },
+  });
+
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -65,62 +79,229 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     setShowContextMenu(!showContextMenu);
   };
 
-  return (
-    <div className={`group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md ${viewMode === "list" ? "flex items-center" : ""}`}>
-      <Link href={`/base/${base.id}`} className={`${viewMode === "list" ? "flex flex-1 items-center p-3" : "block p-4"}`}>
-        {/* Icon & Name */}
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}>
-            <Image
-              src="/airtable-black.svg"
-              alt="Base icon"
-              width={28}
-              height={28}
-              className="brightness-0 invert"
-            />
+  const handleRenameClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRenaming(true);
+    setNewName(base.name);
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (newName.trim() && newName !== base.name) {
+      renameMutation.mutate({ id: base.id, name: newName.trim() });
+    } else {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsRenaming(false);
+    setNewName(base.name);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      handleRenameCancel(e);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      handleRenameSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
+  // Focus input when entering rename mode
+  if (isRenaming && inputRef.current) {
+    inputRef.current.focus();
+    inputRef.current.select();
+  }
+
+  if (viewMode === "grid") {
+    return (
+      <div className="group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md">
+        <Link
+          href={`/base/${base.id}`}
+          className={`block p-4 ${isRenaming ? "pointer-events-none" : ""}`}
+          aria-disabled={isRenaming}
+          tabIndex={isRenaming ? -1 : undefined}
+        >
+          {/* Icon & Name */}
+          <div className="flex flex-1 items-center gap-2.5">
+            <div
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}
+            >
+              <Image
+                src="/airtable-black.svg"
+                alt="Base icon"
+                width={28}
+                height={28}
+                className="brightness-0 invert"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              {isRenaming ? (
+                <form
+                  onSubmit={handleRenameSubmit}
+                  className="flex items-center gap-1"
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    className="w-full rounded border border-blue-500 px-2 py-0.5 text-sm font-medium text-gray-900 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                    autoFocus
+                  />
+                </form>
+              ) : (
+                <h3 className="truncate text-sm font-medium text-gray-900">
+                  {base.name}
+                </h3>
+              )}
+              {base.updatedAt && (
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {base.updatedAt.toDateString()}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-medium text-gray-900">{base.name}</h3>
-            {base.updatedAt && (
-              <p className="mt-0.5 text-[11px] text-gray-500">{base.updatedAt.toDateString()}</p>
+        </Link>
+
+        {/* Action Buttons (show on hover, or always if starred) */}
+        <div
+          className={`absolute top-2 right-2 flex gap-1 transition-opacity ${base.starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        >
+          {/* Star Button */}
+          <button
+            onClick={handleStarClick}
+            className="rounded border border-gray-200 bg-white p-1"
+            title={base.starred ? "Remove from starred" : "Add to starred"}
+          >
+            {base.starred ? (
+              <StarIcon className="h-4 w-4 text-yellow-500" />
+            ) : (
+              <StarOutlineIcon className="h-4 w-4 text-gray-500" />
             )}
+          </button>
+
+          {/* Three-dot Menu Button */}
+          <button
+            ref={menuButtonRef}
+            onClick={handleMenuClick}
+            className="rounded border border-gray-200 bg-white p-1"
+            title="More options"
+          >
+            <DotsHorizontalIcon className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Context Menu */}
+        <BaseContextMenu
+          base={base}
+          isOpen={showContextMenu}
+          onClose={() => setShowContextMenu(false)}
+          onRename={handleRenameClick}
+          buttonRef={menuButtonRef}
+        />
+      </div>
+    );
+  } else {
+    return (
+      <div className="group flex items-center justify-between gap-4 rounded-lg transition-all hover:bg-gray-200">
+        <div className="flex flex-1 items-center justify-between">
+          <Link href={`/base/${base.id}`} className="flex flex-3 p-4">
+            {/* Icon & Name */}
+            <div className="flex flex-1 items-center gap-2.5">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}
+              >
+                <Image
+                  src="/airtable-black.svg"
+                  alt="Base icon"
+                  width={28}
+                  height={28}
+                  className="brightness-0 invert"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                {isRenaming ? (
+                  <form
+                    onSubmit={handleRenameSubmit}
+                    className="flex items-center gap-1"
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      onBlur={handleRenameSubmit}
+                      className="w-full rounded border border-blue-500 px-2 py-0.5 text-sm font-medium text-gray-900 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      autoFocus
+                    />
+                  </form>
+                ) : (
+                  <h3 className="truncate text-sm font-medium text-gray-900">
+                    {base.name}
+                  </h3>
+                )}
+              </div>
+            </div>
+          </Link>
+
+          {/* Action Buttons (show on hover, or always if starred) */}
+          <div
+            className={`flex flex-1 gap-1 transition-opacity ${base.starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          >
+            {/* Star Button */}
+            <button
+              onClick={handleStarClick}
+              className="rounded p-1"
+              title={base.starred ? "Remove from starred" : "Add to starred"}
+            >
+              {base.starred ? (
+                <StarIcon className="h-4 w-4 text-yellow-500" />
+              ) : (
+                <StarOutlineIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+              )}
+            </button>
+
+            {/* Three-dot Menu Button */}
+            <button
+              ref={menuButtonRef}
+              onClick={handleMenuClick}
+              className="rounded p-1"
+              title="More options"
+            >
+              <DotsHorizontalIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+            </button>
           </div>
         </div>
-      </Link>
-
-      {/* Action Buttons (show on hover) */}
-      <div className={`flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${viewMode === "list" ? "relative pr-3" : "absolute right-2 top-2"}`}>
-        {/* Star Button */}
-        <button
-          onClick={handleStarClick}
-          className="rounded p-1 hover:bg-gray-100"
-          title={base.starred ? "Remove from starred" : "Add to starred"}
-        >
-          {base.starred ? (
-            <StarIcon className="h-4 w-4 text-yellow-500" />
-          ) : (
-            <StarOutlineIcon className="h-4 w-4 text-gray-500" />
+        <div className="flex flex-1 items-center justify-between">
+          {base.updatedAt && (
+            <p className="mt-0.5 flex-1 text-xs text-gray-500">
+              {base.updatedAt.toDateString()}
+            </p>
           )}
-        </button>
 
-        {/* Three-dot Menu Button */}
-        <button
-          ref={menuButtonRef}
-          onClick={handleMenuClick}
-          className="rounded p-1 hover:bg-gray-100"
-          title="More options"
-        >
-          <DotsVerticalIcon className="h-4 w-4 text-gray-500" />
-        </button>
+          <p className="flex-1 text-xs text-gray-500">Workspace</p>
+        </div>
+
+        {/* Context Menu */}
+        <BaseContextMenu
+          base={base}
+          isOpen={showContextMenu}
+          onClose={() => setShowContextMenu(false)}
+          onRename={handleRenameClick}
+          buttonRef={menuButtonRef}
+        />
       </div>
-
-      {/* Context Menu */}
-      <BaseContextMenu
-        base={base}
-        isOpen={showContextMenu}
-        onClose={() => setShowContextMenu(false)}
-        buttonRef={menuButtonRef}
-      />
-    </div>
-  );
+    );
+  }
 }

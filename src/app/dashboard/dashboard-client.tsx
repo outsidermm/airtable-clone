@@ -85,13 +85,20 @@ export function DashboardClient({ user, initialBases }: DashboardClientProps) {
               </button>
             </div>
           </div>
+          {viewMode === "list" && (
+            <div className="mb-2 flex items-center gap-4 px-2 py-1 text-xs font-medium text-gray-500 border-b border-gray-200">
+              <span className="w-1/2">Name</span>
+              <span className="w-1/4">Last modified</span>
+              <span className="w-1/4">Created by</span>
+            </div>
+          )}
 
           {/* Base Cards */}
           <div
             className={
               viewMode === "grid"
                 ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                : "flex flex-col gap-2 max-w-3xl"
+                : "flex flex-col"
             }
           >
             {bases.map((base) => (

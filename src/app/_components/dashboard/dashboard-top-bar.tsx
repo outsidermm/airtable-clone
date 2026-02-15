@@ -17,7 +17,6 @@ interface DashboardTopBarProps {
 
 export function DashboardTopBar({
   user,
-  isCollapsed = false,
   onToggleCollapse,
   onSearchClick,
 }: DashboardTopBarProps) {

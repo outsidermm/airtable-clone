@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "~/trpc/react";
-import { PencilIcon, DuplicateIcon, FolderIcon, ArrowCircleRightIcon, TrashIcon } from "~/components/icons";
+import { PencilIcon, DuplicateIcon, FolderIcon, ArrowCircleRightIcon, PaletteIcon, TrashIcon } from "~/components/icons";
 
 interface BaseContextMenuProps {
   base: {
@@ -12,6 +12,7 @@ interface BaseContextMenuProps {
   };
   isOpen: boolean;
   onClose: () => void;
+  onRename: (e: React.MouseEvent) => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
@@ -19,22 +20,13 @@ export function BaseContextMenu({
   base,
   isOpen,
   onClose,
+  onRename,
   buttonRef,
 }: BaseContextMenuProps) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
-  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [newName, setNewName] = useState(base.name);
   const menuRef = useRef<HTMLDivElement>(null);
   const utils = api.useUtils();
-
-  const renameMutation = api.base.rename.useMutation({
-    onSuccess: () => {
-      void utils.base.getAll.invalidate();
-      setShowRenameDialog(false);
-      onClose();
-    },
-  });
 
   const deleteMutation = api.base.delete.useMutation({
     onSuccess: () => {
@@ -86,15 +78,9 @@ export function BaseContextMenu({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  const handleRename = () => {
-    setShowRenameDialog(true);
-  };
-
-  const handleRenameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName.trim() && newName !== base.name) {
-      renameMutation.mutate({ id: base.id, name: newName.trim() });
-    }
+  const handleRename = (e: React.MouseEvent) => {
+    onRename(e);
+    onClose();
   };
 
   const handleDelete = () => {
@@ -112,54 +98,16 @@ export function BaseContextMenu({
 
   if (!isOpen) return null;
 
-  // Rename dialog
-  if (showRenameDialog) {
-    return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Rename base</h2>
-          <form onSubmit={handleRenameSubmit}>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowRenameDialog(false);
-                  onClose();
-                }}
-                className="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!newName.trim() || renameMutation.isPending}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {renameMutation.isPending ? "Renaming..." : "Rename"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>,
-      document.body
-    );
-  }
-
   // Delete confirmation
   if (showDeleteConfirm) {
     return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">Delete base?</h2>
-          <p className="mb-4 text-sm text-gray-600">
-            This will permanently delete &quot;{base.name}&quot; and all its tables, columns, and rows. This action cannot be undone.
+      <div className="fixed z-50 w-60 border border-gray-200 shadow-xl rounded-lg bg-white p-4"
+      style={{ top: position.top, left: position.left }}
+      >
+
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">Are you sure you want to delete {base.name}?</h2>
+          <p className="mb-4 text-xs text-gray-600">
+            Recently deleted apps can be restored from trash.
           </p>
           <div className="flex justify-end gap-2">
             <button
@@ -167,7 +115,7 @@ export function BaseContextMenu({
                 setShowDeleteConfirm(false);
                 onClose();
               }}
-              className="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              className="rounded-lg px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -179,7 +127,7 @@ export function BaseContextMenu({
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </button>
           </div>
-        </div>
+
       </div>,
       document.body
     );
@@ -232,12 +180,22 @@ export function BaseContextMenu({
         <ArrowCircleRightIcon className="h-4 w-4" />
         Go to workspace
       </button>
+      <button
+        onClick={() => {
+          showToast("Workspaces coming soon");
+          onClose();
+        }}
+        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+      >
+        <PaletteIcon className="h-4 w-4" />
+        Customize appearance
+      </button>
 
       <div className="my-1 border-t border-gray-200" />
 
       <button
         onClick={handleDelete}
-        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
       >
         <TrashIcon className="h-4 w-4" />
         Delete
