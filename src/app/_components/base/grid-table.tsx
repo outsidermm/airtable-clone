@@ -538,7 +538,6 @@ function SortableRow(props: SortableRowProps) {
           );
         })}
       </div>
-      <div className="w-16 border-none bg-gray-50" />
     </div>
   );
 }
@@ -1407,7 +1406,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
             {/* Add row button */}
             <div
-              className="flex shrink-0 bg-gray-50"
+              className="flex shrink-0 bg-gray-100"
               style={{ minWidth: "fit-content" }}
             >
               <div
@@ -1446,17 +1445,17 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
             {/* Filler — extends the frozen divider to the bottom of the viewport */}
             <div
-              className="flex flex-1 bg-gray-50"
+              className="flex flex-1 bg-gray-100"
               style={{ minWidth: "fit-content", minHeight: 0 }}
             >
               <div
-                className="sticky left-0 bg-gray-50"
+                className="sticky left-0 "
                 style={{
                   width: frozenWidth,
                   borderRight: "2px solid rgb(209, 213, 219)",
                 }}
               />
-              <div className="flex-1 bg-gray-50" />
+              <div className="flex-1 " />
             </div>
           </div>
         </div>
