@@ -1314,7 +1314,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               </DndContext>
               <div
                 key="_add"
-                className="flex items-center justify-center border border-gray-200 bg-white"
+                className="flex items-center justify-center border border-gray-200 bg-white px-12"
                 style={{ width: 48, height: HEADER_HEIGHT }}
               >
                 <button
