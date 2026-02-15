@@ -679,6 +679,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         setSelectionStart({ rowId, columnId });
         setSelectionEnd({ rowId, columnId });
         setIsSelecting(true);
+        // Exit edit mode when clicking on a cell
+        setEditingCell(null);
       },
       [],
     );
@@ -747,6 +749,21 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           }
         }
       }
+    }, [editingCell]);
+
+    // --- Exit edit mode on Escape or Enter ---
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (editingCell) {
+          if (e.key === "Escape" || e.key === "Enter") {
+            e.preventDefault();
+            setEditingCell(null);
+          }
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }, [editingCell]);
 
     // --- Arrow key navigation between cells ---
