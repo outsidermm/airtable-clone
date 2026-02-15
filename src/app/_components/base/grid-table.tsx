@@ -165,7 +165,7 @@ function SortableHeaderCell({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex h-full items-center justify-between bg-gray-50 px-2 py-1.5"
+      className="group flex h-full items-center justify-between bg-white px-2 py-1.5"
       {...attributes}
       {...listeners}
     >
