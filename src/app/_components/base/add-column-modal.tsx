@@ -348,7 +348,7 @@ export function AddColumnModal({ onConfirm, onClose, anchorEl }: AddColumnModalP
 
       <div
         ref={modalRef}
-        className={`z-50 w-[480px] rounded-lg border border-gray-200 bg-white shadow-xl ${
+        className={`z-50 w-120 rounded-lg border border-gray-200 bg-white shadow-xl ${
           isDropdown ? 'fixed' : 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'
         }`}
         style={isDropdown ? { top: position.top, left: position.left } : undefined}
