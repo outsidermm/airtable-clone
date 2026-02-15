@@ -35,27 +35,18 @@ import { CSS } from "@dnd-kit/utilities";
 import type { ColumnType } from "generated/prisma/enums";
 import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
+import {
+  ROW_HEIGHT_MAP,
+  HEADER_HEIGHT,
+  CHECKBOX_WIDTH,
+  PRIMARY_WIDTH,
+} from "./grid-table/constants";
+import type { CellAddress, GridTableHandle } from "./grid-table/types";
+import { DragHandle, HighlightedText } from "./grid-table/ui-components";
+import { TextIcon, NumberIcon, SortAscIcon, SortDescIcon } from "~/components/icons";
 
-// --- Row height map ---
-const ROW_HEIGHT_MAP: Record<string, number> = {
-  short: 36,
-  medium: 56,
-  tall: 84,
-  extraTall: 120,
-};
-const HEADER_HEIGHT = 36;
-const CHECKBOX_WIDTH = 66;
-const PRIMARY_WIDTH = 250;
-
-// --- Types ---
-interface CellAddress {
-  rowId: number;
-  columnId: number;
-}
-
-export interface GridTableHandle {
-  scrollToRow: (rowId: number) => void;
-}
+// Re-export types for external consumers
+export type { GridTableHandle } from "./grid-table/types";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -82,49 +73,6 @@ interface GridTableProps {
   activeSearchCell?: { rowId: number; columnId: number };
   searchQuery?: string;
   onContextMenu?: (state: ContextMenuState) => void;
-}
-
-// --- Drag handle SVG ---
-function DragHandle({
-  className,
-  ...props
-}: { className?: string } & React.HTMLAttributes<SVGSVGElement>) {
-  return (
-    <svg
-      className={className ?? "h-3 w-3 cursor-grab text-gray-300"}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      {...props}
-    >
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
-
-// --- Highlighted Text Component ---
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
-
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  const index = lowerText.indexOf(lowerQuery);
-
-  if (index === -1) return <>{text}</>;
-
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="bg-yellow-400 font-medium">
-        {text.slice(index, index + query.length)}
-      </mark>
-      {text.slice(index + query.length)}
-    </>
-  );
 }
 
 // --- Sortable Header Cell ---
@@ -161,6 +109,9 @@ function SortableHeaderCell({
 
   const sortEntry = sorts.find((s) => s.columnId === column.id);
 
+  const ColumnTypeIcon = column.type === "NUMBER" ? NumberIcon : TextIcon;
+  const SortIcon = sortEntry?.direction === "asc" ? SortAscIcon : SortDescIcon;
+
   return (
     <div
       ref={setNodeRef}
@@ -170,45 +121,11 @@ function SortableHeaderCell({
       {...listeners}
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
-        <svg
-          className="h-3.5 w-3.5 shrink-0 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d={
-              column.type === "NUMBER"
-                ? "M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                : "M4 6h16M4 12h16m-7 6h7"
-            }
-          />
-        </svg>
+        <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
         <span className="truncate text-xs font-normal text-gray-700">
           {column.name}
         </span>
-        {sortEntry && (
-          <svg
-            className="h-3 w-3 shrink-0 text-blue-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={
-                sortEntry.direction === "asc"
-                  ? "M5 15l7-7 7 7"
-                  : "M19 9l-7 7-7-7"
-              }
-            />
-          </svg>
-        )}
+        {sortEntry && <SortIcon className="h-3 w-3 shrink-0 text-blue-500" />}
       </div>
       {children}
     </div>
