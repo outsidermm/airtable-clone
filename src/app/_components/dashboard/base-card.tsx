@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState, useRef } from "react";
 import { BaseContextMenu } from "./base-context-menu";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
@@ -97,15 +96,9 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
           {/* Icon & Name */}
           <div className="flex flex-1 items-center gap-2.5">
             <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ${getStoredBaseColor(base.id)}`}
             >
-              <Image
-                src="/airtable-black.svg"
-                alt="Base icon"
-                width={28}
-                height={28}
-                className="brightness-0 invert"
-              />
+              {base.name.substring(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               {isRenaming ? (
@@ -184,15 +177,9 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
             {/* Icon & Name */}
             <div className="flex flex-1 items-center gap-2.5">
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ${getStoredBaseColor(base.id)}`}
               >
-                <Image
-                  src="/airtable-black.svg"
-                  alt="Base icon"
-                  width={28}
-                  height={28}
-                  className="brightness-0 invert"
-                />
+                {base.name.substring(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 {isRenaming ? (

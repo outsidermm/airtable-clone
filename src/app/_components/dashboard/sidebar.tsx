@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { CreateBaseModal } from "./create-base-modal";
 import { api } from "~/trpc/react";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
@@ -98,15 +97,9 @@ export function Sidebar({
                     title={base.name}
                   >
                     <div
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${getStoredBaseColor(base.id)}`}
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[8px] text-white ${getStoredBaseColor(base.id)}`}
                     >
-                      <Image
-                        src="/airtable-black.svg"
-                        alt="Base icon"
-                        width={14}
-                        height={14}
-                        className="brightness-0 invert"
-                      />
+                      {base.name.substring(0, 2).toUpperCase()}
                     </div>
                     <span className="truncate">{base.name}</span>
                   </Link>
