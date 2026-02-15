@@ -30,9 +30,28 @@ export function Navigation() {
           {/* Logo */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <div className="text-2xl font-bold">
-                <span className="text-gray-900">Airtable</span>
-              </div>
+              {/* Airtable cube logo */}
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 200 170"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M100 0L0 57.735v57.735l100 57.735 100-57.735V57.735L100 0z"
+                  fill="#FCB400"
+                />
+                <path
+                  d="M100 57.735l-50 28.868v57.735l50-28.868V57.735z"
+                  fill="#18BFFF"
+                />
+                <path
+                  d="M100 57.735l50 28.868v57.735l-50-28.868V57.735z"
+                  fill="#F82B60"
+                />
+              </svg>
+              <span className="text-xl font-bold text-gray-900">Airtable</span>
             </Link>
 
             {/* Nav Links */}

@@ -1120,7 +1120,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             >
               {/* Frozen: checkbox + primary header */}
               <div
-                className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-gray-50"
+                className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-white"
                 style={{
                   width: frozenWidth,
                   height: HEADER_HEIGHT,
@@ -1146,7 +1146,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 {/* Primary column header */}
                 {primaryColumn && (
                   <div
-                    className="relative flex items-center bg-gray-50"
+                    className="relative flex items-center bg-white border-b border-gray-200"
                     style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -1236,7 +1236,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                       return (
                         <div
                           key={header.id}
-                          className="relative border-r border-gray-200 bg-gray-50"
+                          className="relative border-r border-gray-200 bg-white"
                           style={{
                             width: header.getSize(),
                             height: HEADER_HEIGHT,
@@ -1251,7 +1251,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           }}
                         >
                           {editingHeader === col.id ? (
-                            <div className="flex h-full items-center bg-gray-50 px-2">
+                            <div className="flex h-full items-center bg-white px-2">
                               <input
                                 type="text"
                                 value={editingHeaderValue}
@@ -1312,7 +1312,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               </DndContext>
               <div
                 key="_add"
-                className="flex items-center justify-center border border-gray-200 bg-gray-50"
+                className="flex items-center justify-center border border-gray-200 bg-white"
                 style={{ width: 48, height: HEADER_HEIGHT }}
               >
                 <button
