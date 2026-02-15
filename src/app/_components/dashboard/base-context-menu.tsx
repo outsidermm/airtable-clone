@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PencilIcon, DuplicateIcon, FolderIcon, ArrowCircleRightIcon, PaletteIcon, TrashIcon } from "~/components/icons";
-import { useBaseMutations } from "./hooks/use-base-mutations";
+import { useBaseMutations } from "../hooks/use-base-mutations";
 
 interface BaseContextMenuProps {
   base: {

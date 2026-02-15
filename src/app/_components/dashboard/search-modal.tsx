@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { SearchIcon, StarIcon, StarOutlineIcon } from "~/components/icons";
 import { getTimeAgo } from "~/lib/date";
-import { useBaseMutations } from "./hooks/use-base-mutations";
+import { useBaseMutations } from "../hooks/use-base-mutations";
 
 interface RecentBase {
   id: string;

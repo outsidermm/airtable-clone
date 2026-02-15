@@ -10,7 +10,7 @@ import {
   DotsHorizontalIcon,
 } from "~/components/icons";
 import { getTimeAgo } from "~/lib/date";
-import { useBaseMutations } from "./hooks/use-base-mutations";
+import { useBaseMutations } from "../hooks/use-base-mutations";
 
 interface BaseCardProps {
   base: {

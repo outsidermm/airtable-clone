@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { XIcon } from "~/components/icons";
-import { useBaseMutations } from "./hooks/use-base-mutations";
+import { useBaseMutations } from "../hooks/use-base-mutations";
 import Image from "next/image";
 
 interface CreateBaseModalProps {
