@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function TestimonialSection() {
   return (
-    <section className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 px-6 py-20">
+    <section className="bg-linear-to-br from-slate-900 via-blue-900 to-indigo-900 px-6 py-20">
       <div className="mx-auto max-w-7xl">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* Video/Visual */}
@@ -23,8 +23,8 @@ export function TestimonialSection() {
           {/* Testimonial Content */}
           <div className="text-white">
             <blockquote className="mb-8 text-2xl font-medium leading-relaxed md:text-3xl">
-              "Airtable makes it easy to deliver AI insights to every team
-              quickly and without complex builds."
+              &quot;Airtable makes it easy to deliver AI insights to every team
+              quickly and without complex builds.&quot;
             </blockquote>
 
             <div className="mb-8 flex items-center gap-4">

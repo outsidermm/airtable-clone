@@ -383,7 +383,7 @@ function SortableRow(props: SortableRowProps) {
                                        activeSearchCell?.columnId === primaryColumn.id;
           const isPrimaryHighlighted = highlightedCells?.get(rowData.id)?.has(primaryColumn.id);
 
-          let primaryCellBg = "bg-red";
+          let primaryCellBg = "bg-white";
           if (isPrimaryActiveSearch) {
             primaryCellBg = "bg-yellow-300";
           } else if (isPrimaryHighlighted) {
@@ -1110,7 +1110,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     );
 
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
         <div ref={parentRef} className="flex-1 overflow-auto">
           <div
             className="flex min-h-full flex-col"

@@ -13,7 +13,7 @@ export function Navigation() {
       {/* Top Banner */}
       <div className="bg-gray-900 px-4 py-2.5 text-center text-sm text-white">
         <div className="flex items-center justify-center gap-2">
-          <span>Introducing Airtable's new product</span>
+          <span>Introducing Airtable&quot;s new product</span>
           <span className="font-semibold">🤖 Superagent</span>
           <Link
             href="https://superagent.com"
