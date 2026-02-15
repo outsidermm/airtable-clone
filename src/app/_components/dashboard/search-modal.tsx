@@ -48,7 +48,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       await utils.base.getAll.cancel();
       const previousBases = utils.base.getAll.getData();
       utils.base.getAll.setData(undefined, (old) =>
-        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b))
+        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b)),
       );
       return { previousBases };
     },
@@ -87,7 +87,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   // Filter bases by search query
   const filteredBases = allBases.filter((base) =>
-    base.name.toLowerCase().includes(searchQuery.toLowerCase())
+    base.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Get recent bases that still exist in allBases
@@ -103,7 +103,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   // Remove duplicates
   const uniqueResults = allResults.filter(
-    (base, index, self) => self.findIndex((b) => b.id === base.id) === index
+    (base, index, self) => self.findIndex((b) => b.id === base.id) === index,
   );
 
   // Handle keyboard navigation
@@ -116,7 +116,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev < uniqueResults.length - 1 ? prev + 1 : prev
+          prev < uniqueResults.length - 1 ? prev + 1 : prev,
         );
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -132,6 +132,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedIndex, uniqueResults, onClose]);
 
   // Reset selected index when search query changes
@@ -144,7 +145,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     onClose();
   };
 
-  const handleClickOutside = (e: React.MouseEvent) => {
+  const handleClickOutside = (_e: React.MouseEvent) => {
     onClose();
   };
 
@@ -152,24 +153,24 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-32"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-4"
       onClick={handleClickOutside}
     >
       <div
-        className="w-full max-w-2xl rounded-lg bg-white shadow-2xl"
+        className="w-full max-w-2xl rounded-lg bg-white px-2 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input */}
         <div className="border-b border-gray-200 p-4">
           <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <SearchIcon className="absolute top-1/2 left-3 h-8 w-8 -translate-y-1/2 text-gray-700" />
             <input
               ref={inputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search bases..."
-              className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Search..."
+              className="w-full rounded-lg py-3 pr-4 pl-14 text-lg ring-0 focus:outline-0"
             />
           </div>
         </div>
@@ -189,8 +190,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     Recently opened
                   </div>
                   {validRecentBases.map((base, index) => {
-                    const recentBase = recentBases.find((r) => r.id === base.id);
-                    const timeAgo = recentBase ? getTimeAgo(recentBase.timestamp) : "";
+                    const recentBase = recentBases.find(
+                      (r) => r.id === base.id,
+                    );
+                    const timeAgo = recentBase
+                      ? getTimeAgo(recentBase.timestamp)
+                      : "";
                     return (
                       <div
                         key={base.id}
@@ -206,23 +211,27 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           onClick={() => handleSelectBase(base)}
                           className="flex w-full items-center gap-3 text-left"
                         >
-                          <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                          <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-200 text-xs font-semibold text-gray-600">
                             {base.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900">{base.name}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900">
+                              {base.name}
+                            </div>
                             {timeAgo && (
-                              <div className="text-xs text-gray-500">{timeAgo}</div>
+                              <div className="text-xs text-gray-500">
+                                {timeAgo}
+                              </div>
                             )}
                           </div>
                         </button>
-                        {hoveredBaseId === base.id && (
+                        {(hoveredBaseId === base.id || base.starred) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleStarredMutation.mutate({ id: base.id });
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded"
+                            className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-1 hover:bg-gray-200"
                           >
                             {base.starred ? (
                               <StarIcon className="h-4 w-4 text-yellow-500" />
@@ -250,8 +259,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       searchQuery === ""
                         ? validRecentBases.length + index
                         : index;
-                    const recentBase = recentBases.find((r) => r.id === base.id);
-                    const timeAgo = recentBase ? getTimeAgo(recentBase.timestamp) : "";
+                    const recentBase = recentBases.find(
+                      (r) => r.id === base.id,
+                    );
+                    const timeAgo = recentBase
+                      ? getTimeAgo(recentBase.timestamp)
+                      : "";
                     return (
                       <div
                         key={base.id}
@@ -267,23 +280,27 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           onClick={() => handleSelectBase(base)}
                           className="flex w-full items-center gap-3 text-left"
                         >
-                          <div className="h-8 w-8 rounded bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                          <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-200 text-xs font-semibold text-gray-600">
                             {base.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900">{base.name}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900">
+                              {base.name}
+                            </div>
                             {timeAgo && (
-                              <div className="text-xs text-gray-500">{timeAgo}</div>
+                              <div className="text-xs text-gray-500">
+                                {timeAgo}
+                              </div>
                             )}
                           </div>
                         </button>
-                        {hoveredBaseId === base.id && (
+                        {(hoveredBaseId === base.id || base.starred) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleStarredMutation.mutate({ id: base.id });
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded"
+                            className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-1 hover:bg-gray-200"
                           >
                             {base.starred ? (
                               <StarIcon className="h-4 w-4 text-yellow-500" />
@@ -302,23 +319,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         </div>
 
         {/* Footer hint */}
-        <div className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500">
-          <kbd className="rounded border border-gray-300 px-1.5 py-0.5">↑</kbd>
-          <kbd className="ml-1 rounded border border-gray-300 px-1.5 py-0.5">
-            ↓
-          </kbd>{" "}
-          to navigate,{" "}
-          <kbd className="rounded border border-gray-300 px-1.5 py-0.5">
-            Enter
-          </kbd>{" "}
-          to select,{" "}
-          <kbd className="rounded border border-gray-300 px-1.5 py-0.5">
-            Esc
-          </kbd>{" "}
-          to close
+        <div className="border-t border-gray-200 px-4 py-4 text-xs text-gray-500">
+          Press <kbd className="roundedpx-1.5 ml-1 py-0.5">⌘ K</kbd> any time to
+          search
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
