@@ -70,7 +70,7 @@ function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999] flex flex-col items-end justify-end gap-2 p-4">
+    <div className="pointer-events-none fixed inset-0 z-9999 flex flex-col items-end justify-end gap-2 p-4">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={onClose} />
       ))}
