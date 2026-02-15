@@ -250,6 +250,7 @@ interface SortableRowProps {
   setHoveredRowId: (id: number | null) => void;
   onContextMenu?: (state: ContextMenuState) => void;
   totalScrollableWidth: number;
+  showLastRowTooltip: boolean;
 }
 
 function SortableRow(props: SortableRowProps) {
@@ -283,6 +284,7 @@ function SortableRow(props: SortableRowProps) {
     setHoveredRowId,
     onContextMenu,
     totalScrollableWidth,
+    showLastRowTooltip,
   } = props;
 
   const {
@@ -395,7 +397,7 @@ function SortableRow(props: SortableRowProps) {
           return (
             <div
               id={`cell-${rowData.id}-${primaryColumn.id}`}
-              className={`flex items-center px-2 ${
+              className={`relative flex items-center px-2 ${
                 isSelectedCell ? "ring-2 ring-blue-500 ring-inset" : ""
               } ${primaryCellBg}`}
               style={{ width: primaryColumnWidth }}
@@ -429,25 +431,35 @@ function SortableRow(props: SortableRowProps) {
                 />
               </div>
             ) : (
-              <input
-                type="text"
-                defaultValue={
-                  rowData.cells[String(primaryColumn.id)] != null
-                    ? String(rowData.cells[String(primaryColumn.id)])
-                    : ""
-                }
-                readOnly={
-                  editingCell?.rowId !== rowData.id ||
-                  editingCell?.columnId !== primaryColumn.id
-                }
-                className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                onDoubleClick={() =>
-                  setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
-                }
-                onChange={(e) =>
-                  handleCellChange(rowData.id, primaryColumn.id, e.target.value)
-                }
-              />
+              <>
+                <input
+                  type="text"
+                  defaultValue={
+                    rowData.cells[String(primaryColumn.id)] != null
+                      ? String(rowData.cells[String(primaryColumn.id)])
+                      : ""
+                  }
+                  readOnly={
+                    editingCell?.rowId !== rowData.id ||
+                    editingCell?.columnId !== primaryColumn.id
+                  }
+                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                  onDoubleClick={() =>
+                    setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
+                  }
+                  onChange={(e) =>
+                    handleCellChange(rowData.id, primaryColumn.id, e.target.value)
+                  }
+                />
+                {showLastRowTooltip &&
+                  editingCell?.rowId === rowData.id &&
+                  editingCell?.columnId === primaryColumn.id && (
+                    <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                      Shift+Enter to create new row
+                      <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
+                    </div>
+                  )}
+              </>
             )}
           </div>
           );
@@ -491,7 +503,7 @@ function SortableRow(props: SortableRowProps) {
             <div
               key={col.id}
               id={`cell-${rowData.id}-${col.id}`}
-              className={`flex items-center border-r border-gray-200 px-2 ${
+              className={`relative flex items-center border-r border-gray-200 px-2 ${
                 isOriginCell ? "ring-2 ring-blue-500 ring-inset" : ""
               } ${cellBg}`}
               style={{
@@ -518,21 +530,31 @@ function SortableRow(props: SortableRowProps) {
                   <HighlightedText text={displayValue} query={searchQuery} />
                 </div>
               ) : (
-                <input
-                  type="text"
-                  defaultValue={displayValue}
-                  readOnly={
-                    editingCell?.rowId !== rowData.id ||
-                    editingCell?.columnId !== col.id
-                  }
-                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                  onDoubleClick={() =>
-                    setEditingCell({ rowId: rowData.id, columnId: col.id })
-                  }
-                  onChange={(e) =>
-                    handleCellChange(rowData.id, col.id, e.target.value)
-                  }
-                />
+                <>
+                  <input
+                    type="text"
+                    defaultValue={displayValue}
+                    readOnly={
+                      editingCell?.rowId !== rowData.id ||
+                      editingCell?.columnId !== col.id
+                    }
+                    className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                    onDoubleClick={() =>
+                      setEditingCell({ rowId: rowData.id, columnId: col.id })
+                    }
+                    onChange={(e) =>
+                      handleCellChange(rowData.id, col.id, e.target.value)
+                    }
+                  />
+                  {showLastRowTooltip &&
+                    editingCell?.rowId === rowData.id &&
+                    editingCell?.columnId === col.id && (
+                      <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                        Shift+Enter to create new row
+                        <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
+                      </div>
+                    )}
+                </>
               )}
             </div>
           );
@@ -582,6 +604,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [editingHeaderValue, setEditingHeaderValue] = useState("");
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
+    const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
 
     const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
     const parentRef = useRef<HTMLDivElement>(null);
@@ -753,20 +776,76 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       }
     }, [editingCell]);
 
-    // --- Exit edit mode on Escape or Enter ---
+    // --- Enter key behavior for editing and navigation ---
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (editingCell) {
-          if (e.key === "Escape" || e.key === "Enter") {
-            e.preventDefault();
-            setEditingCell(null);
+        // Handle Shift+Enter to add new row
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          onAddRow();
+          setShowLastRowTooltip(false);
+          return;
+        }
+
+        // Handle Enter key when editing
+        if (editingCell && e.key === "Enter") {
+          e.preventDefault();
+          setEditingCell(null);
+
+          // Find current row index
+          const currentRowIndex = rows.findIndex(
+            (r) => r.id === editingCell.rowId,
+          );
+
+          if (currentRowIndex !== -1) {
+            // If not on last row, move to cell below
+            if (currentRowIndex < rows.length - 1) {
+              const nextRow = rows[currentRowIndex + 1];
+              if (nextRow) {
+                setSelectedCell({
+                  rowId: nextRow.id,
+                  columnId: editingCell.columnId,
+                });
+                // Scroll to next cell
+                setTimeout(() => {
+                  const cellId = `cell-${nextRow.id}-${editingCell.columnId}`;
+                  const cellElement = document.getElementById(cellId);
+                  if (cellElement) {
+                    cellElement.scrollIntoView({
+                      block: "nearest",
+                      inline: "nearest",
+                      behavior: "smooth",
+                    });
+                  }
+                }, 0);
+              }
+            } else {
+              // On last row, show tooltip
+              setShowLastRowTooltip(true);
+              setTimeout(() => setShowLastRowTooltip(false), 3000);
+            }
           }
+          return;
+        }
+
+        // Handle Enter key when cell is selected but not editing
+        if (selectedCell && !editingCell && e.key === "Enter") {
+          e.preventDefault();
+          setEditingCell(selectedCell);
+          return;
+        }
+
+        // Handle Escape key to exit edit mode
+        if (editingCell && e.key === "Escape") {
+          e.preventDefault();
+          setEditingCell(null);
+          setShowLastRowTooltip(false);
         }
       };
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editingCell]);
+    }, [editingCell, selectedCell, rows, onAddRow]);
 
     // --- Arrow key navigation between cells ---
     useEffect(() => {
@@ -1397,6 +1476,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         setHoveredRowId={setHoveredRowId}
                         onContextMenu={onContextMenu}
                         totalScrollableWidth={totalScrollableWidth}
+                        showLastRowTooltip={showLastRowTooltip}
                       />
                     );
                   })}
