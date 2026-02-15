@@ -114,7 +114,6 @@ export function DashboardLayout({
         <Sidebar
           currentPage={currentPage}
           isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleSidebar}
           onHoverEnter={handleSidebarHoverEnter}
           onHoverLeave={handleSidebarHoverLeave}
         />

@@ -11,6 +11,7 @@ import {
   StarOutlineIcon,
   DotsHorizontalIcon,
 } from "~/components/icons";
+import { getTimeAgo } from "~/lib/date";
 
 interface BaseCardProps {
   base: {
@@ -166,7 +167,7 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
               )}
               {base.updatedAt && (
                 <p className="mt-0.5 text-[11px] text-gray-500">
-                  {base.updatedAt.toDateString()}
+                  {"Modified " + getTimeAgo(base.updatedAt.getTime())}
                 </p>
               )}
             </div>
@@ -286,7 +287,7 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
         <div className="flex flex-1 items-center justify-between">
           {base.updatedAt && (
             <p className="mt-0.5 flex-1 text-xs text-gray-500">
-              {base.updatedAt.toDateString()}
+              {"Modified " + getTimeAgo(base.updatedAt.getTime())}
             </p>
           )}
 

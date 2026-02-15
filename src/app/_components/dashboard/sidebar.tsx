@@ -16,12 +16,12 @@ import {
   ViewGridIcon,
   ShoppingBagIcon,
   UploadIcon,
+  ChevronRightIcon,
 } from "~/components/icons";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";
   isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
   onHoverEnter?: () => void;
   onHoverLeave?: () => void;
 }
@@ -29,7 +29,6 @@ interface SidebarProps {
 export function Sidebar({
   currentPage = "home",
   isCollapsed = false,
-  onToggleCollapse,
   onHoverEnter,
   onHoverLeave,
 }: SidebarProps) {
@@ -83,10 +82,11 @@ export function Sidebar({
           {!isCollapsed && isStarredOpen && (
             <div className="mt-1 ml-7 space-y-1">
               {starredBases.length === 0 ? (
-                <div className="flex flex-row gap-4 items-center">
-                  <StarOutlineIcon className="h-7 w-7 shrink-0 text-gray-500 border p-1 border-gray-200" />
+                <div className="flex flex-row items-center gap-4">
+                  <StarOutlineIcon className="h-7 w-7 shrink-0 border border-gray-200 p-1 text-gray-500" />
                   <p className="text-[10px] text-gray-500">
-                    Your starred bases, interfaces, and workspaces will appear here
+                    Your starred bases, interfaces, and workspaces will appear
+                    here
                   </p>
                 </div>
               ) : (
@@ -97,7 +97,9 @@ export function Sidebar({
                     className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                     title={base.name}
                   >
-                    <div className={`h-5 w-5 shrink-0 rounded flex items-center justify-center ${getStoredBaseColor(base.id)}`}>
+                    <div
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${getStoredBaseColor(base.id)}`}
+                    >
                       <Image
                         src="/airtable-black.svg"
                         alt="Base icon"
@@ -140,14 +142,9 @@ export function Sidebar({
               {!isCollapsed && "Workspaces"}
             </div>
             {!isCollapsed && (
-              <div
-                className="rounded p-0.5 hover:bg-gray-200 cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // TODO: Add workspace creation logic
-                }}
-              >
+              <div className="flex cursor-pointer flex-row gap-2 rounded p-0.5 hover:bg-gray-200">
                 <PlusIcon className="h-3 w-3" />
+                <ChevronRightIcon className="h-3 w-3" />
               </div>
             )}
           </button>
