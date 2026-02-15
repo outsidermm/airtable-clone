@@ -15,20 +15,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-
-// --- Drag handle SVG ---
-function DragHandle({ className, ...props }: { className?: string } & React.HTMLAttributes<SVGSVGElement>) {
-  return (
-    <svg className={className ?? "h-3 w-3 cursor-grab text-gray-300"} viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
+import { DragHandle } from "./grid-table/ui-components";
 
 interface View {
   id: number;

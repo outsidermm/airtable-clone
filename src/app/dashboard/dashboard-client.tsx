@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DashboardLayout } from "~/app/_components/dashboard/dashboard-layout";
 import { BaseCard } from "~/app/_components/dashboard/base-card";
 import { api } from "~/trpc/react";
+import { ChevronDownIcon, ListIcon, ViewGridIcon } from "~/components/icons";
 
 interface DashboardClientProps {
   user: {
@@ -61,19 +62,7 @@ export function DashboardClient({ user, initialBases }: DashboardClientProps) {
           <div className="mb-3 flex items-center justify-between">
             <button className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900">
               <span>Opened anytime</span>
-              <svg
-                className="h-3 w-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <ChevronDownIcon className="h-3 w-3" />
             </button>
             <div className="flex gap-1.5">
               <button
@@ -81,48 +70,35 @@ export function DashboardClient({ user, initialBases }: DashboardClientProps) {
                 className={`rounded-2xl p-1.5 ${viewMode === "list" ? "bg-gray-200" : "hover:bg-gray-100"}`}
                 title="List view"
               >
-                <svg
+                <ListIcon
                   className={`h-4 w-4 ${viewMode === "list" ? "text-gray-900" : "text-gray-600"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                  />
-                </svg>
+                />
               </button>
               <button
                 onClick={() => setViewMode("grid")}
                 className={`rounded-2xl p-1.5 ${viewMode === "grid" ? "bg-gray-200" : "hover:bg-gray-100"}`}
                 title="Grid view"
               >
-                <svg
+                <ViewGridIcon
                   className={`h-4 w-4 ${viewMode === "grid" ? "text-gray-900" : "text-gray-600"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
-                  />
-                </svg>
+                />
               </button>
             </div>
           </div>
+          {viewMode === "list" && (
+            <div className="mb-2 flex items-center gap-4 px-2 py-1 text-xs font-medium text-gray-500 border-b border-gray-200">
+              <span className="w-1/2">Name</span>
+              <span className="w-1/4">Last modified</span>
+              <span className="w-1/4">Created by</span>
+            </div>
+          )}
 
           {/* Base Cards */}
           <div
             className={
               viewMode === "grid"
-                ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                : "flex flex-col gap-2 max-w-3xl"
+                ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                : "flex flex-col"
             }
           >
             {bases.map((base) => (

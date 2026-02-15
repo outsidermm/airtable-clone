@@ -1,0 +1,13 @@
+[    1693ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.airtable.com/:0
+[    1693ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.airtable.com/:0
+[    1791ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:270
+[    1791ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:270
+[    1792ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:270
+[    1792ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:270
+[    1794ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:691
+[    1794ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://www.googletagmanager.com/gtm.js?id=GTM-NCLXNTS:691
+[    2324ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://cdn.intellimize.co/snippet/117868712.js:3
+[    2324ms] [ERROR] The source list for the Content Security Policy directive 'object-src' contains an invalid source: '//pages.airtable.com'. It will be ignored. @ https://cdn.intellimize.co/snippet/117868712.js:3
+[    2366ms] [WARNING] react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next {code: NO_I18NEXT_INSTANCE} @ https://www.airtable.com/_next/static/chunks/pages/_app-49fcba4a69077ca8.js:4
+[    3441ms] unauthorized
+[    3442ms] unauthorized

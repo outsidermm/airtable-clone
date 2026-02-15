@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { CheckIcon, XIcon, InfoIcon, WarningIcon } from "~/components/icons";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -69,7 +70,7 @@ function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999] flex flex-col items-end justify-end gap-2 p-4">
+    <div className="pointer-events-none fixed inset-0 z-9999 flex flex-col items-end justify-end gap-2 p-4">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={onClose} />
       ))}
@@ -105,26 +106,10 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
   }[toast.type];
 
   const icon = {
-    success: (
-      <svg className={`h-5 w-5 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
-    ),
-    error: (
-      <svg className={`h-5 w-5 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    ),
-    info: (
-      <svg className={`h-5 w-5 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    warning: (
-      <svg className={`h-5 w-5 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    ),
+    success: <CheckIcon className={`h-5 w-5 ${iconColor}`} />,
+    error: <XIcon className={`h-5 w-5 ${iconColor}`} />,
+    info: <InfoIcon className={`h-5 w-5 ${iconColor}`} />,
+    warning: <WarningIcon className={`h-5 w-5 ${iconColor}`} />,
   }[toast.type];
 
   return (
@@ -137,9 +122,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
         onClick={() => onClose(toast.id)}
         className={`shrink-0 rounded hover:bg-black/10 ${textColor}`}
       >
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <XIcon className="h-4 w-4" />
       </button>
     </div>
   );

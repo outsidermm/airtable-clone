@@ -35,27 +35,18 @@ import { CSS } from "@dnd-kit/utilities";
 import type { ColumnType } from "generated/prisma/enums";
 import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
+import {
+  ROW_HEIGHT_MAP,
+  HEADER_HEIGHT,
+  CHECKBOX_WIDTH,
+  PRIMARY_WIDTH,
+} from "./grid-table/constants";
+import type { CellAddress, GridTableHandle } from "./grid-table/types";
+import { DragHandle, HighlightedText } from "./grid-table/ui-components";
+import { TextIcon, NumberIcon, SortAscIcon, SortDescIcon } from "~/components/icons";
 
-// --- Row height map ---
-const ROW_HEIGHT_MAP: Record<string, number> = {
-  short: 36,
-  medium: 56,
-  tall: 84,
-  extraTall: 120,
-};
-const HEADER_HEIGHT = 36;
-const CHECKBOX_WIDTH = 66;
-const PRIMARY_WIDTH = 250;
-
-// --- Types ---
-interface CellAddress {
-  rowId: number;
-  columnId: number;
-}
-
-export interface GridTableHandle {
-  scrollToRow: (rowId: number) => void;
-}
+// Re-export types for external consumers
+export type { GridTableHandle } from "./grid-table/types";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -82,49 +73,6 @@ interface GridTableProps {
   activeSearchCell?: { rowId: number; columnId: number };
   searchQuery?: string;
   onContextMenu?: (state: ContextMenuState) => void;
-}
-
-// --- Drag handle SVG ---
-function DragHandle({
-  className,
-  ...props
-}: { className?: string } & React.HTMLAttributes<SVGSVGElement>) {
-  return (
-    <svg
-      className={className ?? "h-3 w-3 cursor-grab text-gray-300"}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      {...props}
-    >
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
-
-// --- Highlighted Text Component ---
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
-
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  const index = lowerText.indexOf(lowerQuery);
-
-  if (index === -1) return <>{text}</>;
-
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="bg-yellow-400 font-medium">
-        {text.slice(index, index + query.length)}
-      </mark>
-      {text.slice(index + query.length)}
-    </>
-  );
 }
 
 // --- Sortable Header Cell ---
@@ -161,54 +109,23 @@ function SortableHeaderCell({
 
   const sortEntry = sorts.find((s) => s.columnId === column.id);
 
+  const ColumnTypeIcon = column.type === "NUMBER" ? NumberIcon : TextIcon;
+  const SortIcon = sortEntry?.direction === "asc" ? SortAscIcon : SortDescIcon;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex h-full items-center justify-between bg-gray-50 px-2 py-1.5"
+      className="group flex h-full items-center justify-between bg-white px-2 py-1.5"
       {...attributes}
       {...listeners}
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
-        <svg
-          className="h-3.5 w-3.5 shrink-0 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d={
-              column.type === "NUMBER"
-                ? "M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                : "M4 6h16M4 12h16m-7 6h7"
-            }
-          />
-        </svg>
+        <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
         <span className="truncate text-xs font-normal text-gray-700">
           {column.name}
         </span>
-        {sortEntry && (
-          <svg
-            className="h-3 w-3 shrink-0 text-blue-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={
-                sortEntry.direction === "asc"
-                  ? "M5 15l7-7 7 7"
-                  : "M19 9l-7 7-7-7"
-              }
-            />
-          </svg>
-        )}
+        {sortEntry && <SortIcon className="h-3 w-3 shrink-0 text-blue-500" />}
       </div>
       {children}
     </div>
@@ -250,6 +167,7 @@ interface SortableRowProps {
   setHoveredRowId: (id: number | null) => void;
   onContextMenu?: (state: ContextMenuState) => void;
   totalScrollableWidth: number;
+  showLastRowTooltip: boolean;
 }
 
 function SortableRow(props: SortableRowProps) {
@@ -283,6 +201,7 @@ function SortableRow(props: SortableRowProps) {
     setHoveredRowId,
     onContextMenu,
     totalScrollableWidth,
+    showLastRowTooltip,
   } = props;
 
   const {
@@ -371,49 +290,51 @@ function SortableRow(props: SortableRowProps) {
         </div>
 
         {/* Primary cell */}
-        {primaryColumn && (
-          <div
-            id={`cell-${rowData.id}-${primaryColumn.id}`}
-            className={`flex items-center px-2 ${
-              selectedCell?.rowId === rowData.id &&
-              selectedCell?.columnId === primaryColumn.id
-                ? "ring-2 ring-blue-500 ring-inset"
-                : ""
-            } ${
-              isMultiSelect &&
-              selectedCells.has(`${rowData.id}-${primaryColumn.id}`) &&
-              !(
-                selectedCell?.rowId === rowData.id &&
-                selectedCell?.columnId === primaryColumn.id
-              )
-                ? "bg-blue-50/70"
-                : ""
-            } ${
-              activeSearchCell?.rowId === rowData.id &&
-              activeSearchCell?.columnId === primaryColumn.id
-                ? "bg-yellow-300"
-                : highlightedCells?.get(rowData.id)?.has(primaryColumn.id)
-                  ? "bg-yellow-100"
-                  : ""
-            }`}
-            style={{ width: primaryColumnWidth }}
-            onMouseDown={(e) =>
-              handleMouseDown(rowData.id, primaryColumn.id, e)
-            }
-            onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onContextMenu?.({
-                type: "cell",
-                position: { x: e.clientX, y: e.clientY },
-                data: {
-                  rowId: rowData.id,
-                  columnId: primaryColumn.id,
-                  rowIndex: virtualIndex,
-                },
-              });
-            }}
-          >
+        {primaryColumn && (() => {
+          // Compute primary cell styling
+          const primaryCellKey = `${rowData.id}-${primaryColumn.id}`;
+          const isSelectedCell = selectedCell?.rowId === rowData.id &&
+                                 selectedCell?.columnId === primaryColumn.id;
+          const isInMultiSelection = isMultiSelect &&
+                                    selectedCells.has(primaryCellKey) &&
+                                    !isSelectedCell;
+          const isPrimaryActiveSearch = activeSearchCell?.rowId === rowData.id &&
+                                       activeSearchCell?.columnId === primaryColumn.id;
+          const isPrimaryHighlighted = highlightedCells?.get(rowData.id)?.has(primaryColumn.id);
+
+          let primaryCellBg = "bg-white";
+          if (isPrimaryActiveSearch) {
+            primaryCellBg = "bg-yellow-300";
+          } else if (isPrimaryHighlighted) {
+            primaryCellBg = "bg-yellow-100";
+          } else if (isInMultiSelection) {
+            primaryCellBg = "bg-blue-50/70";
+          }
+
+          return (
+            <div
+              id={`cell-${rowData.id}-${primaryColumn.id}`}
+              className={`relative flex items-center px-2 ${
+                isSelectedCell ? "ring-2 ring-blue-500 ring-inset" : ""
+              } ${primaryCellBg}`}
+              style={{ width: primaryColumnWidth }}
+              onMouseDown={(e) =>
+                handleMouseDown(rowData.id, primaryColumn.id, e)
+              }
+              onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onContextMenu?.({
+                  type: "cell",
+                  position: { x: e.clientX, y: e.clientY },
+                  data: {
+                    rowId: rowData.id,
+                    columnId: primaryColumn.id,
+                    rowIndex: virtualIndex,
+                  },
+                });
+              }}
+            >
             {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) &&
             searchQuery ? (
               <div className="w-full text-xs text-gray-900">
@@ -427,28 +348,39 @@ function SortableRow(props: SortableRowProps) {
                 />
               </div>
             ) : (
-              <input
-                type="text"
-                defaultValue={
-                  rowData.cells[String(primaryColumn.id)] != null
-                    ? String(rowData.cells[String(primaryColumn.id)])
-                    : ""
-                }
-                readOnly={
-                  editingCell?.rowId !== rowData.id ||
-                  editingCell?.columnId !== primaryColumn.id
-                }
-                className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                onDoubleClick={() =>
-                  setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
-                }
-                onChange={(e) =>
-                  handleCellChange(rowData.id, primaryColumn.id, e.target.value)
-                }
-              />
+              <>
+                <input
+                  type="text"
+                  defaultValue={
+                    rowData.cells[String(primaryColumn.id)] != null
+                      ? String(rowData.cells[String(primaryColumn.id)])
+                      : ""
+                  }
+                  readOnly={
+                    editingCell?.rowId !== rowData.id ||
+                    editingCell?.columnId !== primaryColumn.id
+                  }
+                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                  onDoubleClick={() =>
+                    setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
+                  }
+                  onChange={(e) =>
+                    handleCellChange(rowData.id, primaryColumn.id, e.target.value)
+                  }
+                />
+                {showLastRowTooltip &&
+                  editingCell?.rowId === rowData.id &&
+                  editingCell?.columnId === primaryColumn.id && (
+                    <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                      Shift+Enter to create new row
+                      <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
+                    </div>
+                  )}
+              </>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Scrollable cells */}
@@ -475,7 +407,7 @@ function SortableRow(props: SortableRowProps) {
           const cellValue = rowData.cells[String(col.id)];
           const displayValue = cellValue != null ? String(cellValue) : "";
 
-          let cellBg = "";
+          let cellBg = "bg-white";
           if (isActiveSearchCell) {
             cellBg = "bg-yellow-300";
           } else if (isHighlighted) {
@@ -488,7 +420,7 @@ function SortableRow(props: SortableRowProps) {
             <div
               key={col.id}
               id={`cell-${rowData.id}-${col.id}`}
-              className={`flex items-center border-r border-gray-200 px-2 ${
+              className={`relative flex items-center border-r border-gray-200 px-2 ${
                 isOriginCell ? "ring-2 ring-blue-500 ring-inset" : ""
               } ${cellBg}`}
               style={{
@@ -515,27 +447,36 @@ function SortableRow(props: SortableRowProps) {
                   <HighlightedText text={displayValue} query={searchQuery} />
                 </div>
               ) : (
-                <input
-                  type="text"
-                  defaultValue={displayValue}
-                  readOnly={
-                    editingCell?.rowId !== rowData.id ||
-                    editingCell?.columnId !== col.id
-                  }
-                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                  onDoubleClick={() =>
-                    setEditingCell({ rowId: rowData.id, columnId: col.id })
-                  }
-                  onChange={(e) =>
-                    handleCellChange(rowData.id, col.id, e.target.value)
-                  }
-                />
+                <>
+                  <input
+                    type="text"
+                    defaultValue={displayValue}
+                    readOnly={
+                      editingCell?.rowId !== rowData.id ||
+                      editingCell?.columnId !== col.id
+                    }
+                    className="w-full bg-transparent text-xs text-gray-900 outline-none"
+                    onDoubleClick={() =>
+                      setEditingCell({ rowId: rowData.id, columnId: col.id })
+                    }
+                    onChange={(e) =>
+                      handleCellChange(rowData.id, col.id, e.target.value)
+                    }
+                  />
+                  {showLastRowTooltip &&
+                    editingCell?.rowId === rowData.id &&
+                    editingCell?.columnId === col.id && (
+                      <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                        Shift+Enter to create new row
+                        <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
+                      </div>
+                    )}
+                </>
               )}
             </div>
           );
         })}
       </div>
-      <div className="w-16 border-none bg-gray-50" />
     </div>
   );
 }
@@ -580,6 +521,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [editingHeaderValue, setEditingHeaderValue] = useState("");
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
+    const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
 
     const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
     const parentRef = useRef<HTMLDivElement>(null);
@@ -679,6 +621,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         setSelectionStart({ rowId, columnId });
         setSelectionEnd({ rowId, columnId });
         setIsSelecting(true);
+        // Exit edit mode when clicking on a cell
+        setEditingCell(null);
       },
       [],
     );
@@ -748,6 +692,77 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         }
       }
     }, [editingCell]);
+
+    // --- Enter key behavior for editing and navigation ---
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Handle Shift+Enter to add new row
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          onAddRow();
+          setShowLastRowTooltip(false);
+          return;
+        }
+
+        // Handle Enter key when editing
+        if (editingCell && e.key === "Enter") {
+          e.preventDefault();
+          setEditingCell(null);
+
+          // Find current row index
+          const currentRowIndex = rows.findIndex(
+            (r) => r.id === editingCell.rowId,
+          );
+
+          if (currentRowIndex !== -1) {
+            // If not on last row, move to cell below
+            if (currentRowIndex < rows.length - 1) {
+              const nextRow = rows[currentRowIndex + 1];
+              if (nextRow) {
+                setSelectedCell({
+                  rowId: nextRow.id,
+                  columnId: editingCell.columnId,
+                });
+                // Scroll to next cell
+                setTimeout(() => {
+                  const cellId = `cell-${nextRow.id}-${editingCell.columnId}`;
+                  const cellElement = document.getElementById(cellId);
+                  if (cellElement) {
+                    cellElement.scrollIntoView({
+                      block: "nearest",
+                      inline: "nearest",
+                      behavior: "smooth",
+                    });
+                  }
+                }, 0);
+              }
+            } else {
+              // On last row, show tooltip
+              setShowLastRowTooltip(true);
+              setTimeout(() => setShowLastRowTooltip(false), 3000);
+            }
+          }
+          return;
+        }
+
+        // Handle Enter key when cell is selected but not editing
+        if (selectedCell && !editingCell && e.key === "Enter") {
+          e.preventDefault();
+          setEditingCell(selectedCell);
+          return;
+        }
+
+        // Handle Escape key to exit edit mode
+        if (editingCell && e.key === "Escape") {
+          e.preventDefault();
+          setEditingCell(null);
+          setShowLastRowTooltip(false);
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [editingCell, selectedCell, rows, onAddRow]);
 
     // --- Arrow key navigation between cells ---
     useEffect(() => {
@@ -1090,7 +1105,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     );
 
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
         <div ref={parentRef} className="flex-1 overflow-auto">
           <div
             className="flex min-h-full flex-col"
@@ -1103,7 +1118,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             >
               {/* Frozen: checkbox + primary header */}
               <div
-                className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-gray-50"
+                className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-white"
                 style={{
                   width: frozenWidth,
                   height: HEADER_HEIGHT,
@@ -1129,7 +1144,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 {/* Primary column header */}
                 {primaryColumn && (
                   <div
-                    className="relative flex items-center bg-gray-50"
+                    className="relative flex items-center bg-white border-b border-gray-200"
                     style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -1219,7 +1234,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                       return (
                         <div
                           key={header.id}
-                          className="relative border-r border-gray-200 bg-gray-50"
+                          className="relative border-r border-gray-200 bg-white"
                           style={{
                             width: header.getSize(),
                             height: HEADER_HEIGHT,
@@ -1234,7 +1249,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           }}
                         >
                           {editingHeader === col.id ? (
-                            <div className="flex h-full items-center bg-gray-50 px-2">
+                            <div className="flex h-full items-center bg-white px-2">
                               <input
                                 type="text"
                                 value={editingHeaderValue}
@@ -1295,7 +1310,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               </DndContext>
               <div
                 key="_add"
-                className="flex items-center justify-center border border-gray-200 bg-gray-50"
+                className="flex items-center justify-center border border-gray-200 bg-white px-12"
                 style={{ width: 48, height: HEADER_HEIGHT }}
               >
                 <button
@@ -1378,6 +1393,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         setHoveredRowId={setHoveredRowId}
                         onContextMenu={onContextMenu}
                         totalScrollableWidth={totalScrollableWidth}
+                        showLastRowTooltip={showLastRowTooltip}
                       />
                     );
                   })}
@@ -1387,7 +1403,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
             {/* Add row button */}
             <div
-              className="flex shrink-0 bg-gray-50"
+              className="flex shrink-0 bg-gray-100"
               style={{ minWidth: "fit-content" }}
             >
               <div
@@ -1426,17 +1442,17 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
             {/* Filler — extends the frozen divider to the bottom of the viewport */}
             <div
-              className="flex flex-1 bg-gray-50"
+              className="flex flex-1 bg-gray-100"
               style={{ minWidth: "fit-content", minHeight: 0 }}
             >
               <div
-                className="sticky left-0 bg-gray-50"
+                className="sticky left-0 "
                 style={{
                   width: frozenWidth,
                   borderRight: "2px solid rgb(209, 213, 219)",
                 }}
               />
-              <div className="flex-1 bg-gray-50" />
+              <div className="flex-1 " />
             </div>
           </div>
         </div>

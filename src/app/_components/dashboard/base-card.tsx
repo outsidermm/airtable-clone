@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState, useRef } from "react";
-import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
+import {
+  StarIcon,
+  StarOutlineIcon,
+  DotsHorizontalIcon,
+} from "~/components/icons";
+import { getTimeAgo } from "~/lib/date";
+import { useBaseMutations } from "../hooks/use-base-mutations";
 
 interface BaseCardProps {
   base: {
@@ -21,41 +26,16 @@ interface BaseCardProps {
 
 export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(base.name);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const utils = api.useUtils();
-
-  const toggleStarredMutation = api.base.toggleStarred.useMutation({
-    onMutate: async ({ id }) => {
-      // Cancel outgoing fetches
-      await utils.base.getAll.cancel();
-
-      // Snapshot previous value
-      const previousBases = utils.base.getAll.getData();
-
-      // Optimistically update
-      utils.base.getAll.setData(undefined, (old) =>
-        old?.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b))
-      );
-
-      return { previousBases };
-    },
-    onError: (_err, _vars, context) => {
-      // Rollback on error
-      if (context?.previousBases) {
-        utils.base.getAll.setData(undefined, context.previousBases);
-      }
-    },
-    onSettled: () => {
-      // Refetch to ensure consistency
-      void utils.base.getAll.invalidate();
-      void utils.base.getStarred.invalidate();
-    },
-  });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const baseMutations = useBaseMutations();
 
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleStarredMutation.mutate({ id: base.id });
+    baseMutations.handleToggleStarred(base.id);
   };
 
   const handleMenuClick = (e: React.MouseEvent) => {
@@ -64,88 +44,216 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     setShowContextMenu(!showContextMenu);
   };
 
-  return (
-    <div className={`group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md ${viewMode === "list" ? "flex items-center" : ""}`}>
-      <Link href={`/base/${base.id}`} className={`${viewMode === "list" ? "flex flex-1 items-center p-3" : "block p-4"}`}>
-        {/* Icon & Name */}
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${getStoredBaseColor(base.id)}`}>
-            <Image
-              src="/airtable-black.svg"
-              alt="Base icon"
-              width={28}
-              height={28}
-              className="brightness-0 invert"
-            />
+  const handleRenameClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRenaming(true);
+    setNewName(base.name);
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (newName.trim() && newName !== base.name) {
+      baseMutations.handleRename(base.id, newName.trim());
+    }
+    setIsRenaming(false);
+  };
+
+  const handleRenameCancel = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsRenaming(false);
+    setNewName(base.name);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      handleRenameCancel(e);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      handleRenameSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
+  // Focus input when entering rename mode
+  if (isRenaming && inputRef.current) {
+    inputRef.current.focus();
+    inputRef.current.select();
+  }
+
+  if (viewMode === "grid") {
+    return (
+      <div className="group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md">
+        <Link
+          href={`/base/${base.id}`}
+          className={`block p-4 ${isRenaming ? "pointer-events-none" : ""}`}
+          aria-disabled={isRenaming}
+          tabIndex={isRenaming ? -1 : undefined}
+        >
+          {/* Icon & Name */}
+          <div className="flex flex-1 items-center gap-2.5">
+            <div
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ${getStoredBaseColor(base.id)}`}
+            >
+              {base.name.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              {isRenaming ? (
+                <form
+                  onSubmit={handleRenameSubmit}
+                  className="flex items-center gap-1"
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    className="w-full rounded border border-blue-500 px-2 py-0.5 text-sm font-medium text-gray-900 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                    autoFocus
+                  />
+                </form>
+              ) : (
+                <h3 className="truncate text-sm font-medium text-gray-900">
+                  {base.name}
+                </h3>
+              )}
+              {base.updatedAt && (
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {"Modified " + getTimeAgo(base.updatedAt.getTime())}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-medium text-gray-900">{base.name}</h3>
-            {base.updatedAt && (
-              <p className="mt-0.5 text-[11px] text-gray-500">{base.updatedAt.toDateString()}</p>
+        </Link>
+
+        {/* Action Buttons (show on hover, or always if starred) */}
+        <div
+          className={`absolute top-2 right-2 flex gap-1 transition-opacity ${base.starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        >
+          {/* Star Button */}
+          <button
+            onClick={handleStarClick}
+            className="rounded border border-gray-200 bg-white p-1"
+            title={base.starred ? "Remove from starred" : "Add to starred"}
+          >
+            {base.starred ? (
+              <StarIcon className="h-4 w-4 text-yellow-500" />
+            ) : (
+              <StarOutlineIcon className="h-4 w-4 text-gray-500" />
             )}
+          </button>
+
+          {/* Three-dot Menu Button */}
+          <button
+            ref={menuButtonRef}
+            onClick={handleMenuClick}
+            className="rounded border border-gray-200 bg-white p-1"
+            title="More options"
+          >
+            <DotsHorizontalIcon className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Context Menu */}
+        <BaseContextMenu
+          base={base}
+          isOpen={showContextMenu}
+          onClose={() => setShowContextMenu(false)}
+          onRename={handleRenameClick}
+          buttonRef={menuButtonRef}
+        />
+      </div>
+    );
+  } else {
+    return (
+      <div className="group flex items-center justify-between gap-4 rounded-lg transition-all hover:bg-gray-200">
+        <div className="flex flex-1 items-center justify-between">
+          <Link href={`/base/${base.id}`} className="flex flex-3 p-4">
+            {/* Icon & Name */}
+            <div className="flex flex-1 items-center gap-2.5">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ${getStoredBaseColor(base.id)}`}
+              >
+                {base.name.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                {isRenaming ? (
+                  <form
+                    onSubmit={handleRenameSubmit}
+                    className="flex items-center gap-1"
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      onBlur={handleRenameSubmit}
+                      className="w-full rounded border border-blue-500 px-2 py-0.5 text-sm font-medium text-gray-900 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      autoFocus
+                    />
+                  </form>
+                ) : (
+                  <h3 className="truncate text-sm font-medium text-gray-900">
+                    {base.name}
+                  </h3>
+                )}
+              </div>
+            </div>
+          </Link>
+
+          {/* Action Buttons (show on hover, or always if starred) */}
+          <div
+            className={`flex flex-1 gap-1 transition-opacity ${base.starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          >
+            {/* Star Button */}
+            <button
+              onClick={handleStarClick}
+              className="rounded p-1"
+              title={base.starred ? "Remove from starred" : "Add to starred"}
+            >
+              {base.starred ? (
+                <StarIcon className="h-4 w-4 text-yellow-500" />
+              ) : (
+                <StarOutlineIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+              )}
+            </button>
+
+            {/* Three-dot Menu Button */}
+            <button
+              ref={menuButtonRef}
+              onClick={handleMenuClick}
+              className="rounded p-1"
+              title="More options"
+            >
+              <DotsHorizontalIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+            </button>
           </div>
         </div>
-      </Link>
-
-      {/* Action Buttons (show on hover) */}
-      <div className={`flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${viewMode === "list" ? "relative pr-3" : "absolute right-2 top-2"}`}>
-        {/* Star Button */}
-        <button
-          onClick={handleStarClick}
-          className="rounded p-1 hover:bg-gray-100"
-          title={base.starred ? "Remove from starred" : "Add to starred"}
-        >
-          {base.starred ? (
-            // Filled star
-            <svg
-              className="h-4 w-4 text-yellow-500"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-          ) : (
-            // Outline star
-            <svg
-              className="h-4 w-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-              />
-            </svg>
+        <div className="flex flex-1 items-center justify-between">
+          {base.updatedAt && (
+            <p className="mt-0.5 flex-1 text-xs text-gray-500">
+              {"Modified " + getTimeAgo(base.updatedAt.getTime())}
+            </p>
           )}
-        </button>
 
-        {/* Three-dot Menu Button */}
-        <button
-          ref={menuButtonRef}
-          onClick={handleMenuClick}
-          className="rounded p-1 hover:bg-gray-100"
-          title="More options"
-        >
-          <svg
-            className="h-4 w-4 text-gray-500"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-          </svg>
-        </button>
+          <p className="flex-1 text-xs text-gray-500">Workspace</p>
+        </div>
+
+        {/* Context Menu */}
+        <BaseContextMenu
+          base={base}
+          isOpen={showContextMenu}
+          onClose={() => setShowContextMenu(false)}
+          onRename={handleRenameClick}
+          buttonRef={menuButtonRef}
+        />
       </div>
-
-      {/* Context Menu */}
-      <BaseContextMenu
-        base={base}
-        isOpen={showContextMenu}
-        onClose={() => setShowContextMenu(false)}
-        buttonRef={menuButtonRef}
-      />
-    </div>
-  );
+    );
+  }
 }
