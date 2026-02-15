@@ -371,49 +371,51 @@ function SortableRow(props: SortableRowProps) {
         </div>
 
         {/* Primary cell */}
-        {primaryColumn && (
-          <div
-            id={`cell-${rowData.id}-${primaryColumn.id}`}
-            className={`flex items-center px-2 ${
-              selectedCell?.rowId === rowData.id &&
-              selectedCell?.columnId === primaryColumn.id
-                ? "ring-2 ring-blue-500 ring-inset"
-                : ""
-            } ${
-              isMultiSelect &&
-              selectedCells.has(`${rowData.id}-${primaryColumn.id}`) &&
-              !(
-                selectedCell?.rowId === rowData.id &&
-                selectedCell?.columnId === primaryColumn.id
-              )
-                ? "bg-blue-50/70"
-                : ""
-            } ${
-              activeSearchCell?.rowId === rowData.id &&
-              activeSearchCell?.columnId === primaryColumn.id
-                ? "bg-yellow-300"
-                : highlightedCells?.get(rowData.id)?.has(primaryColumn.id)
-                  ? "bg-yellow-100"
-                  : ""
-            }`}
-            style={{ width: primaryColumnWidth }}
-            onMouseDown={(e) =>
-              handleMouseDown(rowData.id, primaryColumn.id, e)
-            }
-            onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onContextMenu?.({
-                type: "cell",
-                position: { x: e.clientX, y: e.clientY },
-                data: {
-                  rowId: rowData.id,
-                  columnId: primaryColumn.id,
-                  rowIndex: virtualIndex,
-                },
-              });
-            }}
-          >
+        {primaryColumn && (() => {
+          // Compute primary cell styling
+          const primaryCellKey = `${rowData.id}-${primaryColumn.id}`;
+          const isSelectedCell = selectedCell?.rowId === rowData.id &&
+                                 selectedCell?.columnId === primaryColumn.id;
+          const isInMultiSelection = isMultiSelect &&
+                                    selectedCells.has(primaryCellKey) &&
+                                    !isSelectedCell;
+          const isPrimaryActiveSearch = activeSearchCell?.rowId === rowData.id &&
+                                       activeSearchCell?.columnId === primaryColumn.id;
+          const isPrimaryHighlighted = highlightedCells?.get(rowData.id)?.has(primaryColumn.id);
+
+          let primaryCellBg = "bg-red";
+          if (isPrimaryActiveSearch) {
+            primaryCellBg = "bg-yellow-300";
+          } else if (isPrimaryHighlighted) {
+            primaryCellBg = "bg-yellow-100";
+          } else if (isInMultiSelection) {
+            primaryCellBg = "bg-blue-50/70";
+          }
+
+          return (
+            <div
+              id={`cell-${rowData.id}-${primaryColumn.id}`}
+              className={`flex items-center px-2 ${
+                isSelectedCell ? "ring-2 ring-blue-500 ring-inset" : ""
+              } ${primaryCellBg}`}
+              style={{ width: primaryColumnWidth }}
+              onMouseDown={(e) =>
+                handleMouseDown(rowData.id, primaryColumn.id, e)
+              }
+              onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onContextMenu?.({
+                  type: "cell",
+                  position: { x: e.clientX, y: e.clientY },
+                  data: {
+                    rowId: rowData.id,
+                    columnId: primaryColumn.id,
+                    rowIndex: virtualIndex,
+                  },
+                });
+              }}
+            >
             {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) &&
             searchQuery ? (
               <div className="w-full text-xs text-gray-900">
@@ -448,7 +450,8 @@ function SortableRow(props: SortableRowProps) {
               />
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Scrollable cells */}
@@ -475,7 +478,7 @@ function SortableRow(props: SortableRowProps) {
           const cellValue = rowData.cells[String(col.id)];
           const displayValue = cellValue != null ? String(cellValue) : "";
 
-          let cellBg = "";
+          let cellBg = "bg-white";
           if (isActiveSearchCell) {
             cellBg = "bg-yellow-300";
           } else if (isHighlighted) {
