@@ -77,7 +77,7 @@ export function UserMenu({ user }: UserMenuProps) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-gray-200 bg-white shadow-lg focus:outline-none">
+        <div className="z-20 absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-gray-200 bg-white shadow-lg focus:outline-none">
           {/* User Info */}
           <div className="border-b border-gray-200 px-1 py-4 mx-4">
             <p className="text-gray-900">{user.name}</p>
