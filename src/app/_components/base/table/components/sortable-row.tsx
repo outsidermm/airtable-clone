@@ -14,8 +14,6 @@ interface SortableRowProps {
   virtualIndex: number;
   currentRowHeight: number;
   isRowSelected: boolean;
-  isActiveRow: boolean;
-  isHoveredRow: boolean;
   rowBg: string;
   rowData: GridRow;
   row: Row<GridRow>;
@@ -52,8 +50,6 @@ export function SortableRow(props: SortableRowProps) {
     virtualIndex,
     currentRowHeight,
     isRowSelected,
-    isActiveRow,
-    isHoveredRow,
     rowBg,
     rowData,
     row,
@@ -108,9 +104,9 @@ export function SortableRow(props: SortableRowProps) {
       onMouseEnter={() => setHoveredRowId(rowData.id)}
       onMouseLeave={() => setHoveredRowId(null)}
     >
-      {/* Frozen: checkbox/row-num + primary cell */}
+      {/* ================= FROZEN SECTION ================= */}
       <div
-        className={`sticky left-0 z-10 flex shrink-0 ${rowBg} border-b border-gray-200`}
+        className={`sticky left-0 z-10 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
           borderRight: "2px solid rgb(209, 213, 219)",
@@ -145,7 +141,6 @@ export function SortableRow(props: SortableRowProps) {
             </>
           ) : (
             <>
-              {/* Normal: row number centered, hover: drag + checkbox */}
               <div className="flex w-5 shrink-0 items-center justify-center pl-0.5 opacity-0 group-hover:opacity-100">
                 <DragHandle {...attributes} {...listeners} />
               </div>
@@ -167,7 +162,6 @@ export function SortableRow(props: SortableRowProps) {
         {/* Primary cell */}
         {primaryColumn &&
           (() => {
-            // Compute primary cell styling
             const primaryCellKey = `${rowData.id}-${primaryColumn.id}`;
             const isSelectedCell =
               selectedCell?.rowId === rowData.id &&
@@ -183,20 +177,21 @@ export function SortableRow(props: SortableRowProps) {
               ?.get(rowData.id)
               ?.has(primaryColumn.id);
 
-            let primaryCellBg = "bg-white";
+            let primaryCellBg = "";
+            
             if (isPrimaryActiveSearch) {
               primaryCellBg = "bg-yellow-300";
             } else if (isPrimaryHighlighted) {
               primaryCellBg = "bg-yellow-100";
             } else if (isInMultiSelection) {
-              primaryCellBg = "bg-blue-50/70";
+              primaryCellBg = "bg-blue-50"; 
             }
 
             return (
               <div
                 id={`cell-${rowData.id}-${primaryColumn.id}`}
                 className={`relative flex items-center px-2 ${
-                  isSelectedCell ? "ring-2 ring-blue-500 ring-inset" : ""
+                  isSelectedCell ? "ring-2 ring-blue-500 ring-inset z-20" : ""
                 } ${primaryCellBg}`}
                 style={{ width: primaryColumnWidth }}
                 onMouseDown={(e) =>
@@ -218,6 +213,7 @@ export function SortableRow(props: SortableRowProps) {
                   });
                 }}
               >
+                {/* Input/Text Logic ... */}
                 {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) &&
                 searchQuery ? (
                   <div className="w-full text-xs text-gray-900">
@@ -273,15 +269,9 @@ export function SortableRow(props: SortableRowProps) {
           })()}
       </div>
 
-      {/* Scrollable cells */}
+      {/* ================= SCROLLABLE SECTION ================= */}
       <div
-        className={`flex border-b border-gray-200 ${
-          isRowSelected
-            ? "bg-blue-50"
-            : isActiveRow || isHoveredRow
-              ? "bg-gray-50/50"
-              : ""
-        }`}
+        className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >
         {nonPrimaryColumns.map((col) => {
@@ -297,13 +287,14 @@ export function SortableRow(props: SortableRowProps) {
           const cellValue = rowData.cells[String(col.id)];
           const displayValue = cellValue != null ? String(cellValue) : "";
 
-          let cellBg = "bg-white";
+          let cellBg = ""; 
+          
           if (isActiveSearchCell) {
             cellBg = "bg-yellow-300";
           } else if (isHighlighted) {
             cellBg = "bg-yellow-100";
           } else if (isMultiSelect && isInSelection && !isOriginCell) {
-            cellBg = "bg-blue-50/70";
+            cellBg = "bg-blue-50"; // Use opaque blue for multi-select overlay feel
           }
 
           return (
@@ -311,7 +302,7 @@ export function SortableRow(props: SortableRowProps) {
               key={col.id}
               id={`cell-${rowData.id}-${col.id}`}
               className={`relative flex items-center border-r border-gray-200 px-2 ${
-                isOriginCell ? "ring-2 ring-blue-500 ring-inset" : ""
+                isOriginCell ? "ring-2 ring-blue-500 ring-inset z-20" : ""
               } ${cellBg}`}
               style={{
                 width: columnSizing[String(col.id)] ?? col.width,

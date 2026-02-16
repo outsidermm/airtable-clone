@@ -458,9 +458,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         virtualIndex={virtualRow.index}
                         currentRowHeight={currentRowHeight}
                         isRowSelected={selectedRowIds.has(String(rowData.id))}
-                        isActiveRow={rowData.id === activeRowId}
-                        isHoveredRow={rowData.id === hoveredRowId}
-                        // Use helper for BG
                         rowBg={
                           selectedRowIds.has(String(rowData.id))
                             ? "bg-blue-50"
