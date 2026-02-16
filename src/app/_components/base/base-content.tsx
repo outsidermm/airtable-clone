@@ -20,6 +20,7 @@ import { useViewMutations } from "../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
 import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
+import type { Base } from "~/types/base";
 
 interface Table {
   id: number;
@@ -31,8 +32,7 @@ interface BaseContentProps {
   baseId: string;
   tables: Table[];
   initialTableId: number;
-  base: { id: string; name: string; icon: string };
-  user: { name?: string | null; email?: string | null; image?: string | null };
+  base: Base;
 }
 
 const DEFAULT_VIEW_CONFIG: ViewConfig = {
@@ -47,7 +47,6 @@ export function BaseContent({
   tables: initialTables,
   initialTableId,
   base,
-  user,
 }: BaseContentProps) {
   const [activeTableId, setActiveTableId] = useState(initialTableId);
   const [activeViewId, setActiveViewId] = useState<number | null>(null);
@@ -64,8 +63,12 @@ export function BaseContent({
   const [showPrimaryModal, setShowPrimaryModal] = useState(false);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
-  const [addColumnAnchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
-  const [addTableAnchor, setAddTableAnchor] = useState<HTMLElement | null>(null);
+  const [addColumnAnchor, setAddColumnAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [addTableAnchor, setAddTableAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -302,7 +305,11 @@ export function BaseContent({
 
   const handleColumnChangeType = useCallback(
     (columnId: number, type: "TEXT" | "NUMBER") => {
-      columnMutations.handleUpdateColumn(columnId, undefined, type as ColumnType);
+      columnMutations.handleUpdateColumn(
+        columnId,
+        undefined,
+        type as ColumnType,
+      );
     },
     [columnMutations],
   );
@@ -412,7 +419,6 @@ export function BaseContent({
       {/* Header */}
       <BaseHeader
         base={base}
-        user={user}
         tables={tables}
         activeTableId={activeTableId}
         onTableChange={setActiveTableId}
@@ -430,6 +436,8 @@ export function BaseContent({
       <BaseToolbar
         columns={allColumns}
         activeViewId={activeViewId}
+        onActiveViewIdChange={setActiveViewId}
+        viewCount={views.length}
         viewConfig={viewConfig}
         tableId={activeTableId}
         onUpdateViewConfig={handleUpdateViewConfig}
@@ -443,7 +451,6 @@ export function BaseContent({
           setSearchQuery(query ?? "");
         }}
         onScrollToRow={handleScrollToRow}
-
       />
 
       {/* View sidebar + Grid + Footer */}
@@ -486,18 +493,22 @@ export function BaseContent({
               onSetPrimaryColumn={columnMutations.handleSetPrimaryColumn}
               onReorderRow={(draggedRowIds, targetRowId) => {
                 // Row reordering is local-only (session-based) - no backend persistence
-                const currentOrder = localRowOrder.length === gridRows.length
-                  ? localRowOrder
-                  : gridRows.map((r) => r.id);
+                const currentOrder =
+                  localRowOrder.length === gridRows.length
+                    ? localRowOrder
+                    : gridRows.map((r) => r.id);
 
                 const newIndex = currentOrder.indexOf(targetRowId);
                 if (newIndex === -1) return;
 
                 // Remove all dragged rows from current order
-                const filteredOrder = currentOrder.filter((id) => !draggedRowIds.includes(id));
+                const filteredOrder = currentOrder.filter(
+                  (id) => !draggedRowIds.includes(id),
+                );
 
                 // Find the target position in the filtered order
-                const targetIndexInFiltered = filteredOrder.indexOf(targetRowId);
+                const targetIndexInFiltered =
+                  filteredOrder.indexOf(targetRowId);
                 if (targetIndexInFiltered === -1) return;
 
                 // Insert dragged rows at target position
@@ -510,7 +521,10 @@ export function BaseContent({
                 setLocalRowOrder(newOrder);
               }}
               onLoadMore={() => {
-                if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
+                if (
+                  activeRowsQuery.hasNextPage &&
+                  !activeRowsQuery.isFetchingNextPage
+                ) {
                   void activeRowsQuery.fetchNextPage();
                 }
               }}
@@ -549,48 +563,46 @@ export function BaseContent({
           />
         )}
 
-      {contextMenu?.type === "column" &&
-        contextMenu.data.columnId != null && (
-          <ColumnContextMenu
-            position={contextMenu.position}
-            column={
-              allColumns.find((c) => c.id === contextMenu.data.columnId)!
-            }
-            onClose={closeContextMenu}
-            onRename={handleColumnRenameFromMenu}
-            onChangeType={handleColumnChangeType}
-            onSetPrimary={
-              allColumns.find((c) => c.id === contextMenu.data.columnId)?.primary
-                ? () => setShowPrimaryModal(true)
-                : undefined
-            }
-            onHide={handleColumnHide}
-            onInsertLeft={handleInsertColumnLeft}
-            onInsertRight={handleInsertColumnRight}
-            onDelete={columnMutations.handleDeleteColumn}
-            onUpdate={(columnId: number, name: string, type: ColumnType) => {
-              columnMutations.handleUpdateColumn(columnId, name, type);
-            }}
-          />
-        )}
+      {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
+        <ColumnContextMenu
+          position={contextMenu.position}
+          column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
+          onClose={closeContextMenu}
+          onRename={handleColumnRenameFromMenu}
+          onChangeType={handleColumnChangeType}
+          onSetPrimary={
+            allColumns.find((c) => c.id === contextMenu.data.columnId)?.primary
+              ? () => setShowPrimaryModal(true)
+              : undefined
+          }
+          onHide={handleColumnHide}
+          onInsertLeft={handleInsertColumnLeft}
+          onInsertRight={handleInsertColumnRight}
+          onDelete={columnMutations.handleDeleteColumn}
+          onUpdate={(columnId: number, name: string, type: ColumnType) => {
+            columnMutations.handleUpdateColumn(columnId, name, type);
+          }}
+        />
+      )}
 
-      {contextMenu?.type === "row" &&
-        contextMenu.data.rowId != null && (
-          <RowContextMenu
-            position={contextMenu.position}
-            rowId={contextMenu.data.rowId}
-            onClose={closeContextMenu}
-            onInsertAbove={rowMutations.handleAddRow}
-            onInsertBelow={rowMutations.handleAddRow}
-            onDeleteRow={rowMutations.handleDeleteRow}
-          />
-        )}
+      {contextMenu?.type === "row" && contextMenu.data.rowId != null && (
+        <RowContextMenu
+          position={contextMenu.position}
+          rowId={contextMenu.data.rowId}
+          onClose={closeContextMenu}
+          onInsertAbove={rowMutations.handleAddRow}
+          onInsertBelow={rowMutations.handleAddRow}
+          onDeleteRow={rowMutations.handleDeleteRow}
+        />
+      )}
 
       {/* Set Primary Modal */}
       {showPrimaryModal && (
         <SetPrimaryModal
           columns={allColumns}
-          currentPrimaryId={allColumns.find((c) => c.primary)?.id ?? allColumns[0]!.id}
+          currentPrimaryId={
+            allColumns.find((c) => c.primary)?.id ?? allColumns[0]!.id
+          }
           onConfirm={(columnId) => {
             columnMutations.handleSetPrimaryColumn(columnId);
             setShowPrimaryModal(false);
