@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/components/icons";
 import { api } from "~/trpc/react";
 
 interface SearchDropdownProps {
   tableId: number;
-  onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
+  onHighlight: (
+    cells: Map<number, Set<number>>,
+    activeCell?: { rowId: number; columnId: number },
+    searchQuery?: string,
+  ) => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
@@ -59,7 +64,11 @@ export function SearchDropdown({
 
   // Build highlight map from results - highlight all matching cells
   useEffect(() => {
-    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
+    if (
+      !searchResults.data ||
+      debouncedQuery.length === 0 ||
+      matchingCells.length === 0
+    ) {
       onHighlight(new Map(), undefined, "");
       return;
     }
@@ -116,93 +125,34 @@ export function SearchDropdown({
 
   return (
     <>
-      <div className="fixed inset-0 z-30" onClick={onClose} />
-      <div className="absolute top-full right-0 z-40 mt-1 w-80 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
-        <div className="px-3">
-          <div className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5">
-            <svg
-              className="h-3.5 w-3.5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search in this table..."
-              className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
-            />
-            {query && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setDebouncedQuery("");
-                  onHighlight(new Map());
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="fixed inset-0 z-50" onClick={onClose} />
+      <div className="absolute top-full right-0 z-50 mt-1 flex w-80 items-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 shadow-lg">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Find in view..."
+          className="w-full flex-2 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
+        />
 
         {debouncedQuery && (
-          <div className="px-3 py-2">
+          <div className="w-full flex-1 px-3 py-0.5">
             <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>
-                {searchResults.isLoading
-                  ? "Searching..."
-                  : `${matchingCells.length} cell${matchingCells.length === 1 ? "" : "s"}`}
-              </span>
               {matchingCells.length > 0 && (
                 <div className="flex items-center gap-1">
+                  <span>
+                    {activeIndex + 1} of {matchingCells.length}
+                  </span>
                   <button
-                    onClick={() =>
-                      goToResult(Math.max(0, activeIndex - 1))
-                    }
+                    onClick={() => goToResult(Math.max(0, activeIndex - 1))}
                     disabled={activeIndex <= 0}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 15l7-7 7 7"
-                      />
-                    </svg>
+                    <ChevronUpIcon className="h-3.5 w-3.5" />
                   </button>
-                  <span>
-                    {activeIndex + 1}/{matchingCells.length}
-                  </span>
+
                   <button
                     onClick={() =>
                       goToResult(
@@ -212,24 +162,25 @@ export function SearchDropdown({
                     disabled={activeIndex >= matchingCells.length - 1}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    <ChevronDownIcon className="h-3.5 w-3.5" />
                   </button>
                 </div>
               )}
             </div>
           </div>
+        )}
+
+        {query && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setDebouncedQuery("");
+              onHighlight(new Map());
+            }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
     </>
