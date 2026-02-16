@@ -163,6 +163,17 @@ export const ViewGridIcon = (props: IconProps) => (
 // TOOLBAR ACTIONS
 // ============================================================================
 
+export const ImportIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+    />
+  </svg>
+);
+
 export const FilterIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
     <path
@@ -251,6 +262,17 @@ export const PaletteIcon = (props: IconProps) => (
   </svg>
 );
 
+export const RocketIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.58-5.84L18 2m-3 6l-3-3m6 6l-3-3"
+    />
+  </svg>
+);
+
 export const ShareIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
     <path
@@ -262,8 +284,19 @@ export const ShareIcon = (props: IconProps) => (
   </svg>
 );
 
+export const TeamIcon = (props: IconProps) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.5}
+      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+  </svg>
+);
+
 // ============================================================================
-// ROW HEIGHT ICONS
+// ROW & CELL FORMATTING
 // ============================================================================
 
 export const RowHeightShortIcon = (props: IconProps) => (
@@ -272,7 +305,7 @@ export const RowHeightShortIcon = (props: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M4 6h16M4 10h16M4 14h16M4 18h16"
+      d="M4 8h16M4 16h16M9 12h6" 
     />
   </svg>
 );
@@ -283,7 +316,7 @@ export const RowHeightMediumIcon = (props: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M4 5h16M4 11h16M4 17h16"
+      d="M4 6h16M4 18h16M12 6v12m-3-3l3 3 3-3m-6-6l3-3 3 3"
     />
   </svg>
 );
@@ -294,7 +327,7 @@ export const RowHeightTallIcon = (props: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M4 4h16M4 12h16M4 20h16"
+      d="M4 4h16M4 20h16M12 4v16m-4-4l4 4 4-4M8 8l4-4 4 4"
     />
   </svg>
 );
@@ -305,7 +338,37 @@ export const RowHeightExtraTallIcon = (props: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M4 3h16M4 13h16"
+      d="M4 2h16M4 22h16M12 2v20M8 18l4 4 4-4M8 6l4-4 4 4"
+    />
+  </svg>
+);
+
+export const WrapTextIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 6h16M4 12h10a3 3 0 013 3v0a3 3 0 01-3 3h-6m3 3l-3-3 3-3"
+    />
+  </svg>
+);
+
+export const WrapHeadersIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    {/* Header Boundary */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 3h18v6H3V3z"
+    />
+    {/* Wrapping lines within a header context */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M7 6h10M7 12h10M7 16h5"
     />
   </svg>
 );
@@ -476,6 +539,17 @@ export const PencilIcon = (props: IconProps) => (
   </svg>
 );
 
+export const RenameIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+    />
+  </svg>
+);
+
 export const DuplicateIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
     <path
@@ -556,6 +630,17 @@ export const PrintIcon = (props: IconProps) => (
 // ============================================================================
 // STATUS & FEEDBACK
 // ============================================================================
+
+export const QuestionIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
 
 export const InfoIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
@@ -875,9 +960,59 @@ export const ExcelIcon = (props: IconProps) => (
   </svg>
 );
 
+export const GSheetIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" {...props}>
+    <path
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+      fill="#0F9D58"
+    />
+    <path d="M14 2v6h6" fill="#87CEAC" />
+    <rect x="7" y="12" width="10" height="7" rx="0.5" fill="white" />
+    <line
+      x1="7"
+      y1="14.5"
+      x2="17"
+      y2="14.5"
+      stroke="#0F9D58"
+      strokeWidth="0.5"
+    />
+    <line
+      x1="7"
+      y1="16.5"
+      x2="17"
+      y2="16.5"
+      stroke="#0F9D58"
+      strokeWidth="0.5"
+    />
+    <line x1="11" y1="12" x2="11" y2="19" stroke="#0F9D58" strokeWidth="0.5" />
+  </svg>
+);
+
+export const GCalendarIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" {...props}>
+    <rect x="3" y="4" width="18" height="18" rx="2" fill="#4285F4" />
+    <rect x="3" y="4" width="18" height="6" rx="2" fill="#1967D2" />
+    <path
+      d="M9.5 10V8.5M14.5 10V8.5M7 14H11M7 17H13"
+      stroke="white"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const PlayIcon = (props: IconProps) => (
   <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
     <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+export const SalesforceIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" {...props}>
+    <path
+      d="M9.5 6.5C10.3 5.5 11.5 5 12.8 5C15.2 5 17 6.8 17 9.2C17 9.5 17 9.8 16.9 10.1C18.2 10.5 19 11.7 19 13.2C19 15.3 17.3 17 15.2 17H8C6.3 17 5 15.7 5 14C5 12.5 6 11.2 7.5 11C7.5 10.8 7.5 10.7 7.5 10.5C7.5 8.3 9.3 6.5 11.5 6.5"
+      fill="#00A1E0"
+    />
   </svg>
 );
 
@@ -929,6 +1064,27 @@ export const AppleIcon = (props: IconProps) => (
     <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
   </svg>
 );
+
+export const SlackIcon = (props: IconProps) => (
+  <svg fill="currentColor" viewBox="0 0 127.5 127.5" {...props}>
+    <path
+      d="M27.2 80c0 7.5-6.1 13.6-13.6 13.6S0 87.5 0 80c0-7.5 6.1-13.6 13.6-13.6h13.6v13.6zm6.8 0c0-7.5 6.1-13.6 13.6-13.6 7.5 0 13.6 6.1 13.6 13.6v34c0 7.5-6.1 13.6-13.6 13.6-7.5 0-13.6-6.1-13.6-13.6v-34z"
+      fill="#E01E5A"
+    />
+    <path
+      d="M47.8 27.2c-7.5 0-13.6-6.1-13.6-13.6S40.3 0 47.8 0c7.5 0 13.6 6.1 13.6 13.6v13.6H47.8zm0 6.8c7.5 0 13.6 6.1 13.6 13.6 0 7.5-6.1 13.6-13.6 13.6H13.6C6.1 61.2 0 55.1 0 47.6c0-7.5 6.1-13.6 13.6-13.6h34.2z"
+      fill="#36C5F0"
+    />
+    <path
+      d="M100.3 47.6c0-7.5 6.1-13.6 13.6-13.6 7.5 0 13.6 6.1 13.6 13.6s-6.1 13.6-13.6 13.6H100.3V47.6zm-6.8 0c0 7.5-6.1 13.6-13.6 13.6-7.5 0-13.6-6.1-13.6-13.6V13.6C66.3 6.1 72.4 0 79.9 0c7.5 0 13.6 6.1 13.6 13.6v34z"
+      fill="#2EB67D"
+    />
+    <path
+      d="M79.9 100.3c7.5 0 13.6 6.1 13.6 13.6s-6.1 13.6-13.6 13.6c-7.5 0-13.6-6.1-13.6-13.6v-13.6h13.6zm0-6.8c-7.5 0-13.6-6.1-13.6-13.6 0-7.5 6.1-13.6 13.6-13.6h34c7.5 0 13.6 6.1 13.6 13.6 0 7.5-6.1 13.6-13.6 13.6h-34z"
+      fill="#ECB22E"
+    />
+  </svg>
+);
 // ============================================================================
 // DEFAULT EXPORTS
 // ============================================================================
@@ -959,13 +1115,18 @@ export const Icons = {
   Hide: HideIcon,
   Group: GroupIcon,
   Color: ColorIcon,
+  Palette: PaletteIcon,
+  Rocket: RocketIcon,
   Share: ShareIcon,
+  Import: ImportIcon,
 
   // Row Heights
   RowHeightShort: RowHeightShortIcon,
   RowHeightMedium: RowHeightMediumIcon,
   RowHeightTall: RowHeightTallIcon,
   RowHeightExtraTall: RowHeightExtraTallIcon,
+  WrapText: WrapTextIcon,
+  WrapHeaders: WrapHeadersIcon,
 
   // Text & Content
   Text: TextIcon,
@@ -986,6 +1147,7 @@ export const Icons = {
   Folder: FolderIcon,
   Trash: TrashIcon,
   Pencil: PencilIcon,
+  Rename: RenameIcon,
   Duplicate: DuplicateIcon,
   Download: DownloadIcon,
   Upload: UploadIcon,
@@ -995,6 +1157,7 @@ export const Icons = {
   Print: PrintIcon,
 
   // Status & Feedback
+  Question: QuestionIcon,
   Info: InfoIcon,
   Warning: WarningIcon,
   CheckCircle: CheckCircleIcon,
@@ -1034,6 +1197,9 @@ export const Icons = {
   // File Types & Special
   Excel: ExcelIcon,
   Play: PlayIcon,
+  GSheet: GSheetIcon,
+  Salesforce: SalesforceIcon,
+  GCalendar: GCalendarIcon,
 
   // Social Media
   Facebook: FacebookIcon,
@@ -1041,4 +1207,5 @@ export const Icons = {
   LinkedIn: LinkedInIcon,
   Google: GoogleIcon,
   Apple: AppleIcon,
+  Slack: SlackIcon,
 };
