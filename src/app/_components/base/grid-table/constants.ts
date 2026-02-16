@@ -6,8 +6,8 @@
 export const ROW_HEIGHT_MAP: Record<string, number> = {
   short: 36,
   medium: 56,
-  tall: 84,
-  extraTall: 120,
+  tall: 88,
+  extraTall: 128,
 };
 
 export const HEADER_HEIGHT = 36;
