@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { api } from "~/trpc/server";
-import { BaseIconSidebar } from "~/app/_components/base/base-icon-sidebar";
+import { BaseIconSidebar } from "~/app/_components/base/sidebar/base-icon-sidebar";
 import { BaseContent } from "~/app/_components/base/base-content";
-import { RecentBaseTracker } from "~/app/_components/base/recent-base-tracker";
+import { RecentBaseTracker } from "~/app/_components/base/header/recent-base-tracker";
 
 interface BasePageProps {
   params: Promise<{ id: string }>;

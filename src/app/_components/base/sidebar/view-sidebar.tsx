@@ -15,7 +15,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle } from "./grid-table/ui-components";
+import { DragHandle } from "../grid-table/ui-components";
 
 interface View {
   id: number;

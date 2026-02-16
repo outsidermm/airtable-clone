@@ -8,13 +8,11 @@ import {
   useEffect,
   useImperativeHandle,
   forwardRef,
-  type CSSProperties,
 } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   type ColumnDef,
-  type Row,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -29,9 +27,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
   verticalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import type { ColumnType } from "generated/prisma/enums";
 import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
@@ -40,13 +36,13 @@ import {
   HEADER_HEIGHT,
   CHECKBOX_WIDTH,
   PRIMARY_WIDTH,
-} from "./grid-table/constants";
-import type { CellAddress, GridTableHandle } from "./grid-table/types";
-import { DragHandle, HighlightedText } from "./grid-table/ui-components";
-import { TextIcon, NumberIcon, SortAscIcon, SortDescIcon } from "~/components/icons";
+} from "../grid-table/constants";
+import type { CellAddress, GridTableHandle } from "../grid-table/types";
+import { SortableRow } from "./sortable-row";
+import { SortableHeaderCell } from "./sortable-header-cell";
 
 // Re-export types for external consumers
-export type { GridTableHandle } from "./grid-table/types";
+export type { GridTableHandle } from "../grid-table/types";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -73,412 +69,6 @@ interface GridTableProps {
   activeSearchCell?: { rowId: number; columnId: number };
   searchQuery?: string;
   onContextMenu?: (state: ContextMenuState) => void;
-}
-
-// --- Sortable Header Cell ---
-function SortableHeaderCell({
-  column,
-  sorts,
-  isPrimary,
-  children,
-}: {
-  column: GridColumn;
-  sorts: SortConfig[];
-  isPrimary: boolean;
-  children: React.ReactNode;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: `col-${column.id}`,
-    disabled: isPrimary,
-  });
-
-  const style: CSSProperties = {
-    transform: transform ? `translate3d(${transform.x}px, 0px, 0)` : undefined,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 20 : undefined,
-    position: "relative",
-  };
-
-  const sortEntry = sorts.find((s) => s.columnId === column.id);
-
-  const ColumnTypeIcon = column.type === "NUMBER" ? NumberIcon : TextIcon;
-  const SortIcon = sortEntry?.direction === "asc" ? SortAscIcon : SortDescIcon;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group flex h-full items-center justify-between bg-white px-2 py-1.5"
-      {...attributes}
-      {...listeners}
-    >
-      <div className="flex items-center gap-1.5 overflow-hidden">
-        <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-        <span className="truncate text-xs font-normal text-gray-700">
-          {column.name}
-        </span>
-        {sortEntry && <SortIcon className="h-3 w-3 shrink-0 text-blue-500" />}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// --- Sortable Row Component ---
-interface SortableRowProps {
-  rowId: number;
-  virtualStart: number;
-  virtualIndex: number;
-  currentRowHeight: number;
-  isRowSelected: boolean;
-  isActiveRow: boolean;
-  isHoveredRow: boolean;
-  rowBg: string;
-  rowData: GridRow;
-  row: Row<GridRow>;
-  frozenWidth: number;
-  primaryColumn: GridColumn | null;
-  primaryColumnWidth: number;
-  nonPrimaryColumns: GridColumn[];
-  columnSizing: Record<string, number>;
-  selectedCell: CellAddress | null;
-  editingCell: CellAddress | null;
-  selectedCells: Set<string>;
-  isMultiSelect: boolean;
-  highlightedCells?: Map<number, Set<number>>;
-  activeSearchCell?: { rowId: number; columnId: number };
-  searchQuery?: string;
-  handleMouseDown: (
-    rowId: number,
-    columnId: number,
-    e: React.MouseEvent,
-  ) => void;
-  handleMouseEnter: (rowId: number, columnId: number) => void;
-  handleCellChange: (rowId: number, columnId: number, value: string) => void;
-  setEditingCell: (cell: CellAddress | null) => void;
-  setHoveredRowId: (id: number | null) => void;
-  onContextMenu?: (state: ContextMenuState) => void;
-  totalScrollableWidth: number;
-  showLastRowTooltip: boolean;
-}
-
-function SortableRow(props: SortableRowProps) {
-  const {
-    rowId,
-    virtualStart,
-    virtualIndex,
-    currentRowHeight,
-    isRowSelected,
-    isActiveRow,
-    isHoveredRow,
-    rowBg,
-    rowData,
-    row,
-    frozenWidth,
-    primaryColumn,
-    primaryColumnWidth,
-    nonPrimaryColumns,
-    columnSizing,
-    selectedCell,
-    editingCell,
-    selectedCells,
-    isMultiSelect,
-    highlightedCells,
-    activeSearchCell,
-    searchQuery,
-    handleMouseDown,
-    handleMouseEnter,
-    handleCellChange,
-    setEditingCell,
-    setHoveredRowId,
-    onContextMenu,
-    totalScrollableWidth,
-    showLastRowTooltip,
-  } = props;
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: `row-${rowId}`,
-  });
-
-  const style: CSSProperties = {
-    height: currentRowHeight,
-    transform: CSS.Translate.toString(transform),
-    top: virtualStart,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    minWidth: "fit-content",
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      data-index={virtualIndex}
-      className="absolute left-0 flex"
-      style={style}
-      onMouseEnter={() => setHoveredRowId(rowData.id)}
-      onMouseLeave={() => setHoveredRowId(null)}
-    >
-      {/* Frozen: checkbox/row-num + primary cell */}
-      <div
-        className={`sticky left-0 z-10 flex shrink-0 ${rowBg} border-b border-gray-200`}
-        style={{
-          width: frozenWidth,
-          borderRight: "2px solid rgb(209, 213, 219)",
-        }}
-      >
-        {/* Row number / checkbox / drag handle */}
-        <div
-          className="group flex items-center"
-          style={{ width: CHECKBOX_WIDTH }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            onContextMenu?.({
-              type: "row",
-              position: { x: e.clientX, y: e.clientY },
-              data: { rowId: rowData.id, rowIndex: virtualIndex },
-            });
-          }}
-        >
-          {isRowSelected ? (
-            <>
-              <div className="flex w-5 shrink-0 items-center justify-center pl-0.5">
-                <DragHandle {...attributes} {...listeners} />
-              </div>
-              <div className="flex flex-1 justify-center">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                  checked
-                  onChange={row.getToggleSelectedHandler()}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Normal: row number centered, hover: drag + checkbox */}
-              <div className="flex w-5 shrink-0 items-center justify-center pl-0.5 opacity-0 group-hover:opacity-100">
-                <DragHandle {...attributes} {...listeners} />
-              </div>
-              <div className="flex flex-1 justify-center">
-                <span className="text-xs text-gray-400 group-hover:hidden">
-                  {virtualIndex + 1}
-                </span>
-                <input
-                  type="checkbox"
-                  className="hidden h-3.5 w-3.5 rounded border-gray-300 text-blue-600 group-hover:block"
-                  checked={false}
-                  onChange={row.getToggleSelectedHandler()}
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Primary cell */}
-        {primaryColumn && (() => {
-          // Compute primary cell styling
-          const primaryCellKey = `${rowData.id}-${primaryColumn.id}`;
-          const isSelectedCell = selectedCell?.rowId === rowData.id &&
-                                 selectedCell?.columnId === primaryColumn.id;
-          const isInMultiSelection = isMultiSelect &&
-                                    selectedCells.has(primaryCellKey) &&
-                                    !isSelectedCell;
-          const isPrimaryActiveSearch = activeSearchCell?.rowId === rowData.id &&
-                                       activeSearchCell?.columnId === primaryColumn.id;
-          const isPrimaryHighlighted = highlightedCells?.get(rowData.id)?.has(primaryColumn.id);
-
-          let primaryCellBg = "bg-white";
-          if (isPrimaryActiveSearch) {
-            primaryCellBg = "bg-yellow-300";
-          } else if (isPrimaryHighlighted) {
-            primaryCellBg = "bg-yellow-100";
-          } else if (isInMultiSelection) {
-            primaryCellBg = "bg-blue-50/70";
-          }
-
-          return (
-            <div
-              id={`cell-${rowData.id}-${primaryColumn.id}`}
-              className={`relative flex items-center px-2 ${
-                isSelectedCell ? "ring-2 ring-blue-500 ring-inset" : ""
-              } ${primaryCellBg}`}
-              style={{ width: primaryColumnWidth }}
-              onMouseDown={(e) =>
-                handleMouseDown(rowData.id, primaryColumn.id, e)
-              }
-              onMouseEnter={() => handleMouseEnter(rowData.id, primaryColumn.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onContextMenu?.({
-                  type: "cell",
-                  position: { x: e.clientX, y: e.clientY },
-                  data: {
-                    rowId: rowData.id,
-                    columnId: primaryColumn.id,
-                    rowIndex: virtualIndex,
-                  },
-                });
-              }}
-            >
-            {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) &&
-            searchQuery ? (
-              <div className="w-full text-xs text-gray-900">
-                <HighlightedText
-                  text={
-                    rowData.cells[String(primaryColumn.id)] != null
-                      ? String(rowData.cells[String(primaryColumn.id)])
-                      : ""
-                  }
-                  query={searchQuery}
-                />
-              </div>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  defaultValue={
-                    rowData.cells[String(primaryColumn.id)] != null
-                      ? String(rowData.cells[String(primaryColumn.id)])
-                      : ""
-                  }
-                  readOnly={
-                    editingCell?.rowId !== rowData.id ||
-                    editingCell?.columnId !== primaryColumn.id
-                  }
-                  className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                  onDoubleClick={() =>
-                    setEditingCell({ rowId: rowData.id, columnId: primaryColumn.id })
-                  }
-                  onChange={(e) =>
-                    handleCellChange(rowData.id, primaryColumn.id, e.target.value)
-                  }
-                />
-                {showLastRowTooltip &&
-                  editingCell?.rowId === rowData.id &&
-                  editingCell?.columnId === primaryColumn.id && (
-                    <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
-                      Shift+Enter to create new row
-                      <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
-                    </div>
-                  )}
-              </>
-            )}
-          </div>
-          );
-        })()}
-      </div>
-
-      {/* Scrollable cells */}
-      <div
-        className={`flex border-b border-gray-200 ${
-          isRowSelected
-            ? "bg-blue-50"
-            : isActiveRow || isHoveredRow
-              ? "bg-gray-50/50"
-              : ""
-        }`}
-        style={{ width: totalScrollableWidth }}
-      >
-        {nonPrimaryColumns.map((col) => {
-          const cellKey = `${rowData.id}-${col.id}`;
-          const isOriginCell =
-            selectedCell?.rowId === rowData.id &&
-            selectedCell?.columnId === col.id;
-          const isInSelection = selectedCells.has(cellKey);
-          const isActiveSearchCell =
-            activeSearchCell?.rowId === rowData.id &&
-            activeSearchCell?.columnId === col.id;
-          const isHighlighted = highlightedCells?.get(rowData.id)?.has(col.id);
-          const cellValue = rowData.cells[String(col.id)];
-          const displayValue = cellValue != null ? String(cellValue) : "";
-
-          let cellBg = "bg-white";
-          if (isActiveSearchCell) {
-            cellBg = "bg-yellow-300";
-          } else if (isHighlighted) {
-            cellBg = "bg-yellow-100";
-          } else if (isMultiSelect && isInSelection && !isOriginCell) {
-            cellBg = "bg-blue-50/70";
-          }
-
-          return (
-            <div
-              key={col.id}
-              id={`cell-${rowData.id}-${col.id}`}
-              className={`relative flex items-center border-r border-gray-200 px-2 ${
-                isOriginCell ? "ring-2 ring-blue-500 ring-inset" : ""
-              } ${cellBg}`}
-              style={{
-                width: columnSizing[String(col.id)] ?? col.width,
-                minWidth: 80,
-              }}
-              onMouseDown={(e) => handleMouseDown(rowData.id, col.id, e)}
-              onMouseEnter={() => handleMouseEnter(rowData.id, col.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onContextMenu?.({
-                  type: "cell",
-                  position: { x: e.clientX, y: e.clientY },
-                  data: {
-                    rowId: rowData.id,
-                    columnId: col.id,
-                    rowIndex: virtualIndex,
-                  },
-                });
-              }}
-            >
-              {isHighlighted && searchQuery ? (
-                <div className="w-full text-xs text-gray-900">
-                  <HighlightedText text={displayValue} query={searchQuery} />
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    defaultValue={displayValue}
-                    readOnly={
-                      editingCell?.rowId !== rowData.id ||
-                      editingCell?.columnId !== col.id
-                    }
-                    className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                    onDoubleClick={() =>
-                      setEditingCell({ rowId: rowData.id, columnId: col.id })
-                    }
-                    onChange={(e) =>
-                      handleCellChange(rowData.id, col.id, e.target.value)
-                    }
-                  />
-                  {showLastRowTooltip &&
-                    editingCell?.rowId === rowData.id &&
-                    editingCell?.columnId === col.id && (
-                      <div className="absolute bottom-full left-0 z-50 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
-                        Shift+Enter to create new row
-                        <div className="absolute left-4 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
-                      </div>
-                    )}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 // --- Main GridTable Component ---
@@ -770,7 +360,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         // Only navigate if not in edit mode
         if (editingCell) return;
 
-        const isArrowKey = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
+        const isArrowKey = [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+        ].includes(e.key);
         const isTabKey = e.key === "Tab";
 
         if (!isArrowKey && !isTabKey) return;
@@ -784,9 +379,11 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           : nonPrimaryColumns;
 
         // Find current cell indices
-        const currentRowIndex = rows.findIndex((r) => r.id === selectedCell.rowId);
+        const currentRowIndex = rows.findIndex(
+          (r) => r.id === selectedCell.rowId,
+        );
         const currentColumnIndex = allColumns.findIndex(
-          (c) => c.id === selectedCell.columnId
+          (c) => c.id === selectedCell.columnId,
         );
 
         if (currentRowIndex === -1 || currentColumnIndex === -1) return;
@@ -802,7 +399,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
           newColumnIndex = Math.max(0, currentColumnIndex - 1);
         } else if (e.key === "ArrowRight" || e.key === "Tab") {
-          newColumnIndex = Math.min(allColumns.length - 1, currentColumnIndex + 1);
+          newColumnIndex = Math.min(
+            allColumns.length - 1,
+            currentColumnIndex + 1,
+          );
         }
 
         // Update selected cell
@@ -1144,7 +744,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 {/* Primary column header */}
                 {primaryColumn && (
                   <div
-                    className="relative flex items-center bg-white border-b border-gray-200"
+                    className="relative flex items-center border-b border-gray-200 bg-white"
                     style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -1446,13 +1046,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               style={{ minWidth: "fit-content", minHeight: 0 }}
             >
               <div
-                className="sticky left-0 "
+                className="sticky left-0"
                 style={{
                   width: frozenWidth,
                   borderRight: "2px solid rgb(209, 213, 219)",
                 }}
               />
-              <div className="flex-1 " />
+              <div className="flex-1" />
             </div>
           </div>
         </div>

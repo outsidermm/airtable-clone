@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { UserMenu } from "../dashboard/user-menu";
+import { UserMenu } from "../../dashboard/user-menu";
 
 interface UserProps {
   user: {

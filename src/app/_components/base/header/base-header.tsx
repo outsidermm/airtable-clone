@@ -8,7 +8,7 @@ import {
   getStoredBaseColor,
   setStoredBaseColor,
 } from "~/lib/base-color-storage";
-import { useBaseMutations } from "../hooks/use-base-mutations";
+import { useBaseMutations } from "../../hooks/use-base-mutations";
 import {
   StarIcon,
   StarOutlineIcon,
