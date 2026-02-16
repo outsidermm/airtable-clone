@@ -40,8 +40,7 @@ export default async function BasePage({ params }: BasePageProps) {
         baseId={id}
         tables={tables.map((t) => ({ id: t.id, name: t.name, baseId: t.baseId }))}
         initialTableId={firstTable.id}
-        base={{ id: base.id, name: base.name, icon: "📊" }}
-        user={session.user}
+        base={{ id: base.id, name: base.name, createdAt: base.createdAt, updatedAt: base.updatedAt, starred: base.starred, userId: base.userId }}
       />
     </div>
   );
