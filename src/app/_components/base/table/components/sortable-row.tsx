@@ -1,10 +1,10 @@
 import type { Row } from "@tanstack/react-table";
 import type { ContextMenuState, GridColumn, GridRow } from "~/types/grid";
-import type { CellAddress } from "../grid-table/types";
+import type { CellAddress } from "../../grid-table/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle, HighlightedText } from "../grid-table/ui-components";
-import { CHECKBOX_WIDTH } from "../grid-table/constants";
+import { DragHandle, HighlightedText } from "../../grid-table/ui-components";
+import { CHECKBOX_WIDTH } from "../../grid-table/constants";
 import type { CSSProperties } from "react";
 
 // --- Sortable Row Component ---

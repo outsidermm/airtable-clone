@@ -1,5 +1,10 @@
 import type { CSSProperties } from "react";
-import { TextIcon, NumberIcon, SortAscIcon, SortDescIcon } from "~/components/icons";
+import {
+  TextIcon,
+  NumberIcon,
+  SortAscIcon,
+  SortDescIcon,
+} from "~/components/icons";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 import { useSortable } from "@dnd-kit/sortable";
