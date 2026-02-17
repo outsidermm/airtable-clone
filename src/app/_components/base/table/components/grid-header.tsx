@@ -17,6 +17,7 @@ import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../grid-table/constants";
 import type { GridColumn, ContextMenuState, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
+import { ChevronDownIcon, PlusIcon, TextIcon } from "~/components/icons";
 
 interface GridHeaderProps {
   frozenWidth: number;
@@ -130,7 +131,7 @@ export function GridHeader({
                       handleHeaderRename(primaryColumn.id, primaryColumn.name);
                     if (e.key === "Escape") setEditingHeader(null);
                   }}
-                  className="w-full bg-transparent text-xs font-normal text-gray-700 outline-none"
+                  className="w-full bg-transparent text-xs text-gray-700 outline-none"
                   autoFocus
                 />
               </div>
@@ -140,19 +141,7 @@ export function GridHeader({
                 onDoubleClick={() => handleHeaderDoubleClick(primaryColumn)}
               >
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                  <svg
-                    className="h-3.5 w-3.5 shrink-0 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16m-7 6h7"
-                    />
-                  </svg>
+                  <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                   <span className="truncate text-xs font-normal text-gray-700">
                     {primaryColumn.name}
                   </span>
@@ -213,7 +202,7 @@ export function GridHeader({
                             handleHeaderRename(col.id, col.name);
                           if (e.key === "Escape") setEditingHeader(null);
                         }}
-                        className="w-full bg-transparent text-xs font-normal text-gray-700 outline-none"
+                        className="w-full bg-transparent text-xs text-gray-900 outline-none"
                         autoFocus
                       />
                     </div>
@@ -227,20 +216,18 @@ export function GridHeader({
                         sorts={sorts}
                         isPrimary={false}
                       >
-                        <button className="invisible rounded p-0.5 group-hover:visible hover:bg-gray-200">
-                          <svg
-                            className="h-3 w-3 text-gray-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
+                        <button
+                          className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onContextMenu?.({
+                              type: "column",
+                              position: { x: e.clientX, y: e.clientY },
+                              data: { columnId: col.id },
+                            });
+                          }}
+                        >
+                          <ChevronDownIcon className="h-3 w-3" />
                         </button>
                       </SortableHeaderCell>
                     </div>
@@ -267,19 +254,7 @@ export function GridHeader({
           onClick={onAddColumn}
           className="text-gray-400 hover:text-gray-600"
         >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+          <PlusIcon className="h-4 w-4" />
         </button>
       </div>
     </div>
