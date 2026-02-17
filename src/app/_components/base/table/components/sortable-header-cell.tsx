@@ -55,7 +55,7 @@ export function SortableHeaderCell({
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
         <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-        <span className="truncate text-xs font-normal text-gray-700">
+        <span className="truncate text-xs text-gray-900">
           {column.name}
         </span>
         {sortEntry && <SortIcon className="h-3 w-3 shrink-0 text-blue-500" />}
