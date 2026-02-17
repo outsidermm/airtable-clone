@@ -3,11 +3,11 @@ import type { ContextMenuState, GridColumn, GridRow } from "~/types/grid";
 import type { CellAddress } from "../../grid-table/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle, HighlightedText } from "../../grid-table/ui-components";
+import { DragHandle } from "../../grid-table/ui-components";
 import { CHECKBOX_WIDTH } from "../../grid-table/constants";
 import type { CSSProperties } from "react";
+import { GridCell } from "./grid-cell"; // Import the new component
 
-// --- Sortable Row Component ---
 interface SortableRowProps {
   rowId: number;
   virtualStart: number;
@@ -29,6 +29,7 @@ interface SortableRowProps {
   highlightedCells?: Map<number, Set<number>>;
   activeSearchCell?: { rowId: number; columnId: number };
   searchQuery?: string;
+  // Handlers
   handleMouseDown: (
     rowId: number,
     columnId: number,
@@ -95,16 +96,59 @@ export function SortableRow(props: SortableRowProps) {
     minWidth: "fit-content",
   };
 
+  // Helper to keep the render clean
+  const renderCell = (col: GridColumn, width: number, isPrimary: boolean) => {
+    const isSelectedCell =
+      selectedCell?.rowId === rowId && selectedCell?.columnId === col.id;
+    const isEditing =
+      editingCell?.rowId === rowId && editingCell?.columnId === col.id;
+
+    // Only apply multi-select blue if it's NOT the primary selected cell (the anchor)
+    const isInMultiSelection =
+      isMultiSelect &&
+      selectedCells.has(`${rowId}-${col.id}`) &&
+      !isSelectedCell;
+
+    return (
+      <GridCell
+        key={col.id}
+        rowId={rowId}
+        columnId={col.id}
+        rowIndex={virtualIndex}
+        width={width}
+        value={rowData.cells[String(col.id)]}
+        // State flags
+        isSelectedCell={isSelectedCell}
+        isInMultiSelection={isInMultiSelection}
+        isActiveSearch={
+          activeSearchCell?.rowId === rowId &&
+          activeSearchCell?.columnId === col.id
+        }
+        isHighlighted={!!highlightedCells?.get(rowId)?.has(col.id)}
+        isEditing={isEditing}
+        searchQuery={searchQuery}
+        showLastRowTooltip={showLastRowTooltip}
+        // Handlers
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onDoubleClick={setEditingCell}
+        onChange={handleCellChange}
+        onBlur={() => setEditingCell(null)}
+        onContextMenu={onContextMenu}
+      />
+    );
+  };
+
   return (
     <div
       ref={setNodeRef}
       data-index={virtualIndex}
       className="absolute left-0 flex"
       style={style}
-      onMouseEnter={() => setHoveredRowId(rowData.id)}
+      onMouseEnter={() => setHoveredRowId(rowId)}
       onMouseLeave={() => setHoveredRowId(null)}
     >
-      {/* ================= FROZEN SECTION ================= */}
+      {/* === FROZEN SECTION === */}
       <div
         className={`sticky left-0 z-10 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
@@ -112,7 +156,7 @@ export function SortableRow(props: SortableRowProps) {
           borderRight: "2px solid rgb(209, 213, 219)",
         }}
       >
-        {/* Row number / checkbox / drag handle */}
+        {/* Row Controls (Drag + Checkbox) */}
         <div
           className="group flex items-center"
           style={{ width: CHECKBOX_WIDTH }}
@@ -121,11 +165,12 @@ export function SortableRow(props: SortableRowProps) {
             onContextMenu?.({
               type: "row",
               position: { x: e.clientX, y: e.clientY },
-              data: { rowId: rowData.id, rowIndex: virtualIndex },
+              data: { rowId, rowIndex: virtualIndex },
             });
           }}
         >
           {isRowSelected ? (
+            /* Selected State: Drag Handle + Checked Box */
             <>
               <div className="flex w-5 shrink-0 items-center justify-center pl-0.5">
                 <DragHandle {...attributes} {...listeners} />
@@ -140,6 +185,7 @@ export function SortableRow(props: SortableRowProps) {
               </div>
             </>
           ) : (
+            /* Normal State: Index (hover -> Drag + Unchecked Box) */
             <>
               <div className="flex w-5 shrink-0 items-center justify-center pl-0.5 opacity-0 group-hover:opacity-100">
                 <DragHandle {...attributes} {...listeners} />
@@ -159,204 +205,18 @@ export function SortableRow(props: SortableRowProps) {
           )}
         </div>
 
-        {/* Primary cell */}
-        {primaryColumn &&
-          (() => {
-            const primaryCellKey = `${rowData.id}-${primaryColumn.id}`;
-            const isSelectedCell =
-              selectedCell?.rowId === rowData.id &&
-              selectedCell?.columnId === primaryColumn.id;
-            const isInMultiSelection =
-              isMultiSelect &&
-              selectedCells.has(primaryCellKey) &&
-              !isSelectedCell;
-            const isPrimaryActiveSearch =
-              activeSearchCell?.rowId === rowData.id &&
-              activeSearchCell?.columnId === primaryColumn.id;
-            const isPrimaryHighlighted = highlightedCells
-              ?.get(rowData.id)
-              ?.has(primaryColumn.id);
-
-            let primaryCellBg = "";
-            
-            if (isPrimaryActiveSearch) {
-              primaryCellBg = "bg-yellow-300";
-            } else if (isPrimaryHighlighted) {
-              primaryCellBg = "bg-yellow-100";
-            } else if (isInMultiSelection) {
-              primaryCellBg = "bg-blue-50"; 
-            }
-
-            return (
-              <div
-                id={`cell-${rowData.id}-${primaryColumn.id}`}
-                className={`relative flex items-center px-2 ${
-                  isSelectedCell ? "ring-2 ring-blue-500 ring-inset z-20" : ""
-                } ${primaryCellBg}`}
-                style={{ width: primaryColumnWidth }}
-                onMouseDown={(e) =>
-                  handleMouseDown(rowData.id, primaryColumn.id, e)
-                }
-                onMouseEnter={() =>
-                  handleMouseEnter(rowData.id, primaryColumn.id)
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  onContextMenu?.({
-                    type: "cell",
-                    position: { x: e.clientX, y: e.clientY },
-                    data: {
-                      rowId: rowData.id,
-                      columnId: primaryColumn.id,
-                      rowIndex: virtualIndex,
-                    },
-                  });
-                }}
-              >
-                {/* Input/Text Logic ... */}
-                {highlightedCells?.get(rowData.id)?.has(primaryColumn.id) &&
-                searchQuery ? (
-                  <div className="w-full text-xs text-gray-900">
-                    <HighlightedText
-                      text={
-                        rowData.cells[String(primaryColumn.id)] != null
-                          ? String(rowData.cells[String(primaryColumn.id)])
-                          : ""
-                      }
-                      query={searchQuery}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      defaultValue={
-                        rowData.cells[String(primaryColumn.id)] != null
-                          ? String(rowData.cells[String(primaryColumn.id)])
-                          : ""
-                      }
-                      readOnly={
-                        editingCell?.rowId !== rowData.id ||
-                        editingCell?.columnId !== primaryColumn.id
-                      }
-                      className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                      onDoubleClick={() =>
-                        setEditingCell({
-                          rowId: rowData.id,
-                          columnId: primaryColumn.id,
-                        })
-                      }
-                      onChange={(e) =>
-                        handleCellChange(
-                          rowData.id,
-                          primaryColumn.id,
-                          e.target.value,
-                        )
-                      }
-                    />
-                    {showLastRowTooltip &&
-                      editingCell?.rowId === rowData.id &&
-                      editingCell?.columnId === primaryColumn.id && (
-                        <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
-                          Shift+Enter to create new row
-                          <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
-                        </div>
-                      )}
-                  </>
-                )}
-              </div>
-            );
-          })()}
+        {/* Primary Cell */}
+        {primaryColumn && renderCell(primaryColumn, primaryColumnWidth, true)}
       </div>
 
-      {/* ================= SCROLLABLE SECTION ================= */}
+      {/* === SCROLLABLE SECTION === */}
       <div
         className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >
-        {nonPrimaryColumns.map((col) => {
-          const cellKey = `${rowData.id}-${col.id}`;
-          const isOriginCell =
-            selectedCell?.rowId === rowData.id &&
-            selectedCell?.columnId === col.id;
-          const isInSelection = selectedCells.has(cellKey);
-          const isActiveSearchCell =
-            activeSearchCell?.rowId === rowData.id &&
-            activeSearchCell?.columnId === col.id;
-          const isHighlighted = highlightedCells?.get(rowData.id)?.has(col.id);
-          const cellValue = rowData.cells[String(col.id)];
-          const displayValue = cellValue != null ? String(cellValue) : "";
-
-          let cellBg = ""; 
-          
-          if (isActiveSearchCell) {
-            cellBg = "bg-yellow-300";
-          } else if (isHighlighted) {
-            cellBg = "bg-yellow-100";
-          } else if (isMultiSelect && isInSelection && !isOriginCell) {
-            cellBg = "bg-blue-50"; // Use opaque blue for multi-select overlay feel
-          }
-
-          return (
-            <div
-              key={col.id}
-              id={`cell-${rowData.id}-${col.id}`}
-              className={`relative flex items-center border-r border-gray-200 px-2 ${
-                isOriginCell ? "ring-2 ring-blue-500 ring-inset z-20" : ""
-              } ${cellBg}`}
-              style={{
-                width: columnSizing[String(col.id)] ?? col.width,
-                minWidth: 80,
-              }}
-              onMouseDown={(e) => handleMouseDown(rowData.id, col.id, e)}
-              onMouseEnter={() => handleMouseEnter(rowData.id, col.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onContextMenu?.({
-                  type: "cell",
-                  position: { x: e.clientX, y: e.clientY },
-                  data: {
-                    rowId: rowData.id,
-                    columnId: col.id,
-                    rowIndex: virtualIndex,
-                  },
-                });
-              }}
-            >
-              {isHighlighted && searchQuery ? (
-                <div className="w-full text-xs text-gray-900">
-                  <HighlightedText text={displayValue} query={searchQuery} />
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    defaultValue={displayValue}
-                    readOnly={
-                      editingCell?.rowId !== rowData.id ||
-                      editingCell?.columnId !== col.id
-                    }
-                    className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                    onDoubleClick={() =>
-                      setEditingCell({ rowId: rowData.id, columnId: col.id })
-                    }
-                    onChange={(e) =>
-                      handleCellChange(rowData.id, col.id, e.target.value)
-                    }
-                  />
-                  {showLastRowTooltip &&
-                    editingCell?.rowId === rowData.id &&
-                    editingCell?.columnId === col.id && (
-                      <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
-                        Shift+Enter to create new row
-                        <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
-                      </div>
-                    )}
-                </>
-              )}
-            </div>
-          );
-        })}
+        {nonPrimaryColumns.map((col) =>
+          renderCell(col, columnSizing[String(col.id)] ?? col.width, false),
+        )}
       </div>
     </div>
   );
