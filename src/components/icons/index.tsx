@@ -858,6 +858,32 @@ export const FormIcon = (props: IconProps) => (
   </svg>
 );
 
+export const SectionIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    {/* First Section Segment */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 5h16v4H4V5z"
+    />
+    {/* Second Section Segment */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 12h16v4H4v-4z"
+    />
+    {/* Bottom Segment / Indicator of more sections */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 19h16"
+    />
+  </svg>
+);
+
 // ============================================================================
 // DATA & SETTINGS
 // ============================================================================
@@ -1205,6 +1231,7 @@ export const Icons = {
   Timeline: TimelineIcon,
   Gantt: GanttIcon,
   Form: FormIcon,
+  Section: SectionIcon,
 
   // Data & Settings
   Settings: SettingsIcon,
