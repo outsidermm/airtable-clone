@@ -58,11 +58,6 @@ interface BaseToolbarProps {
   onSidebarHoverEnter?: () => void;
   onSidebarHoverLeave?: () => void;
   activeViewName: string;
-  onHighlight: (
-    cells: Map<number, Set<number>>,
-    activeCell?: { rowId: number; columnId: number },
-    searchQuery?: string,
-  ) => void;
   onScrollToRow?: (rowId: number) => void;
 }
 
@@ -75,7 +70,6 @@ export function BaseToolbar({
   onSidebarHoverEnter,
   onSidebarHoverLeave,
   activeViewName,
-  onHighlight,
   onScrollToRow,
 }: BaseToolbarProps) {
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
@@ -455,7 +449,6 @@ export function BaseToolbar({
           </button>
           {activeDropdown === "search" && (
             <SearchDropdown
-              onHighlight={onHighlight}
               onScrollToRow={onScrollToRow}
               onClose={closeDropdown}
             />

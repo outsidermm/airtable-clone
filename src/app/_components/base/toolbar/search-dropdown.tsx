@@ -6,21 +6,15 @@ import { api } from "~/trpc/react";
 import { useBase } from "../base-context";
 
 interface SearchDropdownProps {
-  onHighlight: (
-    cells: Map<number, Set<number>>,
-    activeCell?: { rowId: number; columnId: number },
-    searchQuery?: string,
-  ) => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
 
 export function SearchDropdown({
-  onHighlight,
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
-  const { activeTableId } = useBase();
+  const { activeTableId, setSearchQuery, setHighlightedCells, setActiveSearchCell} = useBase();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -69,7 +63,9 @@ export function SearchDropdown({
       debouncedQuery.length === 0 ||
       matchingCells.length === 0
     ) {
-      onHighlight(new Map(), undefined, "");
+      setHighlightedCells(new Map());
+      setActiveSearchCell(undefined);
+      setSearchQuery("");
       return;
     }
 
@@ -84,7 +80,10 @@ export function SearchDropdown({
 
     // Pass the active cell and search query
     const activeCell = matchingCells[activeIndex];
-    onHighlight(highlights, activeCell, debouncedQuery);
+    
+    setHighlightedCells(highlights);
+    setActiveSearchCell(activeCell);
+    setSearchQuery(debouncedQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
 
@@ -119,9 +118,12 @@ export function SearchDropdown({
 
   // Clear highlights on unmount
   useEffect(() => {
-    return () => onHighlight(new Map(), undefined, "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      setHighlightedCells(new Map());
+      setActiveSearchCell(undefined);
+      setSearchQuery("");
+    }
+  }, [setHighlightedCells, setActiveSearchCell, setSearchQuery]);
 
   return (
     <>
@@ -175,7 +177,7 @@ export function SearchDropdown({
             onClick={() => {
               setQuery("");
               setDebouncedQuery("");
-              onHighlight(new Map());
+              setHighlightedCells(new Map());
             }}
             className="text-gray-400 hover:text-gray-600"
           >

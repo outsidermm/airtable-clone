@@ -52,7 +52,6 @@ interface View {
 }
 
 interface ViewSidebarProps {
-  isOpen: boolean;
   views: View[];
   onAddView: () => void;
   onRenameView: (viewId: number, newName: string) => void;
@@ -226,7 +225,6 @@ function SortableViewItem({
 }
 
 export function ViewSidebar({
-  isOpen,
   views,
   onAddView,
   onRenameView,
@@ -236,6 +234,7 @@ export function ViewSidebar({
   onMouseEnter,
   onMouseLeave,
 }: ViewSidebarProps) {
+  const { isSidebarOpen } = useBase();
   const [editingViewId, setEditingViewId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -356,7 +355,7 @@ export function ViewSidebar({
   return (
     <aside
       className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white transition-all duration-200 ease-in-out ${
-        isOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"
+        isSidebarOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"
       }`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

@@ -7,6 +7,7 @@ import { DragHandle } from "../../grid-table/drag-handle";
 import { CHECKBOX_WIDTH } from "../../constants";
 import type { CSSProperties } from "react";
 import { GridCell } from "./grid-cell"; // Import the new component
+import { useBase } from "../../base-context";
 
 interface SortableRowProps {
   rowId: number;
@@ -26,9 +27,7 @@ interface SortableRowProps {
   editingCell: CellAddress | null;
   selectedCells: Set<string>;
   isMultiSelect: boolean;
-  highlightedCells?: Map<number, Set<number>>;
-  activeSearchCell?: { rowId: number; columnId: number };
-  searchQuery?: string;
+
   // Handlers
   handleMouseDown: (
     rowId: number,
@@ -63,9 +62,6 @@ export function SortableRow(props: SortableRowProps) {
     editingCell,
     selectedCells,
     isMultiSelect,
-    highlightedCells,
-    activeSearchCell,
-    searchQuery,
     handleMouseDown,
     handleMouseEnter,
     handleCellChange,
@@ -75,6 +71,8 @@ export function SortableRow(props: SortableRowProps) {
     totalScrollableWidth,
     showLastRowTooltip,
   } = props;
+
+  const {highlightedCells, activeSearchCell, searchQuery} = useBase();
 
   const {
     attributes,

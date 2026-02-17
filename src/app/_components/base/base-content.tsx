@@ -22,6 +22,7 @@ import type { ViewConfig } from "~/server/api/routers/view";
 import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
 import type { Base } from "~/types/base";
+import { useBase } from "./base-context";
 
 interface Table {
   id: number;
@@ -32,7 +33,6 @@ interface Table {
 interface BaseContentProps {
   baseId: string;
   tables: Table[];
-  initialTableId: number;
   base: Base;
 }
 
@@ -46,30 +46,21 @@ const DEFAULT_VIEW_CONFIG: ViewConfig = {
 export function BaseContent({
   baseId,
   tables: initialTables,
-  initialTableId,
   base,
 }: BaseContentProps) {
-  const [activeTableId, setActiveTableId] = useState(initialTableId);
-  const [activeViewId, setActiveViewId] = useState<number | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarPersistent, setIsSidebarPersistent] = useState(false);
-  const [highlightedCells, setHighlightedCells] = useState<
-    Map<number, Set<number>>
-  >(new Map());
-  const [activeSearchCell, setActiveSearchCell] = useState<
-    { rowId: number; columnId: number } | undefined
-  >(undefined);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const {
+    activeTableId,
+    setActiveTableId,
+    activeViewId,
+    setActiveViewId,
+    setIsSidebarOpen,
+    isSidebarPersistent,
+    setIsSidebarPersistent,
+    activeModal,
+    modalAnchor,
+    openModal,
+  } = useBase();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [showPrimaryModal, setShowPrimaryModal] = useState(false);
-  const [showAddTableModal, setShowAddTableModal] = useState(false);
-  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
-  const [addColumnAnchor, setAddColumnAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const [addTableAnchor, setAddTableAnchor] = useState<HTMLElement | null>(
-    null,
-  );
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -141,7 +132,7 @@ export function BaseContent({
     if (activeViewId && !views.find((v) => v.id === activeViewId)) {
       setActiveViewId(views[0]?.id ?? null);
     }
-  }, [views, activeViewId]);
+  }, [views, activeViewId, setActiveViewId]);
 
   const viewQuery = api.view.getById.useQuery(
     { id: activeViewId! },
@@ -374,7 +365,7 @@ export function BaseContent({
     if (!isSidebarPersistent) {
       setIsSidebarOpen(true);
     }
-  }, [isSidebarPersistent]);
+  }, [isSidebarPersistent, setIsSidebarOpen]);
 
   const handleSidebarHoverLeave = useCallback(() => {
     // Only close on hover leave if not in persistent mode
@@ -383,7 +374,7 @@ export function BaseContent({
         setIsSidebarOpen(false);
       }, 300);
     }
-  }, [isSidebarPersistent]);
+  }, [isSidebarPersistent, setIsSidebarOpen]);
 
   const handleToggleSidebar = useCallback(() => {
     if (sidebarHoverTimeoutRef.current) {
@@ -400,13 +391,13 @@ export function BaseContent({
       setIsSidebarPersistent(true);
       setIsSidebarOpen(true);
     }
-  }, [isSidebarPersistent]);
+  }, [isSidebarPersistent, setIsSidebarPersistent, setIsSidebarOpen]);
 
   // Reset view and row order when switching tables
   useEffect(() => {
     setActiveViewId(null);
     setLocalRowOrder([]);
-  }, [activeTableId]);
+  }, [activeTableId, setActiveViewId]);
 
   // Reset row order when switching views
   useEffect(() => {
@@ -421,11 +412,6 @@ export function BaseContent({
       <BaseHeader
         base={base}
         tables={tables}
-        onTableChange={setActiveTableId}
-        onAddTable={(e) => {
-          setAddTableAnchor(e?.currentTarget ?? null);
-          setShowAddTableModal(true);
-        }}
         onRenameTable={tableMutations.handleRenameTable}
         onDeleteTable={tableMutations.handleDeleteTable}
         // onDuplicateTable={tableMutations.handleDuplicateTable}
@@ -442,18 +428,12 @@ export function BaseContent({
         onSidebarHoverEnter={handleSidebarHoverEnter}
         onSidebarHoverLeave={handleSidebarHoverLeave}
         activeViewName={activeViewName}
-        onHighlight={(cells, activeCell, query) => {
-          setHighlightedCells(cells);
-          setActiveSearchCell(activeCell);
-          setSearchQuery(query ?? "");
-        }}
         onScrollToRow={handleScrollToRow}
       />
 
       {/* View sidebar + Grid + Footer */}
       <div className="flex flex-1 overflow-hidden">
         <ViewSidebar
-          isOpen={isSidebarOpen}
           views={views}
           onAddView={viewMutations.handleAddView}
           onRenameView={viewMutations.handleRenameView}
@@ -478,10 +458,6 @@ export function BaseContent({
               onAddRow={rowMutations.handleAddRow}
               onDeleteRow={rowMutations.handleDeleteRow}
               onBulkDeleteRow={rowMutations.handleBulkDeleteRow}
-              onAddColumn={(e) => {
-                setAddColumnAnchor(e?.currentTarget ?? null);
-                setShowAddColumnModal(true);
-              }}
               onDeleteColumn={columnMutations.handleDeleteColumn}
               onReorderColumn={columnMutations.handleReorderColumn}
               onUpdateColumn={columnMutations.handleUpdateColumn}
@@ -526,9 +502,6 @@ export function BaseContent({
               hasNextPage={activeRowsQuery.hasNextPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
-              highlightedCells={highlightedCells}
-              activeSearchCell={activeSearchCell}
-              searchQuery={searchQuery}
               onContextMenu={handleContextMenu}
             />
           )}
@@ -565,11 +538,6 @@ export function BaseContent({
           onClose={closeContextMenu}
           onRename={handleColumnRenameFromMenu}
           onChangeType={handleColumnChangeType}
-          onSetPrimary={
-            allColumns.find((c) => c.id === contextMenu.data.columnId)?.primary
-              ? () => setShowPrimaryModal(true)
-              : undefined
-          }
           onHide={handleColumnHide}
           onInsertLeft={handleInsertColumnLeft}
           onInsertRight={handleInsertColumnRight}
@@ -592,7 +560,7 @@ export function BaseContent({
       )}
 
       {/* Set Primary Modal */}
-      {showPrimaryModal && (
+      {activeModal === "set-primary" && (
         <SetPrimaryModal
           columns={allColumns}
           currentPrimaryId={
@@ -600,40 +568,36 @@ export function BaseContent({
           }
           onConfirm={(columnId) => {
             columnMutations.handleSetPrimaryColumn(columnId);
-            setShowPrimaryModal(false);
+            openModal(null);
           }}
-          onClose={() => setShowPrimaryModal(false)}
+          onClose={() => openModal(null)}
         />
       )}
 
       {/* Add Table Modal */}
-      {showAddTableModal && (
+      {activeModal === "add-table" && (
         <AddTableModal
-          anchorEl={addTableAnchor}
+          anchorEl={modalAnchor}
           onConfirm={() => {
             tableMutations.handleAddTable();
-            setShowAddTableModal(false);
-            setAddTableAnchor(null);
+            openModal(null);
           }}
           onClose={() => {
-            setShowAddTableModal(false);
-            setAddTableAnchor(null);
+            openModal(null);
           }}
         />
       )}
 
       {/* Add Column Modal */}
-      {showAddColumnModal && (
+      {activeModal === "add-column" && (
         <AddColumnModal
-          anchorEl={addColumnAnchor}
+          anchorEl={modalAnchor}
           onConfirm={(name, type) => {
             columnMutations.handleAddColumn({ name, type });
-            setShowAddColumnModal(false);
-            setAddColumnAnchor(null);
+            openModal(null);
           }}
           onClose={() => {
-            setShowAddColumnModal(false);
-            setAddColumnAnchor(null);
+            openModal(null);
           }}
         />
       )}

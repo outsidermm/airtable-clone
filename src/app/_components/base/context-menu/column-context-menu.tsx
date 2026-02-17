@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 import type { GridColumn } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
+import { useBase } from "../base-context";
 
 interface ColumnContextMenuProps {
   position: { x: number; y: number };
@@ -12,7 +13,6 @@ interface ColumnContextMenuProps {
   onRename: (columnId: number) => void;
   onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
   onUpdate?: (columnId: number, name: string, type: ColumnType) => void;
-  onSetPrimary?: () => void;
   onHide: (columnId: number) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
@@ -26,12 +26,12 @@ export function ColumnContextMenu({
   onRename,
   onChangeType,
   onUpdate,
-  onSetPrimary,
   onHide,
   onInsertLeft,
   onInsertRight,
   onDelete,
 }: ColumnContextMenuProps) {
+  const { openModal } = useBase();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(column.name);
   const [editType, setEditType] = useState<ColumnType>(column.type);
@@ -47,7 +47,10 @@ export function ColumnContextMenu({
   if (showEditModal) {
     return (
       <>
-        <div className="fixed inset-0 z-40" onClick={() => setShowEditModal(false)} />
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowEditModal(false)}
+        />
         <div
           className="fixed z-50 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
           style={{ left: position.x, top: position.y }}
@@ -55,26 +58,26 @@ export function ColumnContextMenu({
           <h3 className="mb-3 text-sm font-medium text-gray-900">Edit field</h3>
 
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-gray-700">
               Name
             </label>
             <input
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-gray-700">
               Data type
             </label>
             <select
               value={editType}
               onChange={(e) => setEditType(e.target.value as ColumnType)}
               disabled={column.primary}
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               <option value="TEXT">Text</option>
               <option value="NUMBER">Number</option>
@@ -124,18 +127,15 @@ export function ColumnContextMenu({
         label={`Change to ${column.type === "TEXT" ? "Number" : "Text"}`}
         disabled={column.primary}
         onClick={() => {
-          onChangeType(
-            column.id,
-            column.type === "TEXT" ? "NUMBER" : "TEXT",
-          );
+          onChangeType(column.id, column.type === "TEXT" ? "NUMBER" : "TEXT");
           onClose();
         }}
       />
-      {column.primary && onSetPrimary && (
+      {column.primary && (
         <MenuItem
           label="Change primary field"
           onClick={() => {
-            onSetPrimary();
+            openModal("set-primary");
             onClose();
           }}
         />

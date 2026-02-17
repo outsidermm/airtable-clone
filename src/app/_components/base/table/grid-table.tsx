@@ -55,7 +55,6 @@ interface GridTableProps {
   onAddRow: () => void;
   onDeleteRow: (rowId: number) => void;
   onBulkDeleteRow: (rowIds: number[]) => void;
-  onAddColumn: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onDeleteColumn: (columnId: number) => void;
   onReorderColumn: (
     columnId: number,
@@ -69,9 +68,6 @@ interface GridTableProps {
   hasNextPage?: boolean;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
-  highlightedCells?: Map<number, Set<number>>;
-  activeSearchCell?: { rowId: number; columnId: number };
-  searchQuery?: string;
   onContextMenu?: (state: ContextMenuState) => void;
 }
 
@@ -82,7 +78,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       rows,
       onCellUpdate,
       onAddRow,
-      onAddColumn,
       onReorderColumn,
       onUpdateColumn,
       onReorderRow,
@@ -90,9 +85,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       hasNextPage,
       sorts = [],
       rowHeight = "short",
-      highlightedCells,
-      activeSearchCell,
-      searchQuery = "",
       onContextMenu,
     },
     ref,
@@ -424,7 +416,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               sensors={sensors}
               handleDragEnd={handleDragEnd}
               headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
-              onAddColumn={onAddColumn}
               onUpdateColumn={onUpdateColumn}
               onContextMenu={onContextMenu}
             />
@@ -477,9 +468,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         editingCell={editingCell}
                         selectedCells={selectedCells} // PASSED MEMOIZED SET
                         isMultiSelect={isMultiSelect}
-                        highlightedCells={highlightedCells}
-                        activeSearchCell={activeSearchCell}
-                        searchQuery={searchQuery}
                         handleMouseDown={handleMouseDown}
                         handleMouseEnter={handleMouseEnter}
                         handleCellChange={handleCellChange}

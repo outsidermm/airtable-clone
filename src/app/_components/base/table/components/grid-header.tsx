@@ -18,6 +18,7 @@ import type { GridColumn, ContextMenuState, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
 import { ChevronDownIcon, PlusIcon, TextIcon } from "~/components/icons";
+import { useBase } from "../../base-context";
 
 interface GridHeaderProps {
   frozenWidth: number;
@@ -35,7 +36,6 @@ interface GridHeaderProps {
   handleDragEnd: (e: DragEndEvent) => void;
   headerGroups: Header<GridRow, unknown>[]; // from TanStack
   // Actions
-  onAddColumn: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onUpdateColumn: (columnId: number, name: string) => void;
   onContextMenu?: (state: ContextMenuState) => void;
 }
@@ -54,10 +54,10 @@ export function GridHeader({
   sensors,
   handleDragEnd,
   headerGroups,
-  onAddColumn,
   onUpdateColumn,
   onContextMenu,
 }: GridHeaderProps) {
+  const {openModal} = useBase();
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [editingHeaderValue, setEditingHeaderValue] = useState("");
 
@@ -251,7 +251,7 @@ export function GridHeader({
         style={{ width: 48, height: HEADER_HEIGHT }}
       >
         <button
-          onClick={onAddColumn}
+          onClick={(e) => {openModal("add-column",e.currentTarget)}}
           className="text-gray-400 hover:text-gray-600"
         >
           <PlusIcon className="h-4 w-4" />

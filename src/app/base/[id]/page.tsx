@@ -45,7 +45,6 @@ export default async function BasePage({ params }: BasePageProps) {
             name: t.name,
             baseId: t.baseId,
           }))}
-          initialTableId={firstTable.id}
           base={{
             id: base.id,
             name: base.name,

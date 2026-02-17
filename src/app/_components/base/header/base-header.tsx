@@ -47,8 +47,6 @@ interface Table {
 interface BaseHeaderProps {
   base: Base;
   tables?: Table[];
-  onTableChange?: (tableId: number) => void;
-  onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
   onDeleteTable?: (tableId: number) => void;
   onDuplicateTable?: (tableId: number) => void;
@@ -58,14 +56,13 @@ interface BaseHeaderProps {
 export function BaseHeader({
   base,
   tables = [],
-  onTableChange,
-  onAddTable,
   onRenameTable,
   onDeleteTable,
   onDuplicateTable,
   onRenameBase,
 }: BaseHeaderProps) {
-  const {activeTableId} = useBase();
+  const { openModal } = useBase();
+  const { activeTableId, setActiveTableId } = useBase();
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
   const [deleteConfirmTableId, setDeleteConfirmTableId] = useState<
@@ -470,7 +467,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                     }`}
                   >
                     <button
-                      onClick={() => onTableChange?.(table.id)}
+                      onClick={() => setActiveTableId?.(table.id)}
                       onDoubleClick={() => {
                         setRenamingTableId(table.id);
                         setRenamingTableValue(table.name);
@@ -689,8 +686,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                           className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <span className="flex flex-row items-center gap-2">
-                          <CalendarIcon  className="h-4 w-4 text-gray-400" />
-
+                            <CalendarIcon className="h-4 w-4 text-gray-400" />
                             Configure date dependencies
                           </span>
                           <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
@@ -743,9 +739,11 @@ Teammates will see this guide when they first open the base and can find it anyt
                             closeMenu();
                           }}
                           disabled={tables.length === 1}
-                          className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm ${tables.length===1 ? "text-gray-400" : "text-gray-700 hover:bg-gray-50"}`}
+                          className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm ${tables.length === 1 ? "text-gray-400" : "text-gray-700 hover:bg-gray-50"}`}
                         >
-                          <TrashIcon className={`h-4 w-4 ${tables.length===1 ? "text-gray-400": "text-gray-200"}`} />
+                          <TrashIcon
+                            className={`h-4 w-4 ${tables.length === 1 ? "text-gray-400" : "text-gray-200"}`}
+                          />
                           Delete table
                         </button>
                       </div>
@@ -830,7 +828,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                           <button
                             key={table.id}
                             onClick={() => {
-                              onTableChange?.(table.id);
+                              setActiveTableId?.(table.id);
                               setIsTableSearchOpen(false);
                               setTableSearchQuery("");
                             }}
@@ -858,7 +856,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div className="my-1.5 border-t border-gray-100" />
                     <button
                       onClick={(e) => {
-                        onAddTable?.(e);
+                        openModal("add-table", e.currentTarget);
                         setIsTableSearchOpen(false);
                         setTableSearchQuery("");
                       }}
@@ -877,7 +875,9 @@ Teammates will see this guide when they first open the base and can find it anyt
 
             {/* Add or import button */}
             <button
-              onClick={onAddTable}
+              onClick={(e) => {
+                openModal("add-table", e.currentTarget);
+              }}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
             >
               <PlusIcon className="h-3.5 w-3.5" />
