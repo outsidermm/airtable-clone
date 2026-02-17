@@ -100,6 +100,28 @@ export const SearchIcon = (props: IconProps) => (
   </svg>
 );
 
+export const ArrowLeftIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 12H5m7-7l-7 7 7 7"
+    />
+  </svg>
+);
+
+export const ArrowRightIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 12h14m-7-7l7 7-7 7"
+    />
+  </svg>
+);
+
 // ============================================================================
 // MENU & UI CONTROLS
 // ============================================================================
@@ -1099,6 +1121,8 @@ export const Icons = {
   X: XIcon,
   Check: CheckIcon,
   Search: SearchIcon,
+  ArrowLeft: ArrowLeftIcon,
+  ArrowRight: ArrowRightIcon,
 
   // Menu & UI
   Menu: MenuIcon,
