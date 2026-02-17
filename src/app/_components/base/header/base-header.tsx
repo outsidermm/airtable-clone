@@ -1,5 +1,5 @@
 "use client";
-
+import { useBase } from "../base-context";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -47,7 +47,6 @@ interface Table {
 interface BaseHeaderProps {
   base: Base;
   tables?: Table[];
-  activeTableId?: number;
   onTableChange?: (tableId: number) => void;
   onAddTable?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRenameTable?: (tableId: number, newName: string) => void;
@@ -59,7 +58,6 @@ interface BaseHeaderProps {
 export function BaseHeader({
   base,
   tables = [],
-  activeTableId,
   onTableChange,
   onAddTable,
   onRenameTable,
@@ -67,6 +65,7 @@ export function BaseHeader({
   onDuplicateTable,
   onRenameBase,
 }: BaseHeaderProps) {
+  const {activeTableId} = useBase();
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
   const [deleteConfirmTableId, setDeleteConfirmTableId] = useState<

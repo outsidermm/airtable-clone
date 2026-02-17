@@ -37,6 +37,7 @@ import {
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { RowHeightOption } from "~/types/row";
 import { RowHeightDropdown } from "./row-height-dropdown";
+import { useBase } from "../base-context";
 
 type ToolbarDropdown =
   | "hideFields"
@@ -50,11 +51,8 @@ type ToolbarDropdown =
 
 interface BaseToolbarProps {
   columns: GridColumn[];
-  activeViewId: number | null;
-  onActiveViewIdChange: (id: number | null) => void;
   viewCount: number;
   viewConfig: ViewConfig;
-  tableId: number;
   onUpdateViewConfig: (config: ViewConfig) => void;
   onToggleSidebar: () => void;
   onSidebarHoverEnter?: () => void;
@@ -70,11 +68,8 @@ interface BaseToolbarProps {
 
 export function BaseToolbar({
   columns,
-  activeViewId,
-  onActiveViewIdChange,
   viewCount,
   viewConfig,
-  tableId,
   onUpdateViewConfig,
   onToggleSidebar,
   onSidebarHoverEnter,
@@ -85,12 +80,13 @@ export function BaseToolbar({
 }: BaseToolbarProps) {
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const {activeTableId, activeViewId, setActiveViewId} = useBase();
 
   const utils = api.useUtils();
   const viewMutations = useViewMutations(
-    tableId,
+    activeTableId,
     activeViewId,
-    onActiveViewIdChange,
+    setActiveViewId,
   );
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
@@ -99,7 +95,7 @@ export function BaseToolbar({
     onSuccess: (data) => {
       setIsSeeding(false);
       // Invalidate row queries to refetch with new data
-      void utils.row.getRows.invalidate({ tableId });
+      void utils.row.getRows.invalidate({ tableId: activeTableId });
       void utils.view.getData.invalidate();
       alert(`Successfully created ${data.count.toLocaleString()} rows!`);
     },
@@ -152,9 +148,9 @@ export function BaseToolbar({
   const handleBulkSeed = useCallback(
     (count: number) => {
       if (isSeeding) return;
-      bulkCreateMutation.mutate({ tableId, count });
+      bulkCreateMutation.mutate({ tableId: activeTableId, count });
     },
-    [tableId, bulkCreateMutation, isSeeding],
+    [activeTableId, bulkCreateMutation, isSeeding],
   );
 
   const filterCount = viewConfig.filters?.length ?? 0;
@@ -459,7 +455,6 @@ export function BaseToolbar({
           </button>
           {activeDropdown === "search" && (
             <SearchDropdown
-              tableId={tableId}
               onHighlight={onHighlight}
               onScrollToRow={onScrollToRow}
               onClose={closeDropdown}

@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/components/icons";
 import { api } from "~/trpc/react";
+import { useBase } from "../base-context";
 
 interface SearchDropdownProps {
-  tableId: number;
   onHighlight: (
     cells: Map<number, Set<number>>,
     activeCell?: { rowId: number; columnId: number },
@@ -16,11 +16,11 @@ interface SearchDropdownProps {
 }
 
 export function SearchDropdown({
-  tableId,
   onHighlight,
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
+  const { activeTableId } = useBase();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,7 +40,7 @@ export function SearchDropdown({
   }, [query]);
 
   const searchResults = api.cell.search.useQuery(
-    { tableId, query: debouncedQuery },
+    { tableId: activeTableId, query: debouncedQuery },
     { enabled: debouncedQuery.length > 0 },
   );
 

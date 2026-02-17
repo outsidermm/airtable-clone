@@ -3,7 +3,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import { useToast } from "~/app/_components/ui/toast";
-import { GridTable, type GridTableHandle } from "./table/grid-table";
+import { GridTable } from "./table/grid-table";
+import type { GridTableHandle } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
 import { BaseHeader } from "./header/base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
@@ -420,7 +421,6 @@ export function BaseContent({
       <BaseHeader
         base={base}
         tables={tables}
-        activeTableId={activeTableId}
         onTableChange={setActiveTableId}
         onAddTable={(e) => {
           setAddTableAnchor(e?.currentTarget ?? null);
@@ -435,11 +435,8 @@ export function BaseContent({
       {/* Toolbar */}
       <BaseToolbar
         columns={allColumns}
-        activeViewId={activeViewId}
-        onActiveViewIdChange={setActiveViewId}
         viewCount={views.length}
         viewConfig={viewConfig}
-        tableId={activeTableId}
         onUpdateViewConfig={handleUpdateViewConfig}
         onToggleSidebar={handleToggleSidebar}
         onSidebarHoverEnter={handleSidebarHoverEnter}
@@ -458,8 +455,6 @@ export function BaseContent({
         <ViewSidebar
           isOpen={isSidebarOpen}
           views={views}
-          activeViewId={activeViewId}
-          onSelectView={setActiveViewId}
           onAddView={viewMutations.handleAddView}
           onRenameView={viewMutations.handleRenameView}
           onDeleteView={viewMutations.handleDeleteView}

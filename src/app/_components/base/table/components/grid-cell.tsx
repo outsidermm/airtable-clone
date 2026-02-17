@@ -2,8 +2,8 @@
 
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import type { ContextMenuState } from "~/types/grid";
-import { HighlightedText } from "../../grid-table/ui-components";
-import type { CellAddress } from "../../grid-table/types";
+import { HighlightedText } from "../../grid-table/highlighted-text";
+import type { CellAddress } from "~/types/cell";
 
 interface GridCellProps {
   rowId: number;

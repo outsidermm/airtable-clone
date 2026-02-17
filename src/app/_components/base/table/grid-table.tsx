@@ -33,8 +33,8 @@ import {
   HEADER_HEIGHT,
   CHECKBOX_WIDTH,
   PRIMARY_WIDTH,
-} from "../grid-table/constants";
-import type { CellAddress, GridTableHandle } from "../grid-table/types";
+} from "../constants";
+
 import { SortableRow } from "./components/sortable-row";
 import { GridHeader } from "./components/grid-header";
 
@@ -44,9 +44,9 @@ import { useGridNavigation } from "./hooks/useGridNavigation";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { ColumnType } from "generated/prisma/enums";
 import { PlusIcon } from "~/components/icons";
+import type { CellAddress } from "~/types/cell";
+import type { GridTableHandle } from "~/types/table";
 
-// Re-export types
-export type { GridTableHandle } from "../grid-table/types";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -145,7 +145,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     // Navigation Logic
     useGridNavigation({
       rows,
-      columns,
       primaryColumn,
       nonPrimaryColumns,
       selectedCell,

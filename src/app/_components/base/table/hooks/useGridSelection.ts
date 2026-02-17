@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
-import type { CellAddress } from "../../grid-table/types";
-import { set } from "zod";
+import type { CellAddress } from "~/types/cell";
 
 export function useGridSelection(
   rows: GridRow[],

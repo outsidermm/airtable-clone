@@ -21,7 +21,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle } from "../grid-table/ui-components";
+import { DragHandle } from "../grid-table/drag-handle";
 import {
   CalendarIcon,
   DotsHorizontalIcon,
@@ -44,6 +44,7 @@ import {
   UserIcon,
   UsersIcon,
 } from "~/components/icons";
+import { useBase } from "../base-context";
 
 interface View {
   id: number;
@@ -53,8 +54,6 @@ interface View {
 interface ViewSidebarProps {
   isOpen: boolean;
   views: View[];
-  activeViewId: number | null;
-  onSelectView: (viewId: number) => void;
   onAddView: () => void;
   onRenameView: (viewId: number, newName: string) => void;
   onDeleteView: (viewId: number) => void;
@@ -67,12 +66,10 @@ interface ViewSidebarProps {
 // --- Sortable View Item ---
 interface SortableViewItemProps {
   view: View;
-  isActive: boolean;
   isEditing: boolean;
   editingName: string;
   viewMenuId: number | null;
   viewsLength: number;
-  onSelectView: (viewId: number) => void;
   onDoubleClick: (view: View) => void;
   onSetEditingName: (name: string) => void;
   onRenameSubmit: (viewId: number) => void;
@@ -85,12 +82,10 @@ interface SortableViewItemProps {
 
 function SortableViewItem({
   view,
-  isActive,
   isEditing,
   editingName,
   viewMenuId,
   viewsLength,
-  onSelectView,
   onDoubleClick,
   onSetEditingName,
   onRenameSubmit,
@@ -110,7 +105,8 @@ function SortableViewItem({
   } = useSortable({
     id: view.id,
   });
-
+  const {activeTableId, setActiveViewId} = useBase();
+  const isActive = activeTableId === view.id;
   // Only apply vertical transform, ignore horizontal
   const constrainedTransform = transform ? { ...transform, x: 0 } : transform;
 
@@ -141,7 +137,7 @@ function SortableViewItem({
       ) : (
         <div className="relative flex items-center gap-1 hover:bg-gray-100">
           <button
-            onClick={() => onSelectView(view.id)}
+            onClick={() => setActiveViewId(view.id)}
             onDoubleClick={() => onDoubleClick(view)}
             className={`flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
               isActive
@@ -232,8 +228,6 @@ function SortableViewItem({
 export function ViewSidebar({
   isOpen,
   views,
-  activeViewId,
-  onSelectView,
   onAddView,
   onRenameView,
   onDeleteView,
@@ -622,12 +616,10 @@ export function ViewSidebar({
               <SortableViewItem
                 key={view.id}
                 view={view}
-                isActive={activeViewId === view.id}
                 isEditing={editingViewId === view.id}
                 editingName={editingName}
                 viewMenuId={viewMenuId}
                 viewsLength={views.length}
-                onSelectView={onSelectView}
                 onDoubleClick={handleDoubleClick}
                 onSetEditingName={setEditingName}
                 onRenameSubmit={handleRenameSubmit}

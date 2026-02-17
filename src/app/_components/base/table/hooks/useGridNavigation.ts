@@ -2,11 +2,10 @@
 
 import { useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
-import type { CellAddress } from "../../grid-table/types";
+import type { CellAddress } from "~/types/cell";
 
 interface UseGridNavigationProps {
   rows: GridRow[];
-  columns: GridColumn[];
   primaryColumn: GridColumn | null;
   nonPrimaryColumns: GridColumn[];
   selectedCell: CellAddress | null;
@@ -19,7 +18,6 @@ interface UseGridNavigationProps {
 
 export function useGridNavigation({
   rows,
-  columns,
   primaryColumn,
   nonPrimaryColumns,
   selectedCell,

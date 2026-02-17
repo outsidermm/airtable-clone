@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PlusIcon } from "~/components/icons";
 import { api } from "~/trpc/react";
+import { useBase } from "../base-context";
 
 interface Table {
   id: number;
@@ -11,12 +12,12 @@ interface Table {
 
 interface TableTabsProps {
   tables: Table[];
-  activeTableId: number;
   baseId: string;
   onTableChange?: (tableId: number) => void;
 }
 
-export function TableTabs({ tables, activeTableId, baseId, onTableChange }: TableTabsProps) {
+export function TableTabs({ tables, baseId, onTableChange }: TableTabsProps) {
+  const {activeTableId} = useBase()
   const [isAddingTable, setIsAddingTable] = useState(false);
 
   const utils = api.useUtils();

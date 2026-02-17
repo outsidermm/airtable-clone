@@ -13,7 +13,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableHeaderCell } from "./sortable-header-cell";
-import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../grid-table/constants";
+import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
 import type { GridColumn, ContextMenuState, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
