@@ -43,6 +43,7 @@ import { useGridSelection } from "./hooks/useGridSelection";
 import { useGridNavigation } from "./hooks/useGridNavigation";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { ColumnType } from "generated/prisma/enums";
+import { PlusIcon } from "~/components/icons";
 
 // Re-export types
 export type { GridTableHandle } from "../grid-table/types";
@@ -510,21 +511,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               >
                 <button
                   onClick={onAddRow}
-                  className="ml-6 flex w-full items-center gap-2 px-3 py-2 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                  className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
                 >
-                  <svg
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
+                  <PlusIcon className="h-4 w-4" />
                 </button>
               </div>
               <div
