@@ -19,6 +19,7 @@ import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
 import { ChevronDownIcon, PlusIcon, TextIcon } from "~/components/icons";
 import { useBase } from "../../base-context";
+import { useColumnMutations } from "~/app/_components/hooks/use-column-mutations";
 
 interface GridHeaderProps {
   frozenWidth: number;
@@ -36,7 +37,6 @@ interface GridHeaderProps {
   handleDragEnd: (e: DragEndEvent) => void;
   headerGroups: Header<GridRow, unknown>[]; // from TanStack
   // Actions
-  onUpdateColumn: (columnId: number, name: string) => void;
   onContextMenu?: (state: ContextMenuState) => void;
 }
 
@@ -54,10 +54,10 @@ export function GridHeader({
   sensors,
   handleDragEnd,
   headerGroups,
-  onUpdateColumn,
   onContextMenu,
 }: GridHeaderProps) {
-  const {openModal} = useBase();
+  const {openModal, activeTableId} = useBase();
+  const columnMutations = useColumnMutations(activeTableId);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [editingHeaderValue, setEditingHeaderValue] = useState("");
 
@@ -71,7 +71,7 @@ export function GridHeader({
       editingHeaderValue.trim() &&
       editingHeaderValue.trim() !== currentName
     ) {
-      onUpdateColumn(colId, editingHeaderValue.trim());
+      columnMutations.handleUpdateColumn(colId, editingHeaderValue.trim());
     }
     setEditingHeader(null);
   };

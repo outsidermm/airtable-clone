@@ -42,27 +42,18 @@ import { GridHeader } from "./components/grid-header";
 import { useGridSelection } from "./hooks/useGridSelection";
 import { useGridNavigation } from "./hooks/useGridNavigation";
 import type { SortConfig } from "~/server/api/routers/view";
-import type { ColumnType } from "generated/prisma/enums";
 import { PlusIcon } from "~/components/icons";
 import type { CellAddress } from "~/types/cell";
 import type { GridTableHandle } from "~/types/table";
+import { useRowMutations } from "../../hooks/use-row-mutations";
+import { useBase } from "../base-context";
+import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 
 interface GridTableProps {
   columns: GridColumn[];
   rows: GridRow[];
   onCellUpdate: (rowId: number, columnId: number, value: string) => void;
-  onAddRow: () => void;
-  onDeleteRow: (rowId: number) => void;
-  onBulkDeleteRow: (rowIds: number[]) => void;
-  onDeleteColumn: (columnId: number) => void;
-  onReorderColumn: (
-    columnId: number,
-    afterColumnId: number | null,
-    beforeColumnId: number | null,
-  ) => void;
-  onUpdateColumn: (columnId: number, name?: string, type?: ColumnType) => void;
-  onSetPrimaryColumn: (columnId: number) => void;
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
   onLoadMore?: () => void;
   hasNextPage?: boolean;
@@ -77,9 +68,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       columns,
       rows,
       onCellUpdate,
-      onAddRow,
-      onReorderColumn,
-      onUpdateColumn,
       onReorderRow,
       onLoadMore,
       hasNextPage,
@@ -89,6 +77,11 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     },
     ref,
   ) {
+    const {activeTableId } = useBase();
+    const rowMutations = useRowMutations(activeTableId);
+    const columnMutations = useColumnMutations(activeTableId);
+
+
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
     const parentRef = useRef<HTMLDivElement>(null);
     const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -143,7 +136,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       setSelectedCell,
       editingCell,
       setEditingCell,
-      onAddRow,
       setShowLastRowTooltip,
     });
 
@@ -333,10 +325,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           const oldIdx = all.findIndex((c) => c.id === activeId);
           const newIdx = all.findIndex((c) => c.id === overId);
 
-          if (newIdx === 0) onReorderColumn(activeId, null, all[0]!.id);
+          if (newIdx === 0) columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
           else if (oldIdx < newIdx)
-            onReorderColumn(activeId, all[newIdx]!.id, null);
-          else onReorderColumn(activeId, null, all[newIdx]!.id);
+            columnMutations.handleReorderColumn(activeId, all[newIdx]!.id, null);
+          else columnMutations.handleReorderColumn(activeId, null, all[newIdx]!.id);
         } else if (
           activeStr.startsWith("row-") &&
           overStr.startsWith("row-") &&
@@ -360,7 +352,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           }
         }
       },
-      [columns, rows, onReorderColumn, onReorderRow, selectedRowIds],
+      [columns, rows, columnMutations, onReorderRow, selectedRowIds],
     );
 
     // --- 9. Deselect when clicking outside ---
@@ -416,7 +408,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               sensors={sensors}
               handleDragEnd={handleDragEnd}
               headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
-              onUpdateColumn={onUpdateColumn}
               onContextMenu={onContextMenu}
             />
 
@@ -497,7 +488,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 }}
               >
                 <button
-                  onClick={onAddRow}
+                  onClick={rowMutations.handleAddRow}
                   className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
                 >
                   <PlusIcon className="h-4 w-4" />

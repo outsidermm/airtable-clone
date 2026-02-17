@@ -455,13 +455,6 @@ export function BaseContent({
               columns={visibleColumns}
               rows={gridRows}
               onCellUpdate={handleCellUpdate}
-              onAddRow={rowMutations.handleAddRow}
-              onDeleteRow={rowMutations.handleDeleteRow}
-              onBulkDeleteRow={rowMutations.handleBulkDeleteRow}
-              onDeleteColumn={columnMutations.handleDeleteColumn}
-              onReorderColumn={columnMutations.handleReorderColumn}
-              onUpdateColumn={columnMutations.handleUpdateColumn}
-              onSetPrimaryColumn={columnMutations.handleSetPrimaryColumn}
               onReorderRow={(draggedRowIds, targetRowId) => {
                 // Row reordering is local-only (session-based) - no backend persistence
                 const currentOrder =

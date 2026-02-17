@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
+import { useRowMutations } from "~/app/_components/hooks/use-row-mutations";
+import { useBase } from "../../base-context";
 
 interface UseGridNavigationProps {
   rows: GridRow[];
@@ -12,7 +14,6 @@ interface UseGridNavigationProps {
   setSelectedCell: (cell: CellAddress | null) => void;
   editingCell: CellAddress | null;
   setEditingCell: (cell: CellAddress | null) => void;
-  onAddRow: () => void;
   setShowLastRowTooltip: (show: boolean) => void;
 }
 
@@ -24,15 +25,16 @@ export function useGridNavigation({
   setSelectedCell,
   editingCell,
   setEditingCell,
-  onAddRow,
   setShowLastRowTooltip,
 }: UseGridNavigationProps) {
+  const {activeTableId} = useBase();
+  const rowMutations = useRowMutations(activeTableId);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 1. Handle Add Row
       if (e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
-        onAddRow();
+        rowMutations.handleAddRow();
         setShowLastRowTooltip(false);
         return;
       }
@@ -136,7 +138,7 @@ export function useGridNavigation({
     rows,
     primaryColumn,
     nonPrimaryColumns,
-    onAddRow,
+    rowMutations,
     setEditingCell,
     setSelectedCell,
     setShowLastRowTooltip,
