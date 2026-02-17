@@ -1,37 +1,35 @@
 "use client";
 
+import { useRowMutations } from "../../hooks/use-row-mutations";
+import { useBase } from "../base-context";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 
 interface RowContextMenuProps {
   position: { x: number; y: number };
   rowId: number;
   onClose: () => void;
-  onInsertAbove: () => void;
-  onInsertBelow: () => void;
-  onDeleteRow: (rowId: number) => void;
 }
 
 export function RowContextMenu({
   position,
   rowId,
   onClose,
-  onInsertAbove,
-  onInsertBelow,
-  onDeleteRow,
 }: RowContextMenuProps) {
+  const { activeTableId } = useBase();
+  const rowMutations = useRowMutations(activeTableId);
   return (
     <ContextMenu position={position} onClose={onClose}>
       <MenuItem
         label="Insert row above"
         onClick={() => {
-          onInsertAbove();
+          rowMutations.handleAddRow();
           onClose();
         }}
       />
       <MenuItem
         label="Insert row below"
         onClick={() => {
-          onInsertBelow();
+          rowMutations.handleAddRow();
           onClose();
         }}
       />
@@ -40,7 +38,7 @@ export function RowContextMenu({
         label="Delete row"
         danger
         onClick={() => {
-          onDeleteRow(rowId);
+          rowMutations.handleDeleteRow(rowId);
           onClose();
         }}
       />

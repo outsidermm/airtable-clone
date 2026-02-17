@@ -15,7 +15,6 @@ import { SetPrimaryModal } from "./modals/set-primary-modal";
 import { AddTableModal } from "./modals/add-table-modal";
 import { AddColumnModal } from "./modals/add-column-modal";
 import { useTableMutations } from "../hooks/use-table-mutations";
-import { useRowMutations } from "../hooks/use-row-mutations";
 import { useColumnMutations } from "../hooks/use-column-mutations";
 import { useViewMutations } from "../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
@@ -145,14 +144,6 @@ export function BaseContent({
     setActiveViewId,
   );
 
-  const handleUpdateViewConfig = useCallback(
-    (config: ViewConfig) => {
-      if (!activeViewId) return;
-      viewMutations.handleUpdateView(activeViewId, config);
-    },
-    [activeViewId, viewMutations],
-  );
-
   // --- Rows (use view.getData when we have a view, fallback to row.getRows) ---
   const viewDataQuery = api.view.getData.useInfiniteQuery(
     { viewId: activeViewId!, limit: 50 },
@@ -176,8 +167,6 @@ export function BaseContent({
     if (!activeRowsQuery.data) return [];
     return activeRowsQuery.data.pages.flatMap((page) => page.rows);
   }, [activeRowsQuery.data]);
-
-  const rowMutations = useRowMutations(activeTableId);
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -291,15 +280,6 @@ export function BaseContent({
     [columnMutations],
   );
 
-  const handleColumnHide = useCallback(
-    (columnId: number) => {
-      if (!activeViewId) return;
-      const newHidden = [...(viewConfig.hiddenColumns ?? []), columnId];
-      handleUpdateViewConfig({ ...viewConfig, hiddenColumns: newHidden });
-    },
-    [activeViewId, viewConfig, handleUpdateViewConfig],
-  );
-
   const handleInsertColumnLeft = useCallback(
     (columnId: number) => {
       const colIdx = allColumns.findIndex((c) => c.id === columnId);
@@ -394,17 +374,13 @@ export function BaseContent({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <BaseHeader
-        base={base}
-        tables={tables}
-      />
+      <BaseHeader base={base} tables={tables} />
 
       {/* Toolbar */}
       <BaseToolbar
         columns={allColumns}
         viewCount={views.length}
         viewConfig={viewConfig}
-        onUpdateViewConfig={handleUpdateViewConfig}
         onToggleSidebar={handleToggleSidebar}
         onSidebarHoverEnter={handleSidebarHoverEnter}
         onSidebarHoverLeave={handleSidebarHoverLeave}
@@ -499,9 +475,6 @@ export function BaseContent({
             columnId={contextMenu.data.columnId}
             onClose={closeContextMenu}
             onClearCell={handleClearCell}
-            onInsertRowAbove={rowMutations.handleAddRow}
-            onInsertRowBelow={rowMutations.handleAddRow}
-            onDeleteRow={rowMutations.handleDeleteRow}
           />
         )}
 
@@ -509,10 +482,10 @@ export function BaseContent({
         <ColumnContextMenu
           position={contextMenu.position}
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
+          viewConfig={viewConfig}
           onClose={closeContextMenu}
           onRename={handleColumnRenameFromMenu}
           onChangeType={handleColumnChangeType}
-          onHide={handleColumnHide}
           onInsertLeft={handleInsertColumnLeft}
           onInsertRight={handleInsertColumnRight}
           onDelete={columnMutations.handleDeleteColumn}
@@ -527,9 +500,6 @@ export function BaseContent({
           position={contextMenu.position}
           rowId={contextMenu.data.rowId}
           onClose={closeContextMenu}
-          onInsertAbove={rowMutations.handleAddRow}
-          onInsertBelow={rowMutations.handleAddRow}
-          onDeleteRow={rowMutations.handleDeleteRow}
         />
       )}
 

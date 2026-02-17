@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 import type { GridColumn } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
 import { useBase } from "../base-context";
+import { useViewMutations } from "../../hooks/use-view-mutations";
+import type { ViewConfig } from "~/server/api/routers/view";
 
 interface ColumnContextMenuProps {
   position: { x: number; y: number };
   column: GridColumn;
+  viewConfig: ViewConfig;
   onClose: () => void;
   onRename: (columnId: number) => void;
   onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
   onUpdate?: (columnId: number, name: string, type: ColumnType) => void;
-  onHide: (columnId: number) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
   onDelete: (columnId: number) => void;
@@ -22,19 +24,38 @@ interface ColumnContextMenuProps {
 export function ColumnContextMenu({
   position,
   column,
+  viewConfig,
   onClose,
   onRename,
   onChangeType,
   onUpdate,
-  onHide,
   onInsertLeft,
   onInsertRight,
   onDelete,
 }: ColumnContextMenuProps) {
-  const { openModal } = useBase();
+  const { openModal, activeViewId, setActiveViewId, activeTableId } = useBase();
+  const viewMutations = useViewMutations(
+    activeTableId,
+    activeViewId,
+    setActiveViewId,
+  );
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(column.name);
   const [editType, setEditType] = useState<ColumnType>(column.type);
+
+  const handleUpdateHiddenColumns = useCallback(
+    (ids: number[]) => {
+      if (!activeViewId) return;
+      viewMutations.handleUpdateView(activeViewId, {
+        ...viewConfig,
+        hiddenColumns: ids,
+      });
+    },
+    [viewConfig, viewMutations, activeViewId],
+  );
+
+
+  
 
   const handleSaveEdit = () => {
     if (onUpdate) {
@@ -145,7 +166,7 @@ export function ColumnContextMenu({
         label="Hide field"
         disabled={column.primary}
         onClick={() => {
-          onHide(column.id);
+          handleUpdateHiddenColumns([column.id]);
           onClose();
         }}
       />

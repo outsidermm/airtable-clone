@@ -1,5 +1,7 @@
 "use client";
 
+import { useRowMutations } from "../../hooks/use-row-mutations";
+import { useBase } from "../base-context";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 
 interface CellContextMenuProps {
@@ -8,9 +10,6 @@ interface CellContextMenuProps {
   columnId: number;
   onClose: () => void;
   onClearCell: (rowId: number, columnId: number) => void;
-  onInsertRowAbove: () => void;
-  onInsertRowBelow: () => void;
-  onDeleteRow: (rowId: number) => void;
 }
 
 export function CellContextMenu({
@@ -19,16 +18,14 @@ export function CellContextMenu({
   columnId,
   onClose,
   onClearCell,
-  onInsertRowAbove,
-  onInsertRowBelow,
-  onDeleteRow,
 }: CellContextMenuProps) {
+  const { activeTableId } = useBase();
+  const rowMutations = useRowMutations(activeTableId);
   return (
     <ContextMenu position={position} onClose={onClose}>
       <MenuItem
         label="Copy cell"
         onClick={() => {
-          // Copy is a no-op placeholder for now
           onClose();
         }}
       />
@@ -43,14 +40,14 @@ export function CellContextMenu({
       <MenuItem
         label="Insert row above"
         onClick={() => {
-          onInsertRowAbove();
+          rowMutations.handleAddRow();
           onClose();
         }}
       />
       <MenuItem
         label="Insert row below"
         onClick={() => {
-          onInsertRowBelow();
+          rowMutations.handleAddRow();
           onClose();
         }}
       />
@@ -59,7 +56,7 @@ export function CellContextMenu({
         label="Delete row"
         danger
         onClick={() => {
-          onDeleteRow(rowId);
+          rowMutations.handleDeleteRow(rowId);
           onClose();
         }}
       />

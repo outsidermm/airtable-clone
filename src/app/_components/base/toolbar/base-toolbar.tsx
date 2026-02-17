@@ -53,7 +53,6 @@ interface BaseToolbarProps {
   columns: GridColumn[];
   viewCount: number;
   viewConfig: ViewConfig;
-  onUpdateViewConfig: (config: ViewConfig) => void;
   onToggleSidebar: () => void;
   onSidebarHoverEnter?: () => void;
   onSidebarHoverLeave?: () => void;
@@ -65,23 +64,22 @@ export function BaseToolbar({
   columns,
   viewCount,
   viewConfig,
-  onUpdateViewConfig,
   onToggleSidebar,
   onSidebarHoverEnter,
   onSidebarHoverLeave,
   activeViewName,
   onScrollToRow,
 }: BaseToolbarProps) {
-  const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const {activeTableId, activeViewId, setActiveViewId} = useBase();
-
-  const utils = api.useUtils();
+  const { activeTableId, activeViewId, setActiveViewId } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
     activeViewId,
     setActiveViewId,
   );
+  const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const utils = api.useUtils();
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
       setIsSeeding(true);
@@ -112,31 +110,42 @@ export function BaseToolbar({
 
   const handleUpdateFilters = useCallback(
     (filters: FilterConfig[]) => {
-      onUpdateViewConfig({ ...viewConfig, filters });
+      if (!activeViewId) return;
+      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, filters });
     },
-    [viewConfig, onUpdateViewConfig],
+    [viewConfig, viewMutations, activeViewId],
   );
 
   const handleUpdateSorts = useCallback(
     (sorts: SortConfig[]) => {
-      onUpdateViewConfig({ ...viewConfig, sorts });
+      if (!activeViewId) return;
+      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, sorts });
     },
-    [viewConfig, onUpdateViewConfig],
+    [viewConfig, viewMutations, activeViewId],
   );
 
   const handleUpdateHiddenColumns = useCallback(
     (ids: number[]) => {
-      onUpdateViewConfig({ ...viewConfig, hiddenColumns: ids });
+      if (!activeViewId) return;
+      viewMutations.handleUpdateView(activeViewId, {
+        ...viewConfig,
+        hiddenColumns: ids,
+      });
     },
-    [viewConfig, onUpdateViewConfig],
+    [viewConfig, viewMutations, activeViewId],
   );
 
   const handleUpdateRowHeight = useCallback(
     (rowHeight: RowHeightOption) => {
-      onUpdateViewConfig({ ...viewConfig, rowHeight });
+      if (!activeViewId) return;
+
+      viewMutations.handleUpdateView(activeViewId, {
+        ...viewConfig,
+        rowHeight,
+      });
       closeDropdown();
     },
-    [viewConfig, onUpdateViewConfig, closeDropdown],
+    [viewConfig, viewMutations, closeDropdown, activeViewId],
   );
 
   const handleBulkSeed = useCallback(
