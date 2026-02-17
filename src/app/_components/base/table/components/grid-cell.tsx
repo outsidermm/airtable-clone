@@ -58,14 +58,9 @@ export const GridCell = memo(function GridCell({
   // Local State for Instant Feedback
   const [localValue, setLocalValue] = useState(displayValue);
 
-  // --- FIX START ---
-  // Sync Local State with External Prop Changes
-  // We ONLY update localValue if the prop (displayValue) physically changes.
-  // We REMOVED 'isEditing' from the dependency array.
   useEffect(() => {
     setLocalValue(displayValue);
   }, [displayValue]);
-  // --- FIX END ---
 
   // Optimized Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +105,7 @@ export const GridCell = memo(function GridCell({
         });
       }}
     >
-      {isHighlighted && searchQuery ? (
+      {cellBg === "bg-yellow-100" && searchQuery ? (
         <div className="w-full text-xs text-gray-900">
           <HighlightedText text={displayValue} query={searchQuery} />
         </div>
