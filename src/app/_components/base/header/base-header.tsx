@@ -38,31 +38,28 @@ import {
   PlusIcon,
 } from "~/components/icons";
 import type { Base } from "~/types/base";
+import { useTableMutations } from "../../hooks/use-table-mutations";
 
 interface Table {
   id: number;
   name: string;
+  baseId: string;
 }
 
 interface BaseHeaderProps {
   base: Base;
-  tables?: Table[];
-  onRenameTable?: (tableId: number, newName: string) => void;
-  onDeleteTable?: (tableId: number) => void;
-  onDuplicateTable?: (tableId: number) => void;
-  onRenameBase?: (newName: string) => void;
+  tables: Table[];
 }
 
-export function BaseHeader({
-  base,
-  tables = [],
-  onRenameTable,
-  onDeleteTable,
-  onDuplicateTable,
-  onRenameBase,
-}: BaseHeaderProps) {
-  const { openModal } = useBase();
-  const { activeTableId, setActiveTableId } = useBase();
+export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
+  const { openModal, activeTableId, setActiveTableId } = useBase();
+  const tableMutations = useTableMutations(
+    base.id,
+    tables,
+    activeTableId,
+    setActiveTableId,
+  );
+  const baseMutations = useBaseMutations();
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
   const [deleteConfirmTableId, setDeleteConfirmTableId] = useState<
@@ -97,7 +94,6 @@ Teammates will see this guide when they first open the base and can find it anyt
   const tableSearchRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const baseMutations = useBaseMutations();
 
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -169,14 +165,17 @@ Teammates will see this guide when they first open the base and can find it anyt
                   onChange={(e) => setBaseNameValue(e.target.value)}
                   onBlur={() => {
                     if (baseNameValue.trim() && baseNameValue !== base.name) {
-                      onRenameBase?.(baseNameValue.trim());
+                      baseMutations.handleRename(base.id, baseNameValue.trim());
                     }
                     setIsRenamingBase(false);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       if (baseNameValue.trim() && baseNameValue !== base.name) {
-                        onRenameBase?.(baseNameValue.trim());
+                        baseMutations.handleRename(
+                          base.id,
+                          baseNameValue.trim(),
+                        );
                       }
                       setIsRenamingBase(false);
                     } else if (e.key === "Escape") {
@@ -231,7 +230,10 @@ Teammates will see this guide when they first open the base and can find it anyt
                           baseNameValue.trim() &&
                           baseNameValue !== base.name
                         ) {
-                          onRenameBase?.(baseNameValue.trim());
+                          baseMutations.handleRename(
+                            base.id,
+                            baseNameValue.trim(),
+                          );
                         }
                       }}
                       onKeyDown={(e) => {
@@ -240,7 +242,10 @@ Teammates will see this guide when they first open the base and can find it anyt
                             baseNameValue.trim() &&
                             baseNameValue !== base.name
                           ) {
-                            onRenameBase?.(baseNameValue.trim());
+                            baseMutations.handleRename(
+                              base.id,
+                              baseNameValue.trim(),
+                            );
                           }
                         }
                       }}
@@ -511,7 +516,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                                 e.key === "Enter" &&
                                 renamingTableValue.trim()
                               ) {
-                                onRenameTable?.(
+                                tableMutations.handleRenameTable(
                                   table.id,
                                   renamingTableValue.trim(),
                                 );
@@ -536,7 +541,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                           <button
                             onClick={() => {
                               if (renamingTableValue.trim()) {
-                                onRenameTable?.(
+                                tableMutations.handleRenameTable(
                                   table.id,
                                   renamingTableValue.trim(),
                                 );
@@ -669,7 +674,6 @@ Teammates will see this guide when they first open the base and can find it anyt
                         {/* Duplicate table */}
                         <button
                           onClick={() => {
-                            if (onDuplicateTable) onDuplicateTable(table.id);
                             closeMenu();
                           }}
                           className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -773,7 +777,9 @@ Teammates will see this guide when they first open the base and can find it anyt
                           </button>
                           <button
                             onClick={() => {
-                              onDeleteTable?.(deleteConfirmTableId);
+                              tableMutations.handleDeleteTable(
+                                deleteConfirmTableId,
+                              );
                               setDeleteConfirmTableId(null);
                             }}
                             className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
