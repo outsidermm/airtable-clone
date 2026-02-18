@@ -12,7 +12,6 @@ interface ColumnContextMenuProps {
   position: { x: number; y: number };
   column: GridColumn;
   viewConfig: ViewConfig;
-  onClose: () => void;
   onRename: (columnId: number) => void;
   onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
   onUpdate?: (columnId: number, name: string, type: ColumnType) => void;
@@ -25,7 +24,6 @@ export function ColumnContextMenu({
   position,
   column,
   viewConfig,
-  onClose,
   onRename,
   onChangeType,
   onUpdate,
@@ -33,7 +31,13 @@ export function ColumnContextMenu({
   onInsertRight,
   onDelete,
 }: ColumnContextMenuProps) {
-  const { openModal, activeViewId, setActiveViewId, activeTableId } = useBase();
+  const {
+    openModal,
+    activeViewId,
+    setActiveViewId,
+    activeTableId,
+    setContextMenu,
+  } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
     activeViewId,
@@ -54,15 +58,12 @@ export function ColumnContextMenu({
     [viewConfig, viewMutations, activeViewId],
   );
 
-
-  
-
   const handleSaveEdit = () => {
     if (onUpdate) {
       onUpdate(column.id, editName.trim() || column.name, editType);
     }
     setShowEditModal(false);
-    onClose();
+    setContextMenu(null);
   };
 
   if (showEditModal) {
@@ -109,7 +110,7 @@ export function ColumnContextMenu({
             <button
               onClick={() => {
                 setShowEditModal(false);
-                onClose();
+                setContextMenu(null);
               }}
               className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
             >
@@ -128,7 +129,7 @@ export function ColumnContextMenu({
   }
 
   return (
-    <ContextMenu position={position} onClose={onClose}>
+    <ContextMenu position={position}>
       <MenuItem
         label="Edit field"
         onClick={() => {
@@ -140,7 +141,7 @@ export function ColumnContextMenu({
         label="Rename field"
         onClick={() => {
           onRename(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuDivider />
@@ -149,7 +150,7 @@ export function ColumnContextMenu({
         disabled={column.primary}
         onClick={() => {
           onChangeType(column.id, column.type === "TEXT" ? "NUMBER" : "TEXT");
-          onClose();
+          setContextMenu(null);
         }}
       />
       {column.primary && (
@@ -157,7 +158,7 @@ export function ColumnContextMenu({
           label="Change primary field"
           onClick={() => {
             openModal("set-primary");
-            onClose();
+            setContextMenu(null);
           }}
         />
       )}
@@ -167,21 +168,21 @@ export function ColumnContextMenu({
         disabled={column.primary}
         onClick={() => {
           handleUpdateHiddenColumns([column.id]);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert field to the left"
         onClick={() => {
           onInsertLeft(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert field to the right"
         onClick={() => {
           onInsertRight(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuDivider />
@@ -191,7 +192,7 @@ export function ColumnContextMenu({
         disabled={column.primary}
         onClick={() => {
           onDelete(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
     </ContextMenu>

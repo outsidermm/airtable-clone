@@ -27,7 +27,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
+import type { GridColumn, GridRow } from "~/types/grid";
 import {
   ROW_HEIGHT_MAP,
   HEADER_HEIGHT,
@@ -59,7 +59,6 @@ interface GridTableProps {
   hasNextPage?: boolean;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
-  onContextMenu?: (state: ContextMenuState) => void;
 }
 
 export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
@@ -73,7 +72,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       hasNextPage,
       sorts = [],
       rowHeight = "short",
-      onContextMenu,
     },
     ref,
   ) {
@@ -408,7 +406,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               sensors={sensors}
               handleDragEnd={handleDragEnd}
               headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
-              onContextMenu={onContextMenu}
             />
 
             {/* Rows */}
@@ -464,7 +461,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         handleCellChange={handleCellChange}
                         setEditingCell={setEditingCell}
                         setHoveredRowId={setHoveredRowId}
-                        onContextMenu={onContextMenu}
                         totalScrollableWidth={totalScrollableWidth}
                         showLastRowTooltip={showLastRowTooltip}
                       />

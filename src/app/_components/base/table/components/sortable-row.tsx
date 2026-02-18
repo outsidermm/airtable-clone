@@ -1,5 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import type { ContextMenuState, GridColumn, GridRow } from "~/types/grid";
+import type { GridColumn, GridRow } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -38,7 +38,6 @@ interface SortableRowProps {
   handleCellChange: (rowId: number, columnId: number, value: string) => void;
   setEditingCell: (cell: CellAddress | null) => void;
   setHoveredRowId: (id: number | null) => void;
-  onContextMenu?: (state: ContextMenuState) => void;
   totalScrollableWidth: number;
   showLastRowTooltip: boolean;
 }
@@ -67,12 +66,11 @@ export function SortableRow(props: SortableRowProps) {
     handleCellChange,
     setEditingCell,
     setHoveredRowId,
-    onContextMenu,
     totalScrollableWidth,
     showLastRowTooltip,
   } = props;
 
-  const {highlightedCells, activeSearchCell, searchQuery} = useBase();
+  const {highlightedCells, activeSearchCell, searchQuery, setContextMenu} = useBase();
 
   const {
     attributes,
@@ -132,7 +130,6 @@ export function SortableRow(props: SortableRowProps) {
         onDoubleClick={setEditingCell}
         onChange={handleCellChange}
         onBlur={() => setEditingCell(null)}
-        onContextMenu={onContextMenu}
       />
     );
   };
@@ -160,7 +157,7 @@ export function SortableRow(props: SortableRowProps) {
           style={{ width: CHECKBOX_WIDTH }}
           onContextMenu={(e) => {
             e.preventDefault();
-            onContextMenu?.({
+            setContextMenu?.({
               type: "row",
               position: { x: e.clientX, y: e.clientY },
               data: { rowId, rowIndex: virtualIndex },

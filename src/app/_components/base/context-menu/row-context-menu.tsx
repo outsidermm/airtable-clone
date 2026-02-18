@@ -7,30 +7,25 @@ import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 interface RowContextMenuProps {
   position: { x: number; y: number };
   rowId: number;
-  onClose: () => void;
 }
 
-export function RowContextMenu({
-  position,
-  rowId,
-  onClose,
-}: RowContextMenuProps) {
-  const { activeTableId } = useBase();
+export function RowContextMenu({ position, rowId }: RowContextMenuProps) {
+  const { activeTableId, setContextMenu } = useBase();
   const rowMutations = useRowMutations(activeTableId);
   return (
-    <ContextMenu position={position} onClose={onClose}>
+    <ContextMenu position={position}>
       <MenuItem
         label="Insert row above"
         onClick={() => {
           rowMutations.handleAddRow();
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert row below"
         onClick={() => {
           rowMutations.handleAddRow();
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuDivider />
@@ -39,7 +34,7 @@ export function RowContextMenu({
         danger
         onClick={() => {
           rowMutations.handleDeleteRow(rowId);
-          onClose();
+          setContextMenu(null);
         }}
       />
     </ContextMenu>

@@ -2,30 +2,31 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useBase } from "../base-context";
 
 interface ContextMenuProps {
   position: { x: number; y: number };
-  onClose: () => void;
   children: React.ReactNode;
 }
 
-export function ContextMenu({ position, onClose, children }: ContextMenuProps) {
+export function ContextMenu({ position, children }: ContextMenuProps) {
+  const {setContextMenu} = useBase();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
+        setContextMenu(null)
       }
     },
-    [onClose],
+    [setContextMenu],
   );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") setContextMenu(null)
     },
-    [onClose],
+    [setContextMenu],
   );
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export function ContextMenu({ position, onClose, children }: ContextMenuProps) {
 
 interface MenuItemProps {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   icon?: React.ReactNode;
   danger?: boolean;
   disabled?: boolean;
@@ -70,9 +71,13 @@ export function MenuItem({
   danger,
   disabled,
 }: MenuItemProps) {
+  const { setContextMenu } = useBase();
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        if (!disabled && onClick) onClick();
+        else setContextMenu(null)
+      }}
       disabled={disabled}
       className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm ${
         disabled

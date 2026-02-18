@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import type { ContextMenuState } from "~/types/grid";
 
 // Define the types of modals that can be opened globally
 type BaseModalType = "add-table" | "add-column" | "set-primary" | null;
@@ -30,6 +31,9 @@ interface BaseContextType {
   setHighlightedCells: (cells: Map<number, Set<number>>) => void;
   activeSearchCell: { rowId: number; columnId: number } | undefined;
   setActiveSearchCell: (cell: { rowId: number; columnId: number } | undefined) => void;
+
+  contextMenu: ContextMenuState | null;
+  setContextMenu: (menu: ContextMenuState | null) => void;
 }
 
 const BaseContext = createContext<BaseContextType | undefined>(undefined);
@@ -58,6 +62,8 @@ export function BaseProvider({
   const [highlightedCells, setHighlightedCells] = useState<Map<number, Set<number>>>(new Map());
   const [activeSearchCell, setActiveSearchCell] = useState<{ rowId: number; columnId: number } | undefined>(undefined);
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
   // Helper to open modals with an optional anchor (for positioning)
   const openModal = (type: BaseModalType, anchor: HTMLElement | null = null) => {
     setActiveModal(type);
@@ -83,6 +89,8 @@ export function BaseProvider({
       setHighlightedCells,
       activeSearchCell,
       setActiveSearchCell,
+      contextMenu,
+      setContextMenu,
     }}>
       {children}
     </BaseContext.Provider>

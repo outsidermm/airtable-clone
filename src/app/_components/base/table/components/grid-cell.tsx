@@ -1,9 +1,9 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
-import type { ContextMenuState } from "~/types/grid";
 import { HighlightedText } from "../../grid-table/highlighted-text";
 import type { CellAddress } from "~/types/cell";
+import { useBase } from "../../base-context";
 
 interface GridCellProps {
   rowId: number;
@@ -25,7 +25,6 @@ interface GridCellProps {
   onDoubleClick: (cell: CellAddress) => void;
   onChange: (rowId: number, columnId: number, value: string) => void;
   onBlur: () => void;
-  onContextMenu?: (state: ContextMenuState) => void;
 }
 
 export const GridCell = memo(function GridCell({
@@ -46,8 +45,8 @@ export const GridCell = memo(function GridCell({
   onDoubleClick,
   onChange,
   onBlur,
-  onContextMenu,
 }: GridCellProps) {
+  const { setContextMenu } = useBase();
   const [isPending, startTransition] = useTransition();
 
   const displayValue = useMemo(() => {
@@ -98,7 +97,7 @@ export const GridCell = memo(function GridCell({
       onMouseEnter={() => onMouseEnter(rowId, columnId)}
       onContextMenu={(e) => {
         e.preventDefault();
-        onContextMenu?.({
+        setContextMenu({
           type: "cell",
           position: { x: e.clientX, y: e.clientY },
           data: { rowId, columnId, rowIndex },

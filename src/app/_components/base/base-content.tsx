@@ -18,7 +18,7 @@ import { useTableMutations } from "../hooks/use-table-mutations";
 import { useColumnMutations } from "../hooks/use-column-mutations";
 import { useViewMutations } from "../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
-import type { GridColumn, GridRow, ContextMenuState } from "~/types/grid";
+import type { GridColumn, GridRow } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
 import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
@@ -57,8 +57,9 @@ export function BaseContent({
     setIsSidebarPersistent,
     activeModal,
     modalAnchor,
+    contextMenu,
+    setContextMenu,
   } = useBase();
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -251,21 +252,14 @@ export function BaseContent({
   }, [rows, localRowOrder]);
 
   // --- Context menu handlers ---
-  const handleContextMenu = useCallback((state: ContextMenuState) => {
-    setContextMenu(state);
-  }, []);
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
 
   // Column context menu actions
   const handleColumnRenameFromMenu = useCallback(
     (_columnId: number) => {
       // The GridTable handles inline header editing
-      closeContextMenu();
+      setContextMenu(null);
     },
-    [closeContextMenu],
+    [setContextMenu],
   );
 
   const handleColumnChangeType = useCallback(
@@ -451,7 +445,6 @@ export function BaseContent({
               hasNextPage={activeRowsQuery.hasNextPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
-              onContextMenu={handleContextMenu}
             />
           )}
 
@@ -472,7 +465,6 @@ export function BaseContent({
             position={contextMenu.position}
             rowId={contextMenu.data.rowId}
             columnId={contextMenu.data.columnId}
-            onClose={closeContextMenu}
             onClearCell={handleClearCell}
           />
         )}
@@ -482,7 +474,6 @@ export function BaseContent({
           position={contextMenu.position}
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
           viewConfig={viewConfig}
-          onClose={closeContextMenu}
           onRename={handleColumnRenameFromMenu}
           onChangeType={handleColumnChangeType}
           onInsertLeft={handleInsertColumnLeft}
@@ -498,7 +489,6 @@ export function BaseContent({
         <RowContextMenu
           position={contextMenu.position}
           rowId={contextMenu.data.rowId}
-          onClose={closeContextMenu}
         />
       )}
 

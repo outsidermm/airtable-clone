@@ -8,7 +8,6 @@ interface CellContextMenuProps {
   position: { x: number; y: number };
   rowId: number;
   columnId: number;
-  onClose: () => void;
   onClearCell: (rowId: number, columnId: number) => void;
 }
 
@@ -16,24 +15,18 @@ export function CellContextMenu({
   position,
   rowId,
   columnId,
-  onClose,
   onClearCell,
 }: CellContextMenuProps) {
-  const { activeTableId } = useBase();
+  const { activeTableId, setContextMenu } = useBase();
   const rowMutations = useRowMutations(activeTableId);
   return (
-    <ContextMenu position={position} onClose={onClose}>
-      <MenuItem
-        label="Copy cell"
-        onClick={() => {
-          onClose();
-        }}
-      />
+    <ContextMenu position={position}>
+      <MenuItem label="Copy cell" />
       <MenuItem
         label="Clear cell"
         onClick={() => {
           onClearCell(rowId, columnId);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuDivider />
@@ -41,14 +34,14 @@ export function CellContextMenu({
         label="Insert row above"
         onClick={() => {
           rowMutations.handleAddRow();
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert row below"
         onClick={() => {
           rowMutations.handleAddRow();
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuDivider />
@@ -57,7 +50,7 @@ export function CellContextMenu({
         danger
         onClick={() => {
           rowMutations.handleDeleteRow(rowId);
-          onClose();
+          setContextMenu(null);
         }}
       />
     </ContextMenu>
