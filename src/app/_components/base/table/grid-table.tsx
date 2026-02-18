@@ -55,9 +55,6 @@ interface GridTableProps {
   rows: GridRow[];
   onCellUpdate: (rowId: number, columnId: number, value: string) => void;
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
-  onLoadMore?: () => void;
-  hasNextPage?: boolean;
-  isFetchingNextPage?: boolean;
   totalRowCount?: number;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
@@ -70,9 +67,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       rows,
       onCellUpdate,
       onReorderRow,
-      onLoadMore,
-      hasNextPage,
-      isFetchingNextPage,
       totalRowCount,
       sorts = [],
       rowHeight = "short",
@@ -238,42 +232,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       estimateSize: () => currentRowHeight,
       overscan: 10,
     });
-
-    // Keep fresh refs so scroll handler never has stale closures
-    const hasNextPageRef = useRef(hasNextPage);
-    const isFetchingRef = useRef(isFetchingNextPage);
-    const loadedRowCountRef = useRef(loadedRowCount);
-    const onLoadMoreRef = useRef(onLoadMore);
-    hasNextPageRef.current = hasNextPage;
-    isFetchingRef.current = isFetchingNextPage;
-    loadedRowCountRef.current = loadedRowCount;
-    onLoadMoreRef.current = onLoadMore;
-
-    // Trigger fetch when scroll position is within 20 rows of unloaded territory
-    const triggerLoadIfNeeded = useCallback(() => {
-      const el = parentRef.current;
-      if (!el || !hasNextPageRef.current || isFetchingRef.current) return;
-      const loadedPx = loadedRowCountRef.current * currentRowHeight;
-      const scrollBottom = el.scrollTop + el.clientHeight;
-      if (scrollBottom >= loadedPx - currentRowHeight * 20) {
-        onLoadMoreRef.current?.();
-      }
-    }, [currentRowHeight]);
-
-    // Attach scroll listener
-    useEffect(() => {
-      const el = parentRef.current;
-      if (!el) return;
-      el.addEventListener("scroll", triggerLoadIfNeeded, { passive: true });
-      return () => el.removeEventListener("scroll", triggerLoadIfNeeded);
-    }, [triggerLoadIfNeeded]);
-
-    // Chain: after each page load, check if we're still in unloaded territory
-    useEffect(() => {
-      if (!isFetchingNextPage) {
-        triggerLoadIfNeeded();
-      }
-    }, [loadedRowCount, isFetchingNextPage, triggerLoadIfNeeded]);
 
     useImperativeHandle(
       ref,

@@ -165,6 +165,18 @@ export function BaseContent({
     return activeRowsQuery.data.pages[0].totalCount;
   }, [activeRowsQuery.data]);
 
+  // Eager background loading: immediately chain each page load without waiting for scroll.
+  // This ensures that by the time a user scrolls to any position, data is already loaded.
+  useEffect(() => {
+    if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
+      void activeRowsQuery.fetchNextPage();
+    }
+  }, [
+    activeRowsQuery.hasNextPage,
+    activeRowsQuery.isFetchingNextPage,
+    activeRowsQuery.fetchNextPage,
+  ]);
+
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
     if (!tableQuery.data) return [];
@@ -409,16 +421,6 @@ export function BaseContent({
 
                 setLocalRowOrder(newOrder);
               }}
-              onLoadMore={() => {
-                if (
-                  activeRowsQuery.hasNextPage &&
-                  !activeRowsQuery.isFetchingNextPage
-                ) {
-                  void activeRowsQuery.fetchNextPage();
-                }
-              }}
-              hasNextPage={activeRowsQuery.hasNextPage}
-              isFetchingNextPage={activeRowsQuery.isFetchingNextPage}
               totalRowCount={totalRowCount}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
