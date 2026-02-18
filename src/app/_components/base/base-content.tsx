@@ -163,22 +163,20 @@ export function BaseContent({
         let fetchedTotalCount: number | undefined;
 
         if (activeViewId) {
-          const data = await utils.view.getData.fetch({
-            viewId: activeViewId,
-            offset,
-            limit: PAGE_SIZE,
-          });
+          const data = await utils.view.getData.fetch(
+            { viewId: activeViewId, offset, limit: PAGE_SIZE },
+            { staleTime: 0 }, // always bypass 30s cache — mutations don't invalidate this query
+          );
           newRows = data.rows.map((row) => ({
             id: row.id,
             cells: row.cells as Record<string, string | number | null>,
           }));
           fetchedTotalCount = data.totalCount;
         } else if (activeTableId) {
-          const data = await utils.row.getRows.fetch({
-            tableId: activeTableId,
-            offset,
-            limit: PAGE_SIZE,
-          });
+          const data = await utils.row.getRows.fetch(
+            { tableId: activeTableId, offset, limit: PAGE_SIZE },
+            { staleTime: 0 }, // always bypass 30s cache
+          );
           newRows = data.rows.map((row) => ({
             id: row.id,
             cells: row.cells as Record<string, string | number | null>,
@@ -310,7 +308,7 @@ export function BaseContent({
     }
     // Normal mode — sparse array where null = unloaded (renders as skeleton)
     if (!totalRowCount) return [];
-    const sparse: (GridRow | null)[] = new Array(totalRowCount).fill(null);
+    const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
     for (const [pageIndex, pageRows] of pageStore) {
       const startIdx = pageIndex * PAGE_SIZE;
       pageRows.forEach((row, i) => {
