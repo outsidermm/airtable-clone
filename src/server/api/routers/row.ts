@@ -73,7 +73,7 @@ export const rowRouter = createTRPCRouter({
     .input(
       z.object({
         tableId: z.number().int(),
-        limit: z.number().int().min(1).max(100).default(50),
+        limit: z.number().int().min(1).max(500).default(200),
         cursor: z.number().int().optional(),
       }),
     )
@@ -81,14 +81,21 @@ export const rowRouter = createTRPCRouter({
       // Verify ownership
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
-      // Cursor-based pagination — cells are already on the row as JSONB
-      const rows = await ctx.db.row.findMany({
-        where: { tableId: input.tableId },
-        take: input.limit + 1,
-        skip: input.cursor ? 1 : 0,
-        cursor: input.cursor ? { id: input.cursor } : undefined,
-        orderBy: { id: "asc" },
-      });
+      // Get total count and rows in parallel
+      const [totalCount, rows] = await Promise.all([
+        // Only fetch count on the first page (no cursor) to avoid repeated counting
+        input.cursor
+          ? Promise.resolve(undefined)
+          : ctx.db.row.count({ where: { tableId: input.tableId } }),
+        // Cursor-based pagination — cells are already on the row as JSONB
+        ctx.db.row.findMany({
+          where: { tableId: input.tableId },
+          take: input.limit + 1,
+          skip: input.cursor ? 1 : 0,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          orderBy: { id: "asc" },
+        }),
+      ]);
 
       let nextCursor: number | undefined;
       if (rows.length > input.limit) {
@@ -99,6 +106,7 @@ export const rowRouter = createTRPCRouter({
       return {
         rows,
         nextCursor,
+        totalCount,
       };
     }),
 

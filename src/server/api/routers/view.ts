@@ -250,7 +250,7 @@ export const viewRouter = createTRPCRouter({
     .input(
       z.object({
         viewId: z.number().int(),
-        limit: z.number().int().min(1).max(100).default(50),
+        limit: z.number().int().min(1).max(500).default(200),
         cursor: z.number().int().optional(),
       })
     )
@@ -424,17 +424,34 @@ export const viewRouter = createTRPCRouter({
       const whereClause = whereClauses.join(" AND ");
       const orderByClause = orderByParts.join(", ");
 
-      // Execute query to get row IDs
-      const rowIds = await ctx.db.$queryRawUnsafe<Array<{ id: number }>>(
-        `
-        SELECT r.id
-        FROM "Row" r
-        WHERE ${whereClause}
-        ORDER BY ${orderByClause}
-        LIMIT ${input.limit + 1}
-        `,
-        ...filterParams
-      );
+      // Build count WHERE clause (without cursor condition) for first page only
+      const countWhereClauses: string[] = [`r."tableId" = ${view.tableId}`];
+      if (filterConditions.length > 0) {
+        countWhereClauses.push(...filterConditions);
+      }
+      const countWhereClause = countWhereClauses.join(" AND ");
+
+      // Execute count (first page only) and row IDs in parallel
+      const [countResult, rowIds] = await Promise.all([
+        input.cursor
+          ? Promise.resolve(undefined)
+          : ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
+              `SELECT COUNT(*) as count FROM "Row" r WHERE ${countWhereClause}`,
+              ...filterParams
+            ),
+        ctx.db.$queryRawUnsafe<Array<{ id: number }>>(
+          `
+          SELECT r.id
+          FROM "Row" r
+          WHERE ${whereClause}
+          ORDER BY ${orderByClause}
+          LIMIT ${input.limit + 1}
+          `,
+          ...filterParams
+        ),
+      ]);
+
+      const totalCount = countResult ? Number(countResult[0]?.count ?? 0) : undefined;
 
       // Check if there are more rows
       let nextCursor: number | undefined;
@@ -448,6 +465,7 @@ export const viewRouter = createTRPCRouter({
         return {
           rows: [],
           nextCursor: undefined,
+          totalCount,
         };
       }
 
@@ -465,6 +483,7 @@ export const viewRouter = createTRPCRouter({
       return {
         rows: sortedRows,
         nextCursor,
+        totalCount,
       };
     }),
 
