@@ -19,6 +19,7 @@ import type { ViewConfig } from "~/server/api/routers/view";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
+import { PAGE_SIZE } from "./constants";
 
 interface Table {
   id: number;
@@ -57,7 +58,6 @@ export function BaseContent({
     contextMenu,
     setContextMenu,
   } = useBase();
-  const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
 
   const gridTableRef = useRef<GridTableHandle>(null);
   const sidebarHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -135,47 +135,90 @@ export function BaseContent({
     return views.find((v) => v.id === activeViewId)?.name ?? "Grid view";
   }, [views, activeViewId]);
 
-  // --- Rows (use view.getData when we have a view, fallback to row.getRows) ---
-  const viewDataQuery = api.view.getData.useInfiniteQuery(
-    { viewId: activeViewId!, limit: 200 },
-    {
-      enabled: !!activeViewId,
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+  // --- Rows: random-access page store ---
+  // Each page is fetched independently by index, enabling jump-to-position.
+  // row.getRows uses subquery seek (fast on int PK); view.getData uses OFFSET.
+  const pageStoreRef = useRef<Map<number, GridRow[]>>(new Map());
+  const loadingPagesRef = useRef<Set<number>>(new Set());
+  const fetchKeyRef = useRef(0); // increments on reset to discard stale fetches
+  const [pageStore, setPageStore] = useState<Map<number, GridRow[]>>(new Map());
+  const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
+
+  const fetchPage = useCallback(
+    async (pageIndex: number) => {
+      if (
+        loadingPagesRef.current.has(pageIndex) ||
+        pageStoreRef.current.has(pageIndex)
+      )
+        return;
+
+      loadingPagesRef.current.add(pageIndex);
+      const myFetchKey = fetchKeyRef.current;
+
+      try {
+        const offset = pageIndex * PAGE_SIZE;
+        let newRows: GridRow[];
+        let fetchedTotalCount: number | undefined;
+
+        if (activeViewId) {
+          const data = await utils.view.getData.fetch({
+            viewId: activeViewId,
+            offset,
+            limit: PAGE_SIZE,
+          });
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+        } else if (activeTableId) {
+          const data = await utils.row.getRows.fetch({
+            tableId: activeTableId,
+            offset,
+            limit: PAGE_SIZE,
+          });
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+        } else {
+          return;
+        }
+
+        // Discard result if view/table changed while fetching
+        if (fetchKeyRef.current !== myFetchKey) return;
+
+        pageStoreRef.current.set(pageIndex, newRows);
+        setPageStore(new Map(pageStoreRef.current));
+
+        if (pageIndex === 0 && fetchedTotalCount !== undefined) {
+          setTotalRowCount(fetchedTotalCount);
+        }
+      } finally {
+        if (fetchKeyRef.current === myFetchKey) {
+          loadingPagesRef.current.delete(pageIndex);
+        }
+      }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeViewId, activeTableId, utils],
   );
 
-  const rowsFallbackQuery = api.row.getRows.useInfiniteQuery(
-    { tableId: activeTableId, limit: 200 },
-    {
-      enabled: !!activeTableId && !activeViewId,
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-    },
-  );
-
-  const activeRowsQuery = activeViewId ? viewDataQuery : rowsFallbackQuery;
-
-  const rows = useMemo(() => {
-    if (!activeRowsQuery.data) return [];
-    return activeRowsQuery.data.pages.flatMap((page) => page.rows);
-  }, [activeRowsQuery.data]);
-
-  // Extract totalCount from the first page (only sent on first fetch)
-  const totalRowCount = useMemo(() => {
-    if (!activeRowsQuery.data?.pages[0]) return undefined;
-    return activeRowsQuery.data.pages[0].totalCount;
-  }, [activeRowsQuery.data]);
-
-  // Eager background loading: immediately chain each page load without waiting for scroll.
-  // This ensures that by the time a user scrolls to any position, data is already loaded.
+  // Reset page store and reload page 0 whenever view or table changes
   useEffect(() => {
-    if (activeRowsQuery.hasNextPage && !activeRowsQuery.isFetchingNextPage) {
-      void activeRowsQuery.fetchNextPage();
+    fetchKeyRef.current++;
+    pageStoreRef.current = new Map();
+    loadingPagesRef.current = new Set();
+    setPageStore(new Map());
+    setTotalRowCount(undefined);
+
+    if (activeViewId ?? activeTableId) {
+      void fetchPage(0);
     }
-  }, [
-    activeRowsQuery.hasNextPage,
-    activeRowsQuery.isFetchingNextPage,
-    activeRowsQuery.fetchNextPage,
-  ]);
+    // fetchPage intentionally omitted — it captures activeViewId/activeTableId via closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeViewId, activeTableId]);
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -201,10 +244,13 @@ export function BaseContent({
   // --- Cells ---
   const updateCell = api.cell.update.useMutation({
     onSuccess: () => {
-      if (activeViewId) {
-        void utils.view.getData.invalidate();
-      } else {
-        void utils.row.getRows.invalidate({ tableId: activeTableId });
+      // Refetch all currently loaded pages to reflect the updated cell
+      const loadedPageIndices = [...pageStoreRef.current.keys()];
+      pageStoreRef.current = new Map();
+      loadingPagesRef.current = new Set();
+      setPageStore(new Map());
+      for (const pageIndex of loadedPageIndices) {
+        void fetchPage(pageIndex);
       }
     },
     onError: (error: { message: string }) => {
@@ -231,34 +277,19 @@ export function BaseContent({
     [allColumns, updateCell],
   );
 
-  // --- Grid rows ---
-  const gridRows = useMemo<GridRow[]>(() => {
-    const baseRows = rows.map((row) => ({
-      id: row.id,
-      cells: row.cells as Record<string, string | number | null>,
-    }));
-
-    // Apply local row order if set
-    if (localRowOrder.length > 0) {
-      const rowMap = new Map(baseRows.map((r) => [r.id, r]));
-      const ordered: GridRow[] = [];
-      // First, add rows in the stored order
-      for (const id of localRowOrder) {
-        const r = rowMap.get(id);
-        if (r) {
-          ordered.push(r);
-          rowMap.delete(id);
-        }
-      }
-      // Then append any new rows not in the order
-      for (const r of rowMap.values()) {
-        ordered.push(r);
-      }
-      return ordered;
+  // --- Grid rows: sparse array (null = not yet loaded, shows skeleton) ---
+  const gridRows = useMemo<(GridRow | null)[]>(() => {
+    if (!totalRowCount) return [];
+    const sparse: (GridRow | null)[] = new Array(totalRowCount).fill(null);
+    for (const [pageIndex, pageRows] of pageStore) {
+      const startIdx = pageIndex * PAGE_SIZE;
+      pageRows.forEach((row, i) => {
+        const idx = startIdx + i;
+        if (idx < totalRowCount) sparse[idx] = row;
+      });
     }
-
-    return baseRows;
-  }, [rows, localRowOrder]);
+    return sparse;
+  }, [pageStore, totalRowCount, PAGE_SIZE]);
 
   // --- Context menu handlers ---
 
@@ -341,18 +372,12 @@ export function BaseContent({
     }
   }, [isSidebarPersistent, setIsSidebarPersistent, setIsSidebarOpen]);
 
-  // Reset view and row order when switching tables
+  // Reset active view when switching tables
   useEffect(() => {
     setActiveViewId(null);
-    setLocalRowOrder([]);
   }, [activeTableId, setActiveViewId]);
 
-  // Reset row order when switching views
-  useEffect(() => {
-    setLocalRowOrder([]);
-  }, [activeViewId]);
-
-  const isLoading = tableQuery.isLoading || activeRowsQuery.isLoading;
+  const isLoading = tableQuery.isLoading || (pageStore.size === 0 && totalRowCount === undefined);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -392,36 +417,7 @@ export function BaseContent({
               columns={visibleColumns}
               rows={gridRows}
               onCellUpdate={handleCellUpdate}
-              onReorderRow={(draggedRowIds, targetRowId) => {
-                // Row reordering is local-only (session-based) - no backend persistence
-                const currentOrder =
-                  localRowOrder.length === gridRows.length
-                    ? localRowOrder
-                    : gridRows.map((r) => r.id);
-
-                const newIndex = currentOrder.indexOf(targetRowId);
-                if (newIndex === -1) return;
-
-                // Remove all dragged rows from current order
-                const filteredOrder = currentOrder.filter(
-                  (id) => !draggedRowIds.includes(id),
-                );
-
-                // Find the target position in the filtered order
-                const targetIndexInFiltered =
-                  filteredOrder.indexOf(targetRowId);
-                if (targetIndexInFiltered === -1) return;
-
-                // Insert dragged rows at target position
-                const newOrder = [
-                  ...filteredOrder.slice(0, targetIndexInFiltered),
-                  ...draggedRowIds,
-                  ...filteredOrder.slice(targetIndexInFiltered),
-                ];
-
-                setLocalRowOrder(newOrder);
-              }}
-              totalRowCount={totalRowCount}
+              onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
             />
@@ -430,9 +426,9 @@ export function BaseContent({
           {/* Footer — right of sidebar */}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="text-xs text-gray-500">
-              {totalRowCount != null && totalRowCount !== gridRows.length
-                ? `${gridRows.length} of ${totalRowCount} records`
-                : `${gridRows.length} ${gridRows.length === 1 ? "record" : "records"}`}
+              {totalRowCount != null
+                ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
+                : "Loading..."}
             </span>
           </div>
         </div>

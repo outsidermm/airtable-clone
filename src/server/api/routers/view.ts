@@ -252,6 +252,8 @@ export const viewRouter = createTRPCRouter({
         viewId: z.number().int(),
         limit: z.number().int().min(1).max(500).default(200),
         cursor: z.number().int().optional(),
+        // offset enables random-access page fetching (OFFSET N in raw SQL)
+        offset: z.number().int().min(0).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -412,9 +414,12 @@ export const viewRouter = createTRPCRouter({
       // Always add r.id as final sort for deterministic pagination
       orderByParts.push("r.id ASC");
 
+      const isFirstPage = !input.cursor && (!input.offset || input.offset === 0);
+
       // Build WHERE clause
       const whereClauses: string[] = [`r."tableId" = ${view.tableId}`];
-      if (input.cursor) {
+      // cursor is mutually exclusive with offset; offset path skips cursor WHERE
+      if (input.cursor && !input.offset) {
         whereClauses.push(`r.id > ${input.cursor}`);
       }
       if (filterConditions.length > 0) {
@@ -423,8 +428,9 @@ export const viewRouter = createTRPCRouter({
 
       const whereClause = whereClauses.join(" AND ");
       const orderByClause = orderByParts.join(", ");
+      const offsetClause = (input.offset && input.offset > 0) ? `OFFSET ${input.offset}` : "";
 
-      // Build count WHERE clause (without cursor condition) for first page only
+      // Build count WHERE clause (without cursor/offset conditions)
       const countWhereClauses: string[] = [`r."tableId" = ${view.tableId}`];
       if (filterConditions.length > 0) {
         countWhereClauses.push(...filterConditions);
@@ -433,12 +439,12 @@ export const viewRouter = createTRPCRouter({
 
       // Execute count (first page only) and row IDs in parallel
       const [countResult, rowIds] = await Promise.all([
-        input.cursor
-          ? Promise.resolve(undefined)
-          : ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
+        isFirstPage
+          ? ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
               `SELECT COUNT(*) as count FROM "Row" r WHERE ${countWhereClause}`,
               ...filterParams
-            ),
+            )
+          : Promise.resolve(undefined),
         ctx.db.$queryRawUnsafe<Array<{ id: number }>>(
           `
           SELECT r.id
@@ -446,6 +452,7 @@ export const viewRouter = createTRPCRouter({
           WHERE ${whereClause}
           ORDER BY ${orderByClause}
           LIMIT ${input.limit + 1}
+          ${offsetClause}
           `,
           ...filterParams
         ),

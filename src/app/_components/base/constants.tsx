@@ -10,6 +10,7 @@ export const ROW_HEIGHT_MAP: Record<string, number> = {
 export const HEADER_HEIGHT = 36;
 export const CHECKBOX_WIDTH = 66;
 export const PRIMARY_WIDTH = 250;
+export const PAGE_SIZE = 200;
 
 export const FIELD_TYPES: FieldType[] = [
   // Field Agents
