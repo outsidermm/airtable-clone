@@ -1,22 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { ColumnType } from "generated/prisma/enums";
 import type { FieldType } from "~/types/field";
 import { FIELD_TYPES } from "../constants";
 import { QuestionIcon, SearchIcon, ChevronDownIcon } from "~/components/icons";
+import { useBase } from "../base-context";
+import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface AddColumnModalProps {
-  onConfirm: (name: string, type: ColumnType) => void;
-  onClose: () => void;
   anchorEl?: HTMLElement | null;
 }
 
-export function AddColumnModal({
-  onConfirm,
-  onClose,
-  anchorEl,
-}: AddColumnModalProps) {
+export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
+  const { activeTableId, openModal } = useBase();
+  const columnMutations = useColumnMutations(activeTableId);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(
     null,
@@ -76,7 +74,11 @@ export function AddColumnModal({
 
   const handleConfirm = () => {
     if (selectedFieldType && columnName.trim()) {
-      onConfirm(columnName.trim(), selectedFieldType.type);
+      columnMutations.handleAddColumn({
+        name: columnName.trim(),
+        type: selectedFieldType.type,
+      });
+      openModal(null);
     }
   };
 
@@ -87,7 +89,7 @@ export function AddColumnModal({
     <>
       <div
         className="fixed inset-0 z-50"
-        onClick={onClose}
+        onClick={() => openModal(null)}
         style={{ background: isDropdown ? "transparent" : "rgba(0,0,0,0.4)" }}
       />
 
@@ -241,7 +243,7 @@ export function AddColumnModal({
 
             <div className="mt-4 flex items-center justify-end gap-3 border-t border-gray-100 pt-5">
               <button
-                onClick={onClose}
+                onClick={() => openModal(null)}
                 className="rounded-md px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
               >
                 Cancel

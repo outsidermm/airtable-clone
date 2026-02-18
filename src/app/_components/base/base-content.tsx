@@ -57,7 +57,6 @@ export function BaseContent({
     setIsSidebarPersistent,
     activeModal,
     modalAnchor,
-    openModal,
   } = useBase();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [localRowOrder, setLocalRowOrder] = useState<number[]>([]);
@@ -525,16 +524,7 @@ export function BaseContent({
 
       {/* Add Column Modal */}
       {activeModal === "add-column" && (
-        <AddColumnModal
-          anchorEl={modalAnchor}
-          onConfirm={(name, type) => {
-            columnMutations.handleAddColumn({ name, type });
-            openModal(null);
-          }}
-          onClose={() => {
-            openModal(null);
-          }}
-        />
+        <AddColumnModal anchorEl={modalAnchor} />
       )}
     </div>
   );
