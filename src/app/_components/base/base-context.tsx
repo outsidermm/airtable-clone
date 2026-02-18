@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, useCallback, type ReactNode } from "react";
 import type { ContextMenuState } from "~/types/grid";
 
 // Define the types of modals that can be opened globally
@@ -34,6 +34,10 @@ interface BaseContextType {
 
   contextMenu: ContextMenuState | null;
   setContextMenu: (menu: ContextMenuState | null) => void;
+
+  // Page store refresh — registered by base-content, called by mutation hooks
+  refetchRows: () => void;
+  registerRefetchRows: (fn: () => void) => void;
 }
 
 const BaseContext = createContext<BaseContextType | undefined>(undefined);
@@ -64,6 +68,13 @@ export function BaseProvider({
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
+  // Stable ref to whichever refetchRows implementation base-content registers
+  const refetchRowsFnRef = useRef<() => void>(() => { /* no-op until base-content registers */ });
+  const refetchRows = useCallback(() => { refetchRowsFnRef.current(); }, []);
+  const registerRefetchRows = useCallback((fn: () => void) => {
+    refetchRowsFnRef.current = fn;
+  }, []);
+
   // Helper to open modals with an optional anchor (for positioning)
   const openModal = (type: BaseModalType, anchor: HTMLElement | null = null) => {
     setActiveModal(type);
@@ -91,6 +102,8 @@ export function BaseProvider({
       setActiveSearchCell,
       contextMenu,
       setContextMenu,
+      refetchRows,
+      registerRefetchRows,
     }}>
       {children}
     </BaseContext.Provider>

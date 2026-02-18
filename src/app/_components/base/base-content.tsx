@@ -57,6 +57,8 @@ export function BaseContent({
     modalAnchor,
     contextMenu,
     setContextMenu,
+    searchQuery,
+    registerRefetchRows,
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -205,6 +207,24 @@ export function BaseContent({
     [activeViewId, activeTableId, utils],
   );
 
+  // Exposed to mutation hooks via base-context so they can clear and reload the page store
+  const refetchLoadedPages = useCallback(() => {
+    const loadedPageIndices = [...pageStoreRef.current.keys()];
+    pageStoreRef.current = new Map();
+    loadingPagesRef.current = new Set();
+    setPageStore(new Map());
+    setTotalRowCount(undefined);
+    void fetchPage(0);
+    for (const pageIndex of loadedPageIndices) {
+      if (pageIndex !== 0) void fetchPage(pageIndex);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchPage]);
+
+  useEffect(() => {
+    registerRefetchRows(refetchLoadedPages);
+  }, [registerRefetchRows, refetchLoadedPages]);
+
   // Reset page store and reload page 0 whenever view or table changes
   useEffect(() => {
     fetchKeyRef.current++;
@@ -243,16 +263,7 @@ export function BaseContent({
 
   // --- Cells ---
   const updateCell = api.cell.update.useMutation({
-    onSuccess: () => {
-      // Refetch all currently loaded pages to reflect the updated cell
-      const loadedPageIndices = [...pageStoreRef.current.keys()];
-      pageStoreRef.current = new Map();
-      loadingPagesRef.current = new Set();
-      setPageStore(new Map());
-      for (const pageIndex of loadedPageIndices) {
-        void fetchPage(pageIndex);
-      }
-    },
+    onSuccess: () => refetchLoadedPages(),
     onError: (error: { message: string }) => {
       toast.error(error.message);
     },
@@ -277,8 +288,27 @@ export function BaseContent({
     [allColumns, updateCell],
   );
 
-  // --- Grid rows: sparse array (null = not yet loaded, shows skeleton) ---
+  // --- Search-as-filter: when a search query is active, show only matching rows ---
+  const searchResultsQuery = api.cell.search.useQuery(
+    { tableId: activeTableId, query: searchQuery, limit: 500 },
+    { enabled: !!activeTableId && searchQuery.length > 0 },
+  );
+
+  const searchGridRows = useMemo<GridRow[] | null>(() => {
+    if (!searchQuery || !searchResultsQuery.data) return null;
+    return searchResultsQuery.data.map((row) => ({
+      id: row.id,
+      cells: row.cells as Record<string, string | number | null>,
+    }));
+  }, [searchQuery, searchResultsQuery.data]);
+
+  // --- Grid rows: search mode (dense) or page-store mode (sparse) ---
   const gridRows = useMemo<(GridRow | null)[]>(() => {
+    // Search mode — show matching rows as a dense array, no skeleton needed
+    if (searchQuery && searchGridRows !== null) {
+      return searchGridRows;
+    }
+    // Normal mode — sparse array where null = unloaded (renders as skeleton)
     if (!totalRowCount) return [];
     const sparse: (GridRow | null)[] = new Array(totalRowCount).fill(null);
     for (const [pageIndex, pageRows] of pageStore) {
@@ -289,7 +319,7 @@ export function BaseContent({
       });
     }
     return sparse;
-  }, [pageStore, totalRowCount, PAGE_SIZE]);
+  }, [searchQuery, searchGridRows, pageStore, totalRowCount, PAGE_SIZE]);
 
   // --- Context menu handlers ---
 
@@ -377,7 +407,9 @@ export function BaseContent({
     setActiveViewId(null);
   }, [activeTableId, setActiveViewId]);
 
-  const isLoading = tableQuery.isLoading || (pageStore.size === 0 && totalRowCount === undefined);
+  const isLoading =
+    tableQuery.isLoading ||
+    (!searchQuery && pageStore.size === 0 && totalRowCount === undefined);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -426,9 +458,13 @@ export function BaseContent({
           {/* Footer — right of sidebar */}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="text-xs text-gray-500">
-              {totalRowCount != null
-                ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
-                : "Loading..."}
+              {searchQuery
+                ? searchGridRows !== null
+                  ? `${searchGridRows.length} matching ${searchGridRows.length === 1 ? "record" : "records"}`
+                  : "Searching..."
+                : totalRowCount != null
+                  ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
+                  : "Loading..."}
             </span>
           </div>
         </div>

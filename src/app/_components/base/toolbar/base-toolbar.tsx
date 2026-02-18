@@ -70,7 +70,7 @@ export function BaseToolbar({
   activeViewName,
   onScrollToRow,
 }: BaseToolbarProps) {
-  const { activeTableId, activeViewId, setActiveViewId } = useBase();
+  const { activeTableId, activeViewId, setActiveViewId, refetchRows } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
     activeViewId,
@@ -79,16 +79,13 @@ export function BaseToolbar({
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const utils = api.useUtils();
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
       setIsSeeding(true);
     },
     onSuccess: (data) => {
       setIsSeeding(false);
-      // Invalidate row queries to refetch with new data
-      void utils.row.getRows.invalidate({ tableId: activeTableId });
-      void utils.view.getData.invalidate();
+      refetchRows();
       alert(`Successfully created ${data.count.toLocaleString()} rows!`);
     },
     onError: (error) => {
@@ -111,7 +108,8 @@ export function BaseToolbar({
   const handleUpdateFilters = useCallback(
     (filters: FilterConfig[]) => {
       if (!activeViewId) return;
-      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, filters });
+      // Filters change which rows are visible — row data must be refetched
+      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, filters }, { refetchRows: true });
     },
     [viewConfig, viewMutations, activeViewId],
   );
@@ -119,7 +117,8 @@ export function BaseToolbar({
   const handleUpdateSorts = useCallback(
     (sorts: SortConfig[]) => {
       if (!activeViewId) return;
-      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, sorts });
+      // Sorts change row ordering — row data must be refetched
+      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, sorts }, { refetchRows: true });
     },
     [viewConfig, viewMutations, activeViewId],
   );

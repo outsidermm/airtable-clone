@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Row } from "@tanstack/react-table";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
@@ -42,7 +43,7 @@ interface SortableRowProps {
   showLastRowTooltip: boolean;
 }
 
-export function SortableRow(props: SortableRowProps) {
+export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
   const {
     rowId,
     virtualStart,
@@ -215,4 +216,4 @@ export function SortableRow(props: SortableRowProps) {
       </div>
     </div>
   );
-}
+});
