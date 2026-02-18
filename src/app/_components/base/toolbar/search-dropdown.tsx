@@ -1,21 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
+import { useBase } from "../base-context";
 
 interface SearchDropdownProps {
-  tableId: number;
-  onHighlight: (cells: Map<number, Set<number>>, activeCell?: { rowId: number; columnId: number }, searchQuery?: string) => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
 
 export function SearchDropdown({
-  tableId,
-  onHighlight,
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
+  const { activeTableId, setSearchQuery, setHighlightedCells, setActiveSearchCell} = useBase();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -35,7 +34,7 @@ export function SearchDropdown({
   }, [query]);
 
   const searchResults = api.cell.search.useQuery(
-    { tableId, query: debouncedQuery },
+    { tableId: activeTableId, query: debouncedQuery },
     { enabled: debouncedQuery.length > 0 },
   );
 
@@ -59,8 +58,14 @@ export function SearchDropdown({
 
   // Build highlight map from results - highlight all matching cells
   useEffect(() => {
-    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
-      onHighlight(new Map(), undefined, "");
+    if (
+      !searchResults.data ||
+      debouncedQuery.length === 0 ||
+      matchingCells.length === 0
+    ) {
+      setHighlightedCells(new Map());
+      setActiveSearchCell(undefined);
+      setSearchQuery("");
       return;
     }
 
@@ -75,7 +80,10 @@ export function SearchDropdown({
 
     // Pass the active cell and search query
     const activeCell = matchingCells[activeIndex];
-    onHighlight(highlights, activeCell, debouncedQuery);
+    
+    setHighlightedCells(highlights);
+    setActiveSearchCell(activeCell);
+    setSearchQuery(debouncedQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
 
@@ -110,99 +118,43 @@ export function SearchDropdown({
 
   // Clear highlights on unmount
   useEffect(() => {
-    return () => onHighlight(new Map(), undefined, "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      setHighlightedCells(new Map());
+      setActiveSearchCell(undefined);
+      setSearchQuery("");
+    }
+  }, [setHighlightedCells, setActiveSearchCell, setSearchQuery]);
 
   return (
     <>
-      <div className="fixed inset-0 z-30" onClick={onClose} />
-      <div className="absolute top-full right-0 z-40 mt-1 w-80 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
-        <div className="px-3">
-          <div className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5">
-            <svg
-              className="h-3.5 w-3.5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search in this table..."
-              className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
-            />
-            {query && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setDebouncedQuery("");
-                  onHighlight(new Map());
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="fixed inset-0 z-50" onClick={onClose} />
+      <div className="absolute top-full right-0 z-50 mt-1 flex w-80 items-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 shadow-lg">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Find in view..."
+          className="w-full flex-2 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
+        />
 
         {debouncedQuery && (
-          <div className="px-3 py-2">
+          <div className="w-full flex-1 px-3 py-0.5">
             <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>
-                {searchResults.isLoading
-                  ? "Searching..."
-                  : `${matchingCells.length} cell${matchingCells.length === 1 ? "" : "s"}`}
-              </span>
               {matchingCells.length > 0 && (
                 <div className="flex items-center gap-1">
+                  <span>
+                    {activeIndex + 1} of {matchingCells.length}
+                  </span>
                   <button
-                    onClick={() =>
-                      goToResult(Math.max(0, activeIndex - 1))
-                    }
+                    onClick={() => goToResult(Math.max(0, activeIndex - 1))}
                     disabled={activeIndex <= 0}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 15l7-7 7 7"
-                      />
-                    </svg>
+                    <ChevronUpIcon className="h-3.5 w-3.5" />
                   </button>
-                  <span>
-                    {activeIndex + 1}/{matchingCells.length}
-                  </span>
+
                   <button
                     onClick={() =>
                       goToResult(
@@ -212,24 +164,25 @@ export function SearchDropdown({
                     disabled={activeIndex >= matchingCells.length - 1}
                     className="rounded p-0.5 hover:bg-gray-100 disabled:opacity-30"
                   >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    <ChevronDownIcon className="h-3.5 w-3.5" />
                   </button>
                 </div>
               )}
             </div>
           </div>
+        )}
+
+        {query && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setDebouncedQuery("");
+              setHighlightedCells(new Map());
+            }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
     </>

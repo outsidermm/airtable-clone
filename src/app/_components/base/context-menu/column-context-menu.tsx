@@ -1,53 +1,98 @@
 "use client";
 
-import { useState } from "react";
-import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
+import { useCallback, useState } from "react";
+import { ContextMenu } from "./context-menu";
+import { MenuItem, MenuDivider } from "../../ui/menu";
 import type { GridColumn } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
+import { useBase } from "../base-context";
+import { useViewMutations } from "../../hooks/use-view-mutations";
+import type { ViewConfig } from "~/server/api/routers/view";
+import { useColumnMutations } from "../../hooks/use-column-mutations";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ChangePrimaryFieldIcon,
+  CopyUrlIcon,
+  DependenciesIcon,
+  DuplicateIcon,
+  FilterIcon,
+  GroupIcon,
+  HideIcon,
+  InfoIcon,
+  LockIcon,
+  PencilIcon,
+  RunAgentIcon,
+  SortAscIcon,
+  SortDescIcon,
+  TrashIcon,
+} from "../../ui/icons";
 
 interface ColumnContextMenuProps {
-  position: { x: number; y: number };
   column: GridColumn;
-  onClose: () => void;
+  viewConfig: ViewConfig;
   onRename: (columnId: number) => void;
-  onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
-  onUpdate?: (columnId: number, name: string, type: ColumnType) => void;
-  onSetPrimary?: () => void;
-  onHide: (columnId: number) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
-  onDelete: (columnId: number) => void;
 }
 
 export function ColumnContextMenu({
-  position,
   column,
-  onClose,
+  viewConfig,
   onRename,
-  onChangeType,
-  onUpdate,
-  onSetPrimary,
-  onHide,
   onInsertLeft,
   onInsertRight,
-  onDelete,
 }: ColumnContextMenuProps) {
+  const {
+    openModal,
+    activeViewId,
+    setActiveViewId,
+    activeTableId,
+    setContextMenu,
+    contextMenu,
+  } = useBase();
+  const viewMutations = useViewMutations(
+    activeTableId,
+    activeViewId,
+    setActiveViewId,
+  );
+  const columnMutations = useColumnMutations(activeTableId);
+  const position = contextMenu?.position;
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(column.name);
   const [editType, setEditType] = useState<ColumnType>(column.type);
 
+  const handleUpdateHiddenColumns = useCallback(
+    (ids: number[]) => {
+      if (!activeViewId) return;
+      viewMutations.handleUpdateView(activeViewId, {
+        ...viewConfig,
+        hiddenColumns: ids,
+      });
+    },
+    [viewConfig, viewMutations, activeViewId],
+  );
+
   const handleSaveEdit = () => {
-    if (onUpdate) {
-      onUpdate(column.id, editName.trim() || column.name, editType);
-    }
+    columnMutations.handleUpdateColumn(
+      column.id,
+      editName.trim() || column.name,
+      editType,
+    );
     setShowEditModal(false);
-    onClose();
+    setContextMenu(null);
   };
+
+  if (!position) return null;
 
   if (showEditModal) {
     return (
       <>
-        <div className="fixed inset-0 z-40" onClick={() => setShowEditModal(false)} />
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowEditModal(false)}
+        />
         <div
           className="fixed z-50 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
           style={{ left: position.x, top: position.y }}
@@ -55,26 +100,26 @@ export function ColumnContextMenu({
           <h3 className="mb-3 text-sm font-medium text-gray-900">Edit field</h3>
 
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-gray-700">
               Name
             </label>
             <input
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-gray-700">
               Data type
             </label>
             <select
               value={editType}
               onChange={(e) => setEditType(e.target.value as ColumnType)}
               disabled={column.primary}
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               <option value="TEXT">Text</option>
               <option value="NUMBER">Number</option>
@@ -85,7 +130,7 @@ export function ColumnContextMenu({
             <button
               onClick={() => {
                 setShowEditModal(false);
-                onClose();
+                setContextMenu(null);
               }}
               className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
             >
@@ -104,8 +149,9 @@ export function ColumnContextMenu({
   }
 
   return (
-    <ContextMenu position={position} onClose={onClose}>
+    <ContextMenu>
       <MenuItem
+        icon={<PencilIcon className="h-4 w-4" />}
         label="Edit field"
         onClick={() => {
           setShowEditModal(true);
@@ -113,64 +159,71 @@ export function ColumnContextMenu({
       />
       <MenuDivider />
       <MenuItem
-        label="Rename field"
+        label="Duplicate field"
+        icon={<DuplicateIcon className="h-4 w-4" />}
         onClick={() => {
           onRename(column.id);
-          onClose();
-        }}
-      />
-      <MenuDivider />
-      <MenuItem
-        label={`Change to ${column.type === "TEXT" ? "Number" : "Text"}`}
-        disabled={column.primary}
-        onClick={() => {
-          onChangeType(
-            column.id,
-            column.type === "TEXT" ? "NUMBER" : "TEXT",
-          );
-          onClose();
-        }}
-      />
-      {column.primary && onSetPrimary && (
-        <MenuItem
-          label="Change primary field"
-          onClick={() => {
-            onSetPrimary();
-            onClose();
-          }}
-        />
-      )}
-      <MenuDivider />
-      <MenuItem
-        label="Hide field"
-        disabled={column.primary}
-        onClick={() => {
-          onHide(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert field to the left"
+        icon={<ArrowLeftIcon className="h-4 w-4" />}
         onClick={() => {
           onInsertLeft(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
       <MenuItem
         label="Insert field to the right"
+        icon={<ArrowRightIcon className="h-4 w-4" />}
         onClick={() => {
           onInsertRight(column.id);
-          onClose();
+          setContextMenu(null);
         }}
       />
+      {column.primary && (
+        <MenuItem
+        icon={<ChangePrimaryFieldIcon className="h-4 w-4" />}
+          label="Change primary field"
+          onClick={() => {
+            openModal("set-primary");
+            setContextMenu(null);
+          }}
+        />
+      )}
+      <MenuDivider />
+      <MenuItem label="Summarize field" icon={<RunAgentIcon className="h-4 w-4" />} />
+      <MenuItem label="Write headline for field" icon={<RunAgentIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Copy field URL" icon={<CopyUrlIcon className="h-4 w-4" />} />
+      <MenuItem label="Edit field description" icon={<InfoIcon className="h-4 w-4" />} />
+      <MenuItem label="Edit field permissions" icon={<LockIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Sort A → Z" icon={<SortAscIcon className="h-4 w-4" />} />
+      <MenuItem label="Sort Z → A" icon={<SortDescIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Filter by this field" icon={<FilterIcon className="h-4 w-4" />} />
+      <MenuItem label="Group by this field" icon={<GroupIcon className="h-4 w-4" />} />
+      <MenuItem label="Show dependencies" icon={<DependenciesIcon className="h-4 w-4" />} />
       <MenuDivider />
       <MenuItem
+        label="Hide field"
+        icon={<HideIcon className="h-4 w-4" />}
+        disabled={column.primary}
+        onClick={() => {
+          handleUpdateHiddenColumns([column.id]);
+          setContextMenu(null);
+        }}
+      />
+      <MenuItem
         label="Delete field"
+        icon={<TrashIcon className="h-4 w-4 text-gray-700" />}
         danger
         disabled={column.primary}
         onClick={() => {
-          onDelete(column.id);
-          onClose();
+          columnMutations.handleDeleteColumn(column.id);
+          setContextMenu(null);
         }}
       />
     </ContextMenu>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FacebookIcon, TwitterIcon, LinkedInIcon } from "~/components/icons";
+import { FacebookIcon, TwitterIcon, LinkedInIcon } from "~/app/_components/ui/icons";
 
 export function Footer() {
   return (

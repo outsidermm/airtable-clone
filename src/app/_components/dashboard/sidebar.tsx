@@ -16,7 +16,7 @@ import {
   ShoppingBagIcon,
   UploadIcon,
   ChevronRightIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 
 interface SidebarProps {
   currentPage?: "home" | "starred" | "shared";

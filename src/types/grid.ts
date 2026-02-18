@@ -21,7 +21,7 @@ export interface SearchResult {
 }
 
 export interface ContextMenuState {
-  type: "cell" | "column" | "row";
+  type: "column" | "record";
   position: { x: number; y: number };
   data: {
     rowId?: number;

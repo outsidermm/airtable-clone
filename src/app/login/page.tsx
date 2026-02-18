@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "~/server/auth";
 import Image from "next/image";
-import { AppleIcon, GoogleIcon } from "~/components/icons";
+import { AppleIcon, GoogleIcon } from "~/app/_components/ui/icons";
 
 export default async function LoginPage() {
   const session = await auth();

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { PlusIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
+import { useBase } from "../base-context";
 
 interface Table {
   id: number;
@@ -10,12 +12,12 @@ interface Table {
 
 interface TableTabsProps {
   tables: Table[];
-  activeTableId: number;
   baseId: string;
   onTableChange?: (tableId: number) => void;
 }
 
-export function TableTabs({ tables, activeTableId, baseId, onTableChange }: TableTabsProps) {
+export function TableTabs({ tables, baseId, onTableChange }: TableTabsProps) {
+  const {activeTableId} = useBase()
   const [isAddingTable, setIsAddingTable] = useState(false);
 
   const utils = api.useUtils();
@@ -52,19 +54,7 @@ export function TableTabs({ tables, activeTableId, baseId, onTableChange }: Tabl
             onClick={() => setIsAddingTable(true)}
             className="ml-2 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-200 hover:text-gray-900"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+            <PlusIcon className="h-4 w-4" />
             Add table
           </button>
         ) : (

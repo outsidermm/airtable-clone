@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { XIcon } from "~/components/icons";
+import { XIcon } from "~/app/_components/ui/icons";
 import { useBaseMutations } from "../hooks/use-base-mutations";
 import Image from "next/image";
 
