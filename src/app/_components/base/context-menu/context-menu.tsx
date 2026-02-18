@@ -5,13 +5,13 @@ import { createPortal } from "react-dom";
 import { useBase } from "../base-context";
 
 interface ContextMenuProps {
-  position: { x: number; y: number };
   children: React.ReactNode;
 }
 
-export function ContextMenu({ position, children }: ContextMenuProps) {
-  const {setContextMenu} = useBase();
+export function ContextMenu({ children }: ContextMenuProps) {
+  const {contextMenu, setContextMenu} = useBase();
   const menuRef = useRef<HTMLDivElement>(null);
+  const position = contextMenu?.position;
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
@@ -37,6 +37,8 @@ export function ContextMenu({ position, children }: ContextMenuProps) {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleClickOutside, handleKeyDown]);
+
+  if (!position) return null;
 
   // Adjust position to keep menu within viewport
   const style = {

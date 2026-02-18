@@ -4,16 +4,13 @@ import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 
-interface RowContextMenuProps {
-  position: { x: number; y: number };
-  rowId: number;
-}
-
-export function RowContextMenu({ position, rowId }: RowContextMenuProps) {
-  const { activeTableId, setContextMenu } = useBase();
+export function RowContextMenu() {
+  const { activeTableId, setContextMenu, contextMenu } = useBase();
+  const rowId = contextMenu?.data.rowId;
   const rowMutations = useRowMutations(activeTableId);
+  if (!rowId) return null;
   return (
-    <ContextMenu position={position}>
+    <ContextMenu>
       <MenuItem
         label="Insert row above"
         onClick={() => {

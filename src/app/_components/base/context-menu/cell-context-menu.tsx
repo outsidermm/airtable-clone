@@ -5,22 +5,20 @@ import { useBase } from "../base-context";
 import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
 
 interface CellContextMenuProps {
-  position: { x: number; y: number };
-  rowId: number;
-  columnId: number;
   onClearCell: (rowId: number, columnId: number) => void;
 }
 
-export function CellContextMenu({
-  position,
-  rowId,
-  columnId,
-  onClearCell,
-}: CellContextMenuProps) {
-  const { activeTableId, setContextMenu } = useBase();
+export function CellContextMenu({ onClearCell }: CellContextMenuProps) {
+  const { activeTableId, setContextMenu, contextMenu } = useBase();
+
+  const position = contextMenu?.position;
+  const rowId = contextMenu?.data.rowId;
+  const columnId = contextMenu?.data.columnId;
+
   const rowMutations = useRowMutations(activeTableId);
+  if (!position || !rowId || !columnId) return null;
   return (
-    <ContextMenu position={position}>
+    <ContextMenu>
       <MenuItem label="Copy cell" />
       <MenuItem
         label="Clear cell"

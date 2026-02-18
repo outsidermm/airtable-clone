@@ -254,7 +254,6 @@ export function BaseContent({
     [setContextMenu],
   );
 
-
   const handleInsertColumnLeft = useCallback(
     (columnId: number) => {
       const colIdx = allColumns.findIndex((c) => c.id === columnId);
@@ -437,20 +436,12 @@ export function BaseContent({
       </div>
 
       {/* Context Menus */}
-      {contextMenu?.type === "cell" &&
-        contextMenu.data.rowId != null &&
-        contextMenu.data.columnId != null && (
-          <CellContextMenu
-            position={contextMenu.position}
-            rowId={contextMenu.data.rowId}
-            columnId={contextMenu.data.columnId}
-            onClearCell={handleClearCell}
-          />
-        )}
+      {contextMenu?.type === "cell" && (
+        <CellContextMenu onClearCell={handleClearCell} />
+      )}
 
       {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
         <ColumnContextMenu
-          position={contextMenu.position}
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
           viewConfig={viewConfig}
           onRename={handleColumnRenameFromMenu}
@@ -459,12 +450,7 @@ export function BaseContent({
         />
       )}
 
-      {contextMenu?.type === "row" && contextMenu.data.rowId != null && (
-        <RowContextMenu
-          position={contextMenu.position}
-          rowId={contextMenu.data.rowId}
-        />
-      )}
+      {contextMenu?.type === "row" && <RowContextMenu />}
 
       {/* Set Primary Modal */}
       {activeModal === "set-primary" && (

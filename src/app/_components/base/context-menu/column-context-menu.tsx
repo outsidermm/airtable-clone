@@ -10,7 +10,6 @@ import type { ViewConfig } from "~/server/api/routers/view";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface ColumnContextMenuProps {
-  position: { x: number; y: number };
   column: GridColumn;
   viewConfig: ViewConfig;
   onRename: (columnId: number) => void;
@@ -19,7 +18,6 @@ interface ColumnContextMenuProps {
 }
 
 export function ColumnContextMenu({
-  position,
   column,
   viewConfig,
   onRename,
@@ -32,6 +30,7 @@ export function ColumnContextMenu({
     setActiveViewId,
     activeTableId,
     setContextMenu,
+    contextMenu
   } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
@@ -39,6 +38,7 @@ export function ColumnContextMenu({
     setActiveViewId,
   );
   const columnMutations = useColumnMutations(activeTableId);
+  const position = contextMenu?.position;
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(column.name);
@@ -60,6 +60,8 @@ export function ColumnContextMenu({
     setShowEditModal(false);
     setContextMenu(null);
   };
+
+  if (!position) return null;
 
   if (showEditModal) {
     return (
@@ -124,7 +126,7 @@ export function ColumnContextMenu({
   }
 
   return (
-    <ContextMenu position={position}>
+    <ContextMenu>
       <MenuItem
         label="Edit field"
         onClick={() => {
