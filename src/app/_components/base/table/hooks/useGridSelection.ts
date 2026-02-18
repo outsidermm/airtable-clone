@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 
@@ -15,6 +15,7 @@ export function useGridSelection(
   );
   const [selectionEnd, setSelectionEnd] = useState<CellAddress | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const isSelectingRef = useRef(false);
 
   // Optimized: Only re-calculates the Set when coordinates change
   const selectedCells = useMemo((): Set<string> => {
@@ -62,13 +63,18 @@ export function useGridSelection(
     [setEditingCell],
   );
 
+  // Keep ref in sync so handleMouseEnter can be stable (empty dep array)
+  useEffect(() => {
+    isSelectingRef.current = isSelecting;
+  }, [isSelecting]);
+
   const handleMouseEnter = useCallback(
     (rowId: number, columnId: number) => {
-      if (isSelecting) {
+      if (isSelectingRef.current) {
         setSelectionEnd({ rowId, columnId });
       }
     },
-    [isSelecting],
+    [],
   );
 
   // Global mouse up to stop selection state

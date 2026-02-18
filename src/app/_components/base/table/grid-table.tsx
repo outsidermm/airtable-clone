@@ -237,6 +237,22 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       () => new Map(tableRows.map((r) => [r.original.id, r])),
       [tableRows],
     );
+
+    // Pre-compute per-row multi-select column sets so SortableRow gets a stable
+    // null (no re-render) for rows outside the selection and a per-row Set for
+    // rows inside it, rather than the full selectedCells Set on every prop.
+    const rowToSelectedColumns = useMemo(() => {
+      if (!isMultiSelect) return new Map<number, Set<number>>();
+      const map = new Map<number, Set<number>>();
+      for (const key of selectedCells) {
+        const dashIdx = key.indexOf("-");
+        const rId = Number(key.slice(0, dashIdx));
+        const cId = Number(key.slice(dashIdx + 1));
+        if (!map.has(rId)) map.set(rId, new Set());
+        map.get(rId)!.add(cId);
+      }
+      return map;
+    }, [selectedCells, isMultiSelect]);
     // rows.length === totalRowCount — the sparse array already has the right size
     const rowVirtualizer = useVirtualizer({
       count: rows.length,
@@ -493,6 +509,19 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                     const tableRow = tableRowById.get(rowData.id);
                     if (!tableRow) return null;
 
+                    // Narrow per-row props — only the 2 affected rows re-render on click
+                    const selectedColumnId =
+                      selectedCell?.rowId === rowData.id
+                        ? selectedCell.columnId
+                        : null;
+                    const editingColumnId =
+                      editingCell?.rowId === rowData.id
+                        ? editingCell.columnId
+                        : null;
+                    const multiSelectColumnIds = isMultiSelect
+                      ? (rowToSelectedColumns.get(rowData.id) ?? null)
+                      : null;
+
                     return (
                       <SortableRow
                         key={tableRow.id}
@@ -516,10 +545,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         primaryColumnWidth={primaryColumnWidth}
                         nonPrimaryColumns={nonPrimaryColumns}
                         columnSizing={columnSizing}
-                        selectedCell={selectedCell}
-                        editingCell={editingCell}
-                        selectedCells={selectedCells}
-                        isMultiSelect={isMultiSelect}
+                        selectedColumnId={selectedColumnId}
+                        editingColumnId={editingColumnId}
+                        multiSelectColumnIds={multiSelectColumnIds}
                         handleMouseDown={handleMouseDown}
                         handleMouseEnter={handleMouseEnter}
                         handleCellChange={handleCellChange}
