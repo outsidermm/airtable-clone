@@ -8,7 +8,7 @@ import type { GridTableHandle } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
 import { BaseHeader } from "./header/base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
-import { RecordContextMenu } from "./context-menu/cell-context-menu";
+import { RecordContextMenu } from "./context-menu/record-context-menu";
 import { ColumnContextMenu } from "./context-menu/column-context-menu";
 import { SetPrimaryModal } from "./modals/set-primary-modal";
 import { AddTableModal } from "./modals/add-table-modal";
