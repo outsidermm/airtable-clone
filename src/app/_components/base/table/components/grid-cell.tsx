@@ -98,7 +98,7 @@ export const GridCell = memo(function GridCell({
       onContextMenu={(e) => {
         e.preventDefault();
         setContextMenu({
-          type: "cell",
+          type: "record",
           position: { x: e.clientX, y: e.clientY },
           data: { rowId, columnId, rowIndex },
         });

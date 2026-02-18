@@ -16,15 +16,12 @@ import {
   TrashIcon,
 } from "../../ui/icons";
 
-export function CellContextMenu() {
+export function RecordContextMenu() {
   const { activeTableId, setContextMenu, contextMenu } = useBase();
-
-  const position = contextMenu?.position;
   const rowId = contextMenu?.data.rowId;
-  const columnId = contextMenu?.data.columnId;
 
   const rowMutations = useRowMutations(activeTableId);
-  if (!position || !rowId || !columnId) return null;
+  if (!rowId) return null;
   return (
     <ContextMenu>
       <MenuItem

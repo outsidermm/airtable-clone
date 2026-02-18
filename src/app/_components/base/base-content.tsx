@@ -8,9 +8,8 @@ import type { GridTableHandle } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
 import { BaseHeader } from "./header/base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
-import { CellContextMenu } from "./context-menu/cell-context-menu";
+import { RecordContextMenu } from "./context-menu/cell-context-menu";
 import { ColumnContextMenu } from "./context-menu/column-context-menu";
-import { RowContextMenu } from "./context-menu/row-context-menu";
 import { SetPrimaryModal } from "./modals/set-primary-modal";
 import { AddTableModal } from "./modals/add-table-modal";
 import { AddColumnModal } from "./modals/add-column-modal";
@@ -281,14 +280,6 @@ export function BaseContent({
     [allColumns, columnMutations],
   );
 
-  // Cell context menu
-  const handleClearCell = useCallback(
-    (rowId: number, columnId: number) => {
-      updateCell.mutate({ rowId, columnId, value: null });
-    },
-    [updateCell],
-  );
-
   // Scroll to row (for search)
   const handleScrollToRow = useCallback((rowId: number) => {
     gridTableRef.current?.scrollToRow(rowId);
@@ -436,9 +427,7 @@ export function BaseContent({
       </div>
 
       {/* Context Menus */}
-      {contextMenu?.type === "cell" && (
-        <CellContextMenu onClearCell={handleClearCell} />
-      )}
+      {contextMenu?.type === "record" && <RecordContextMenu />}
 
       {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
         <ColumnContextMenu
@@ -449,8 +438,6 @@ export function BaseContent({
           onInsertRight={handleInsertColumnRight}
         />
       )}
-
-      {contextMenu?.type === "row" && <RowContextMenu />}
 
       {/* Set Primary Modal */}
       {activeModal === "set-primary" && (

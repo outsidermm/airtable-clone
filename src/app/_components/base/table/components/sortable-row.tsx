@@ -158,7 +158,7 @@ export function SortableRow(props: SortableRowProps) {
           onContextMenu={(e) => {
             e.preventDefault();
             setContextMenu?.({
-              type: "row",
+              type: "record",
               position: { x: e.clientX, y: e.clientY },
               data: { rowId, rowIndex: virtualIndex },
             });
