@@ -137,7 +137,7 @@ export function BaseContent({
 
   // --- Rows (use view.getData when we have a view, fallback to row.getRows) ---
   const viewDataQuery = api.view.getData.useInfiniteQuery(
-    { viewId: activeViewId!, limit: 50 },
+    { viewId: activeViewId!, limit: 200 },
     {
       enabled: !!activeViewId,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -145,7 +145,7 @@ export function BaseContent({
   );
 
   const rowsFallbackQuery = api.row.getRows.useInfiniteQuery(
-    { tableId: activeTableId, limit: 50 },
+    { tableId: activeTableId, limit: 200 },
     {
       enabled: !!activeTableId && !activeViewId,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -157,6 +157,12 @@ export function BaseContent({
   const rows = useMemo(() => {
     if (!activeRowsQuery.data) return [];
     return activeRowsQuery.data.pages.flatMap((page) => page.rows);
+  }, [activeRowsQuery.data]);
+
+  // Extract totalCount from the first page (only sent on first fetch)
+  const totalRowCount = useMemo(() => {
+    if (!activeRowsQuery.data?.pages[0]) return undefined;
+    return activeRowsQuery.data.pages[0].totalCount;
   }, [activeRowsQuery.data]);
 
   // --- Columns ---
@@ -412,6 +418,8 @@ export function BaseContent({
                 }
               }}
               hasNextPage={activeRowsQuery.hasNextPage}
+              isFetchingNextPage={activeRowsQuery.isFetchingNextPage}
+              totalRowCount={totalRowCount}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
             />
@@ -420,7 +428,9 @@ export function BaseContent({
           {/* Footer — right of sidebar */}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="text-xs text-gray-500">
-              {gridRows.length} {gridRows.length === 1 ? "record" : "records"}
+              {totalRowCount != null && totalRowCount !== gridRows.length
+                ? `${gridRows.length} of ${totalRowCount} records`
+                : `${gridRows.length} ${gridRows.length === 1 ? "record" : "records"}`}
             </span>
           </div>
         </div>
