@@ -517,12 +517,8 @@ export function BaseContent({
       {activeModal === "add-table" && (
         <AddTableModal
           anchorEl={modalAnchor}
-          onConfirm={() => {
+          onAddTable={() => {
             tableMutations.handleAddTable();
-            openModal(null);
-          }}
-          onClose={() => {
-            openModal(null);
           }}
         />
       )}

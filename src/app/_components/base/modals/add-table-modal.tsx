@@ -11,22 +11,20 @@ import {
   SalesforceIcon,
   TeamIcon,
 } from "~/components/icons";
+import { useBase } from "../base-context";
 
 interface AddTableModalProps {
-  onConfirm: () => void;
-  onClose: () => void;
+  onAddTable: () => void;
   anchorEl: HTMLElement | null;
 }
 
-export function AddTableModal({
-  onConfirm,
-  onClose,
-  anchorEl,
-}: AddTableModalProps) {
+export function AddTableModal({ onAddTable, anchorEl }: AddTableModalProps) {
   const [position, setPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
+  const { openModal } = useBase();
+
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +38,8 @@ export function AddTableModal({
   }, [anchorEl]);
 
   const handleConfirm = () => {
-    onConfirm();
+    onAddTable();
+    openModal(null);
   };
 
   const isDropdown = !!anchorEl && !!position;
@@ -50,7 +49,7 @@ export function AddTableModal({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50"
-        onClick={onClose}
+        onClick={() => openModal(null)}
         style={{ background: "transparent" }}
       />
 
