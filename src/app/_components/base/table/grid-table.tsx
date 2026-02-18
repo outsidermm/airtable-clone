@@ -57,6 +57,8 @@ interface GridTableProps {
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
   onLoadMore?: () => void;
   hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  totalRowCount?: number;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
 }
@@ -70,6 +72,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       onReorderRow,
       onLoadMore,
       hasNextPage,
+      isFetchingNextPage,
+      totalRowCount,
       sorts = [],
       rowHeight = "short",
     },
@@ -225,19 +229,51 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     // --- 6. Virtualization ---
     const tableRows = table.getRowModel().rows;
+    const loadedRowCount = tableRows.length;
+    // Use totalRowCount for the virtualizer so scrollbar is proportionate to ALL rows
+    const virtualizerCount = totalRowCount ?? loadedRowCount;
     const rowVirtualizer = useVirtualizer({
-      count: tableRows.length,
+      count: virtualizerCount,
       getScrollElement: () => parentRef.current,
       estimateSize: () => currentRowHeight,
       overscan: 10,
     });
 
-    // Handle Load More
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    const lastItem = virtualItems[virtualItems.length - 1];
-    if (lastItem && lastItem.index >= tableRows.length - 5 && hasNextPage) {
-      onLoadMore?.();
-    }
+    // Keep fresh refs so scroll handler never has stale closures
+    const hasNextPageRef = useRef(hasNextPage);
+    const isFetchingRef = useRef(isFetchingNextPage);
+    const loadedRowCountRef = useRef(loadedRowCount);
+    const onLoadMoreRef = useRef(onLoadMore);
+    hasNextPageRef.current = hasNextPage;
+    isFetchingRef.current = isFetchingNextPage;
+    loadedRowCountRef.current = loadedRowCount;
+    onLoadMoreRef.current = onLoadMore;
+
+    // Trigger fetch when scroll position is within 20 rows of unloaded territory
+    const triggerLoadIfNeeded = useCallback(() => {
+      const el = parentRef.current;
+      if (!el || !hasNextPageRef.current || isFetchingRef.current) return;
+      const loadedPx = loadedRowCountRef.current * currentRowHeight;
+      const scrollBottom = el.scrollTop + el.clientHeight;
+      if (scrollBottom >= loadedPx - currentRowHeight * 20) {
+        onLoadMoreRef.current?.();
+      }
+    }, [currentRowHeight]);
+
+    // Attach scroll listener
+    useEffect(() => {
+      const el = parentRef.current;
+      if (!el) return;
+      el.addEventListener("scroll", triggerLoadIfNeeded, { passive: true });
+      return () => el.removeEventListener("scroll", triggerLoadIfNeeded);
+    }, [triggerLoadIfNeeded]);
+
+    // Chain: after each page load, check if we're still in unloaded territory
+    useEffect(() => {
+      if (!isFetchingNextPage) {
+        triggerLoadIfNeeded();
+      }
+    }, [loadedRowCount, isFetchingNextPage, triggerLoadIfNeeded]);
 
     useImperativeHandle(
       ref,
@@ -426,7 +462,46 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = tableRows[virtualRow.index]!;
+                    const row = tableRows[virtualRow.index];
+
+                    // Placeholder for rows not yet loaded
+                    if (!row) {
+                      return (
+                        <div
+                          key={`placeholder-${virtualRow.index}`}
+                          className="absolute flex w-full border-b border-gray-200 bg-white"
+                          style={{
+                            top: virtualRow.start,
+                            height: currentRowHeight,
+                            minWidth: "fit-content",
+                          }}
+                        >
+                          <div
+                            className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
+                            style={{ width: frozenWidth }}
+                          >
+                            <div className="flex h-full w-[34px] items-center justify-center">
+                              <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
+                            </div>
+                            <div className="flex-1 px-2">
+                              <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
+                            </div>
+                          </div>
+                          <div className="flex" style={{ width: totalScrollableWidth }}>
+                            {nonPrimaryColumns.map((col) => (
+                              <div
+                                key={col.id}
+                                className="flex items-center border-r border-gray-200 px-2"
+                                style={{ width: columnSizing[String(col.id)] ?? col.width }}
+                              >
+                                <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+
                     const rowData = row.original;
 
                     return (
@@ -454,7 +529,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         columnSizing={columnSizing}
                         selectedCell={selectedCell}
                         editingCell={editingCell}
-                        selectedCells={selectedCells} // PASSED MEMOIZED SET
+                        selectedCells={selectedCells}
                         isMultiSelect={isMultiSelect}
                         handleMouseDown={handleMouseDown}
                         handleMouseEnter={handleMouseEnter}
