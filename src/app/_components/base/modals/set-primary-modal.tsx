@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { GridColumn } from "~/types/grid";
+import {
+  SearchIcon,
+  ChevronDownIcon,
+  NumberIcon,
+  TextIcon,
+  XIcon,
+} from "~/components/icons";
 
 interface SetPrimaryModalProps {
   columns: GridColumn[];
@@ -16,7 +23,19 @@ export function SetPrimaryModal({
   onConfirm,
   onClose,
 }: SetPrimaryModalProps) {
-  const [selectedColumnId, setSelectedColumnId] = useState<number>(currentPrimaryId);
+  const [selectedColumnId, setSelectedColumnId] =
+    useState<number>(currentPrimaryId);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedId, setHighlightedId] = useState<number>(currentPrimaryId);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedColumn = columns.find((c) => c.id === selectedColumnId);
+  const filtered = columns.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const handleConfirm = () => {
     if (selectedColumnId !== currentPrimaryId) {
@@ -25,84 +44,137 @@ export function SetPrimaryModal({
     onClose();
   };
 
+  useEffect(() => {
+    if (isMenuOpen) {
+      setHighlightedId(selectedColumnId);
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+  }, [isMenuOpen, selectedColumnId]);
+
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 z-50 w-96 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white shadow-xl">
-        {/* Header */}
-        <div className="border-b border-gray-200 px-4 py-3">
-          <h2 className="text-base font-semibold text-gray-900">Set primary field</h2>
+      <div
+        ref={modalRef}
+        className="fixed top-1/2 left-1/2 z-50 w-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-8 shadow-2xl"
+      >
+        {/* Close Button (Cross) */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 rounded-full p-1 text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-600"
+        >
+          <XIcon className="h-5 w-5" />
+        </button>
+
+        <div className="p-2">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Change the primary field
+          </h2>
         </div>
 
-        {/* Body */}
-        <div className="px-4 py-4">
-          <p className="mb-3 text-sm text-gray-600">
-            Select which field should be the primary field. The primary field will be displayed first and cannot be hidden.
-          </p>
+        <div className="p-2">
+          <div className="relative">
+            <label className="mb-2 block text-xs tracking-wider text-gray-500">
+              Primary Field
+            </label>
 
-          <div className="space-y-1">
-            {columns.map((col) => (
-              <label
-                key={col.id}
-                className={`flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
-                  selectedColumnId === col.id
-                    ? "bg-blue-50 text-blue-700"
-                    : "hover:bg-gray-50"
-                }`}
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="mb-4 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm transition-all hover:border-gray-400 focus:outline-none"
               >
-                <input
-                  type="radio"
-                  name="primaryField"
-                  value={col.id}
-                  checked={selectedColumnId === col.id}
-                  onChange={() => setSelectedColumnId(col.id)}
-                  className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <div className="flex items-center gap-1.5">
-                  <svg
-                    className="h-3.5 w-3.5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d={
-                        col.type === "NUMBER"
-                          ? "M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
-                          : "M4 6h16M4 12h16m-7 6h7"
-                      }
-                    />
-                  </svg>
-                  <span>{col.name}</span>
-                  {col.primary && (
-                    <span className="ml-1 text-xs text-gray-500">(current)</span>
+                <div className="flex items-center gap-2.5 truncate">
+                  {selectedColumn?.type === "NUMBER" ? (
+                    <NumberIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                  ) : (
+                    <TextIcon className="h-4 w-4 shrink-0 text-gray-400" />
                   )}
+                  <span className="truncate font-medium text-gray-900">
+                    {selectedColumn?.name}
+                  </span>
                 </div>
-              </label>
-            ))}
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+              </button>
+              {selectedColumn?.id === currentPrimaryId && (
+                <span className="ml-1 text-gray-500">
+                  &quot;{selectedColumn?.name}&quot; is currently the primary
+                  field.
+                </span>
+              )}
+
+              {isMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsMenuOpen(false)}
+                  />
+
+                  <div className="absolute top-10 left-0 z-20 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
+                    <div className="flex items-center gap-2 border-b border-gray-100 bg-white px-3 py-2.5">
+                      <SearchIcon className="h-4 w-4 text-gray-400" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+                        placeholder="Find a field..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto p-1">
+                      {filtered.map((col) => {
+                        const isHighlighted = highlightedId === col.id;
+
+                        return (
+                          <button
+                            key={col.id}
+                            onMouseEnter={() => setHighlightedId(col.id)}
+                            onClick={() => {
+                              setSelectedColumnId(col.id);
+                              setIsMenuOpen(false);
+                              setSearchQuery("");
+                            }}
+                            className={`relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors ${
+                              isHighlighted ? "bg-gray-100" : ""
+                            }`}
+                          >
+                            {col.type === "NUMBER" ? (
+                              <NumberIcon className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <TextIcon className="h-4 w-4 text-gray-400" />
+                            )}
+                            <span className="truncate">{col.name}</span>
+                          </button>
+                        );
+                      })}
+                      {filtered.length === 0 && (
+                        <div className="px-3 py-8 text-center text-sm text-gray-400">
+                          No results
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-3">
+        <div className="flex justify-end gap-3 rounded-b-xl bg-gray-50/50 px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={selectedColumnId === currentPrimaryId}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Set as primary
+            Change primary field
           </button>
         </div>
       </div>
