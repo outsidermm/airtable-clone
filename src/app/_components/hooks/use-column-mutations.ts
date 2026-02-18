@@ -5,10 +5,9 @@ import type { ColumnType } from "generated/prisma/enums";
 export function useColumnMutations(activeTableId: number) {
   const utils = api.useUtils();
 
+  // Column operations only change the schema, not cell data — only invalidate table metadata
   const invalidate = useCallback(() => {
     void utils.table.getById.invalidate({ id: activeTableId });
-    void utils.row.getRows.invalidate({ tableId: activeTableId });
-    void utils.view.getData.invalidate();
   }, [utils, activeTableId]);
 
   const createColumn = api.column.create.useMutation({ onSuccess: invalidate });

@@ -48,15 +48,16 @@ import type { GridTableHandle } from "~/types/table";
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
+import { PAGE_SIZE } from "../constants";
 
 
 interface GridTableProps {
   columns: GridColumn[];
-  rows: GridRow[];
+  // Sparse array: null slots are unloaded rows (render as skeleton)
+  rows: (GridRow | null)[];
   onCellUpdate: (rowId: number, columnId: number, value: string) => void;
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
-  onLoadMore?: () => void;
-  hasNextPage?: boolean;
+  onRequestPage: (pageIndex: number) => void;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
 }
@@ -68,8 +69,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       rows,
       onCellUpdate,
       onReorderRow,
-      onLoadMore,
-      hasNextPage,
+      onRequestPage,
       sorts = [],
       rowHeight = "short",
     },
@@ -112,6 +112,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       return set;
     }, [rowSelection]);
 
+    // Dense array of loaded rows — used by hooks and DnD that need GridRow[] (not sparse)
+    const nonNullRows = useMemo(
+      () => rows.filter((r): r is GridRow => r !== null),
+      [rows],
+    );
+
     // --- 3. Custom Hooks ---
 
     // Selection Logic
@@ -123,11 +129,11 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       handleMouseEnter,
       isSelecting,
       isMultiSelect,
-    } = useGridSelection(rows, columns, setEditingCell);
+    } = useGridSelection(nonNullRows, columns, setEditingCell);
 
     // Navigation Logic
     useGridNavigation({
-      rows,
+      rows: nonNullRows,
       primaryColumn,
       nonPrimaryColumns,
       selectedCell,
@@ -180,6 +186,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     );
 
     // --- 5. TanStack Table Setup ---
+    // nonNullRows declared above (section 2) — TanStack Table uses it for column sizing & selection.
     const columnDefs = useMemo<ColumnDef<GridRow>[]>(() => {
       return nonPrimaryColumns.map((col) => ({
         id: String(col.id),
@@ -206,7 +213,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     }, [nonPrimaryColumns]);
 
     const table = useReactTable({
-      data: rows,
+      data: nonNullRows,
       columns: columnDefs,
       state: { rowSelection, columnSizing },
       onRowSelectionChange: setRowSelection,
@@ -225,19 +232,34 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     // --- 6. Virtualization ---
     const tableRows = table.getRowModel().rows;
+    // Build a fast lookup from row ID → TanStack Table row (for checkbox handler)
+    const tableRowById = useMemo(
+      () => new Map(tableRows.map((r) => [r.original.id, r])),
+      [tableRows],
+    );
+
+    // Pre-compute per-row multi-select column sets so SortableRow gets a stable
+    // null (no re-render) for rows outside the selection and a per-row Set for
+    // rows inside it, rather than the full selectedCells Set on every prop.
+    const rowToSelectedColumns = useMemo(() => {
+      if (!isMultiSelect) return new Map<number, Set<number>>();
+      const map = new Map<number, Set<number>>();
+      for (const key of selectedCells) {
+        const dashIdx = key.indexOf("-");
+        const rId = Number(key.slice(0, dashIdx));
+        const cId = Number(key.slice(dashIdx + 1));
+        if (!map.has(rId)) map.set(rId, new Set());
+        map.get(rId)!.add(cId);
+      }
+      return map;
+    }, [selectedCells, isMultiSelect]);
+    // rows.length === totalRowCount — the sparse array already has the right size
     const rowVirtualizer = useVirtualizer({
-      count: tableRows.length,
+      count: rows.length,
       getScrollElement: () => parentRef.current,
       estimateSize: () => currentRowHeight,
-      overscan: 10,
+      overscan: 20,
     });
-
-    // Handle Load More
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    const lastItem = virtualItems[virtualItems.length - 1];
-    if (lastItem && lastItem.index >= tableRows.length - 5 && hasNextPage) {
-      onLoadMore?.();
-    }
 
     useImperativeHandle(
       ref,
@@ -254,6 +276,23 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     useEffect(() => {
       rowVirtualizer.measure();
     }, [currentRowHeight, rowVirtualizer]);
+
+    // --- Request pages based on visible virtual range ---
+    // Uses stable primitive indices to avoid re-render loops.
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    const firstVirtualIndex = virtualItems[0]?.index ?? 0;
+    const lastVirtualIndex = virtualItems[virtualItems.length - 1]?.index ?? 0;
+
+    useEffect(() => {
+      if (rows.length === 0) return;
+      const firstPage = Math.floor(firstVirtualIndex / PAGE_SIZE);
+      const lastPage = Math.floor(lastVirtualIndex / PAGE_SIZE);
+      const maxPage = Math.ceil(rows.length / PAGE_SIZE) - 1;
+      // Request visible pages plus 2 pages ahead for smooth scrolling
+      for (let p = firstPage; p <= Math.min(lastPage + 2, maxPage); p++) {
+        onRequestPage(p);
+      }
+    }, [firstVirtualIndex, lastVirtualIndex, onRequestPage, rows.length]);
 
     // --- 7. Auto Scroll on Drag ---
     useEffect(() => {
@@ -307,7 +346,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       () => nonPrimaryColumns.map((c) => `col-${c.id}`),
       [nonPrimaryColumns],
     );
-    const rowOrder = useMemo(() => rows.map((r) => `row-${r.id}`), [rows]);
+    const rowOrder = useMemo(() => nonNullRows.map((r) => `row-${r.id}`), [nonNullRows]);
 
     const handleDragEnd = useCallback(
       (event: DragEndEvent) => {
@@ -334,14 +373,14 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         ) {
           const draggedId = Number(activeStr.replace("row-", ""));
           const targetId = Number(overStr.replace("row-", ""));
-          const draggedIndex = rows.findIndex((r) => r.id === draggedId);
+          const draggedIndex = nonNullRows.findIndex((r) => r.id === draggedId);
 
           if (
             draggedIndex !== -1 &&
             selectedRowIds.has(String(draggedIndex)) &&
             selectedRowIds.size > 1
           ) {
-            const selected = rows
+            const selected = nonNullRows
               .filter((_, i) => selectedRowIds.has(String(i)))
               .map((r) => r.id);
             onReorderRow(selected, targetId);
@@ -350,7 +389,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           }
         }
       },
-      [columns, rows, columnMutations, onReorderRow, selectedRowIds],
+      [columns, nonNullRows, columnMutations, onReorderRow, selectedRowIds],
     );
 
     // --- 9. Deselect when clicking outside ---
@@ -426,12 +465,66 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                   }}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = tableRows[virtualRow.index]!;
-                    const rowData = row.original;
+                    const rowData = rows[virtualRow.index];
+
+                    // Placeholder for rows not yet loaded
+                    if (!rowData) {
+                      return (
+                        <div
+                          key={`placeholder-${virtualRow.index}`}
+                          className="absolute flex w-full border-b border-gray-200 bg-white"
+                          style={{
+                            top: virtualRow.start,
+                            height: currentRowHeight,
+                            minWidth: "fit-content",
+                          }}
+                        >
+                          <div
+                            className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
+                            style={{ width: frozenWidth }}
+                          >
+                            <div className="flex h-full w-[34px] items-center justify-center">
+                              <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
+                            </div>
+                            <div className="flex-1 px-2">
+                              <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
+                            </div>
+                          </div>
+                          <div className="flex" style={{ width: totalScrollableWidth }}>
+                            {nonPrimaryColumns.map((col) => (
+                              <div
+                                key={col.id}
+                                className="flex items-center border-r border-gray-200 px-2"
+                                style={{ width: columnSizing[String(col.id)] ?? col.width }}
+                              >
+                                <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Look up the TanStack Table row by ID for checkbox handler
+                    const tableRow = tableRowById.get(rowData.id);
+                    if (!tableRow) return null;
+
+                    // Narrow per-row props — only the 2 affected rows re-render on click
+                    const selectedColumnId =
+                      selectedCell?.rowId === rowData.id
+                        ? selectedCell.columnId
+                        : null;
+                    const editingColumnId =
+                      editingCell?.rowId === rowData.id
+                        ? editingCell.columnId
+                        : null;
+                    const multiSelectColumnIds = isMultiSelect
+                      ? (rowToSelectedColumns.get(rowData.id) ?? null)
+                      : null;
 
                     return (
                       <SortableRow
-                        key={row.id}
+                        key={tableRow.id}
                         rowId={rowData.id}
                         virtualStart={virtualRow.start}
                         virtualIndex={virtualRow.index}
@@ -446,16 +539,15 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                               : "bg-white"
                         }
                         rowData={rowData}
-                        row={row}
+                        row={tableRow}
                         frozenWidth={frozenWidth}
                         primaryColumn={primaryColumn}
                         primaryColumnWidth={primaryColumnWidth}
                         nonPrimaryColumns={nonPrimaryColumns}
                         columnSizing={columnSizing}
-                        selectedCell={selectedCell}
-                        editingCell={editingCell}
-                        selectedCells={selectedCells} // PASSED MEMOIZED SET
-                        isMultiSelect={isMultiSelect}
+                        selectedColumnId={selectedColumnId}
+                        editingColumnId={editingColumnId}
+                        multiSelectColumnIds={multiSelectColumnIds}
                         handleMouseDown={handleMouseDown}
                         handleMouseEnter={handleMouseEnter}
                         handleCellChange={handleCellChange}

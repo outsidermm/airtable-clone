@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { api } from "~/trpc/react";
 import type { ViewConfig } from "~/server/api/routers/view";
+import { useBase } from "../base/base-context";
 
 export function useViewMutations(
   activeTableId: number,
@@ -8,6 +9,11 @@ export function useViewMutations(
   setActiveViewId: (id: number | null) => void,
 ) {
   const utils = api.useUtils();
+  const { refetchRows } = useBase();
+
+  // Tracks whether the in-flight updateView mutation needs a row refetch.
+  // Filter/sort changes need it; hidden-column and row-height changes do not.
+  const needsRowRefetchRef = useRef(false);
 
   const invalidate = useCallback(() => {
     void utils.table.getById.invalidate({ id: activeTableId });
@@ -28,7 +34,9 @@ export function useViewMutations(
       invalidate();
       if (activeViewId) {
         void utils.view.getById.invalidate({ id: activeViewId });
-        void utils.view.getData.invalidate();
+        if (needsRowRefetchRef.current) {
+          refetchRows();
+        }
       }
     },
   });
@@ -63,8 +71,10 @@ export function useViewMutations(
     [renameView],
   );
 
+  // opts.refetchRows = true for filter/sort changes; omit for hidden-column/row-height changes
   const handleUpdateView = useCallback(
-    (viewId: number, config: ViewConfig) => {
+    (viewId: number, config: ViewConfig, opts?: { refetchRows?: boolean }) => {
+      needsRowRefetchRef.current = opts?.refetchRows ?? false;
       updateView.mutate({ id: viewId, config });
     },
     [updateView],
@@ -77,7 +87,6 @@ export function useViewMutations(
         {
           onSuccess: () => {
             if (viewId === activeViewId) {
-              // Will be set by the parent on next render
               setActiveViewId(null);
             }
           },

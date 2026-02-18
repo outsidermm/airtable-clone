@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Row } from "@tanstack/react-table";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
@@ -23,10 +24,10 @@ interface SortableRowProps {
   primaryColumnWidth: number;
   nonPrimaryColumns: GridColumn[];
   columnSizing: Record<string, number>;
-  selectedCell: CellAddress | null;
-  editingCell: CellAddress | null;
-  selectedCells: Set<string>;
-  isMultiSelect: boolean;
+  // Narrow per-row selection props — avoids re-rendering unaffected rows
+  selectedColumnId: number | null;
+  editingColumnId: number | null;
+  multiSelectColumnIds: Set<number> | null; // null = no multi-select active
 
   // Handlers
   handleMouseDown: (
@@ -42,7 +43,7 @@ interface SortableRowProps {
   showLastRowTooltip: boolean;
 }
 
-export function SortableRow(props: SortableRowProps) {
+export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
   const {
     rowId,
     virtualStart,
@@ -57,10 +58,9 @@ export function SortableRow(props: SortableRowProps) {
     primaryColumnWidth,
     nonPrimaryColumns,
     columnSizing,
-    selectedCell,
-    editingCell,
-    selectedCells,
-    isMultiSelect,
+    selectedColumnId,
+    editingColumnId,
+    multiSelectColumnIds,
     handleMouseDown,
     handleMouseEnter,
     handleCellChange,
@@ -94,15 +94,13 @@ export function SortableRow(props: SortableRowProps) {
 
   // Helper to keep the render clean
   const renderCell = (col: GridColumn, width: number, isPrimary: boolean) => {
-    const isSelectedCell =
-      selectedCell?.rowId === rowId && selectedCell?.columnId === col.id;
-    const isEditing =
-      editingCell?.rowId === rowId && editingCell?.columnId === col.id;
+    const isSelectedCell = selectedColumnId === col.id;
+    const isEditing = editingColumnId === col.id;
 
     // Only apply multi-select blue if it's NOT the primary selected cell (the anchor)
     const isInMultiSelection =
-      isMultiSelect &&
-      selectedCells.has(`${rowId}-${col.id}`) &&
+      multiSelectColumnIds !== null &&
+      multiSelectColumnIds.has(col.id) &&
       !isSelectedCell;
 
     return (
@@ -215,4 +213,4 @@ export function SortableRow(props: SortableRowProps) {
       </div>
     </div>
   );
-}
+});

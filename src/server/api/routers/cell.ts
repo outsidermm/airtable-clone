@@ -175,7 +175,7 @@ export const cellRouter = createTRPCRouter({
         tableId: z.number().int(),
         query: z.string().min(1),
         columnId: z.number().int().optional(),
-        limit: z.number().int().min(1).max(100).default(50),
+        limit: z.number().int().min(1).max(500).default(200),
       }),
     )
     .query(async ({ ctx, input }) => {

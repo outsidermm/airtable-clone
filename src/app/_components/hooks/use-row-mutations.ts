@@ -1,22 +1,14 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
+import { useBase } from "../base/base-context";
 
 export function useRowMutations(activeTableId: number) {
-  const utils = api.useUtils();
+  const { refetchRows } = useBase();
 
-  const invalidateRows = useCallback(() => {
-    void utils.row.getRows.invalidate({ tableId: activeTableId });
-    void utils.view.getData.invalidate();
-  }, [utils, activeTableId]);
-
-  const createRow = api.row.create.useMutation({ onSuccess: invalidateRows });
-  const bulkCreateRow = api.row.bulkCreate.useMutation({
-    onSuccess: invalidateRows,
-  });
-  const deleteRow = api.row.delete.useMutation({ onSuccess: invalidateRows });
-  const bulkDeleteRow = api.row.bulkDelete.useMutation({
-    onSuccess: invalidateRows,
-  });
+  const createRow = api.row.create.useMutation({ onSuccess: () => refetchRows() });
+  const bulkCreateRow = api.row.bulkCreate.useMutation({ onSuccess: () => refetchRows() });
+  const deleteRow = api.row.delete.useMutation({ onSuccess: () => refetchRows() });
+  const bulkDeleteRow = api.row.bulkDelete.useMutation({ onSuccess: () => refetchRows() });
 
   const handleAddRow = useCallback(() => {
     createRow.mutate({ tableId: activeTableId });
