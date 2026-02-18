@@ -33,7 +33,7 @@ import {
   DuplicateIcon,
   ChevronRightIcon,
   RowHeightShortIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { RowHeightOption } from "~/types/row";
 import { RowHeightDropdown } from "./row-height-dropdown";

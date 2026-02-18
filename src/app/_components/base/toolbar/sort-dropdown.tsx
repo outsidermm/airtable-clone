@@ -9,7 +9,7 @@ import {
   SearchIcon,
   TextIcon,
   XIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 

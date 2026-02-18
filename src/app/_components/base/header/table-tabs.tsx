@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PlusIcon } from "~/components/icons";
+import { PlusIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
 import { useBase } from "../base-context";
 

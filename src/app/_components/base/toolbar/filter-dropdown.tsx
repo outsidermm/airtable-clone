@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { PlusIcon, QuestionIcon, TrashIcon } from "~/components/icons";
+import { PlusIcon, QuestionIcon, TrashIcon } from "~/app/_components/ui/icons";
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 

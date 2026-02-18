@@ -2,7 +2,8 @@
 
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
-import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
+import { ContextMenu } from "./context-menu";
+import { MenuDivider, MenuItem } from "../../ui/menu";
 
 export function RowContextMenu() {
   const { activeTableId, setContextMenu, contextMenu } = useBase();

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { FieldType } from "~/types/field";
 import { FIELD_TYPES } from "../constants";
-import { QuestionIcon, SearchIcon, ChevronDownIcon } from "~/components/icons";
+import { QuestionIcon, SearchIcon, ChevronDownIcon } from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 

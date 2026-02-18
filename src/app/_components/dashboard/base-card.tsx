@@ -8,7 +8,7 @@ import {
   StarIcon,
   StarOutlineIcon,
   DotsHorizontalIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import { getTimeAgo } from "~/lib/date";
 import { useBaseMutations } from "../hooks/use-base-mutations";
 import type { Base } from "~/types/base";

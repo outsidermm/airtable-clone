@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UserMenu } from "../../dashboard/user-menu";
-import { ArrowLeftIcon, BellIcon, QuestionIcon } from "~/components/icons";
+import { ArrowLeftIcon, BellIcon, QuestionIcon } from "~/app/_components/ui/icons";
 
 interface UserProps {
   user: {

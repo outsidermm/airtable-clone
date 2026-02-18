@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/components/icons";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
 import { useBase } from "../base-context";
 

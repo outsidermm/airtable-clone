@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DashboardLayout } from "~/app/_components/dashboard/dashboard-layout";
 import { BaseCard } from "~/app/_components/dashboard/base-card";
 import { api } from "~/trpc/react";
-import { ChevronDownIcon, ListIcon, ViewGridIcon } from "~/components/icons";
+import { ChevronDownIcon, ListIcon, ViewGridIcon } from "~/app/_components/ui/icons";
 
 interface DashboardClientProps {
   user: {

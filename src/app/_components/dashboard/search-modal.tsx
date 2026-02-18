@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
-import { SearchIcon, StarIcon, StarOutlineIcon } from "~/components/icons";
+import { SearchIcon, StarIcon, StarOutlineIcon } from "~/app/_components/ui/icons";
 import { getTimeAgo } from "~/lib/date";
 import { useBaseMutations } from "../hooks/use-base-mutations";
 

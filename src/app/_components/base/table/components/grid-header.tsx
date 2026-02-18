@@ -17,7 +17,7 @@ import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
-import { ChevronDownIcon, PlusIcon, TextIcon } from "~/components/icons";
+import { ChevronDownIcon, PlusIcon, TextIcon } from "~/app/_components/ui/icons";
 import { useBase } from "../../base-context";
 import { useColumnMutations } from "~/app/_components/hooks/use-column-mutations";
 

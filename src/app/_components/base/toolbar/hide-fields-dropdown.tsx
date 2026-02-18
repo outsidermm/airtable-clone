@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { NumberIcon, QuestionIcon, TextIcon } from "~/components/icons";
+import { NumberIcon, QuestionIcon, TextIcon } from "~/app/_components/ui/icons";
 import type { GridColumn } from "~/types/grid";
 
 interface HideFieldsDropdownProps {

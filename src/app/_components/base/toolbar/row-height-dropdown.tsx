@@ -1,5 +1,5 @@
 "use client";
-import { RowHeightMediumIcon, RowHeightShortIcon, RowHeightExtraTallIcon, RowHeightTallIcon, WrapHeadersIcon } from "~/components/icons";
+import { RowHeightMediumIcon, RowHeightShortIcon, RowHeightExtraTallIcon, RowHeightTallIcon, WrapHeadersIcon } from "~/app/_components/ui/icons";
 import type { RowHeightOption } from "~/types/row";
 
 interface RowHeightDropdownProps {

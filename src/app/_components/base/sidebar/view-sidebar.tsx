@@ -29,7 +29,7 @@ import {
   TimelineIcon,
   UserIcon,
   UsersIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import { SortableViewItem } from "./sortable-view-item";

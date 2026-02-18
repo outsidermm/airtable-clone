@@ -8,7 +8,7 @@ import {
   NumberIcon,
   TextIcon,
   XIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 

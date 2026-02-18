@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { CheckIcon, XIcon, InfoIcon, WarningIcon } from "~/components/icons";
+import { CheckIcon, XIcon, InfoIcon, WarningIcon } from "~/app/_components/ui/icons";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 

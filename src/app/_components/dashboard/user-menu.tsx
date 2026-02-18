@@ -16,7 +16,7 @@ import {
   TrashIcon,
   LogoutIcon,
   ChevronRightIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 
 interface UserMenuProps {
   user: {

@@ -327,7 +327,7 @@ export const RowHeightShortIcon = (props: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M4 8h16M4 16h16M9 12h6" 
+      d="M4 8h16M4 16h16M9 12h6"
     />
   </svg>
 );
@@ -1133,6 +1133,130 @@ export const SlackIcon = (props: IconProps) => (
     />
   </svg>
 );
+
+export const AIIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+    />
+  </svg>
+);
+
+export const ArrowDownIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 14l-7 7m0 0l-7-7m7 7V3"
+    />
+  </svg>
+);
+
+// 3. Apply Template (Magic Wand)
+export const ApplyTemplateIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    {/* The Wand Shaft - Strong diagonal line with a handle grip */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 21l9-9m-9 9l3-3m-3 3l1-1"
+    />
+    {/* Top Sparkle - Simple cross */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M14 4v4m-2-2h4"
+    />
+    {/* Right Sparkle - Simple cross */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M20 10v4m-2-2h4"
+    />
+    {/* Top-Right Sparkle - Simple cross */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M18 5l3 3m0-3l-3 3"
+    />
+  </svg>
+);
+
+// 4. Expand Record (Maximize)
+export const ExpandRecordIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+    />
+  </svg>
+);
+
+export const AddCommentIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+    />
+  </svg>
+);
+
+export const CopyUrlIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+    />
+  </svg>
+);
+
+export const SendRecordIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+    />
+  </svg>
+);
+
+export const DependenciesIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+    />
+  </svg>
+);
+
+export const RunAgentIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+    />
+  </svg>
+);
+
 // ============================================================================
 // DEFAULT EXPORTS
 // ============================================================================

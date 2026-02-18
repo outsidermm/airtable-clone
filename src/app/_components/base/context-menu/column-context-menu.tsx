@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
+import { ContextMenu } from "./context-menu";
+import { MenuItem, MenuDivider } from "../../ui/menu";
 import type { GridColumn } from "~/types/grid";
 import type { ColumnType } from "generated/prisma/enums";
 import { useBase } from "../base-context";

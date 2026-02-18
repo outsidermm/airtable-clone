@@ -2,13 +2,21 @@
 
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
-import { ContextMenu, MenuItem, MenuDivider } from "./context-menu";
+import { ContextMenu } from "./context-menu";
+import { MenuItem, MenuDivider } from "../../ui/menu";
+import {
+  AddCommentIcon,
+  AIIcon,
+  ApplyTemplateIcon,
+  ArrowDownIcon,
+  CopyUrlIcon,
+  DuplicateIcon,
+  ExpandRecordIcon,
+  SendRecordIcon,
+  TrashIcon,
+} from "../../ui/icons";
 
-interface CellContextMenuProps {
-  onClearCell: (rowId: number, columnId: number) => void;
-}
-
-export function CellContextMenu({ onClearCell }: CellContextMenuProps) {
+export function CellContextMenu() {
   const { activeTableId, setContextMenu, contextMenu } = useBase();
 
   const position = contextMenu?.position;
@@ -19,32 +27,45 @@ export function CellContextMenu({ onClearCell }: CellContextMenuProps) {
   if (!position || !rowId || !columnId) return null;
   return (
     <ContextMenu>
-      <MenuItem label="Copy cell" />
       <MenuItem
-        label="Clear cell"
-        onClick={() => {
-          onClearCell(rowId, columnId);
-          setContextMenu(null);
-        }}
+        label="Ask Omni"
+        icon={<AIIcon className="h-4 w-4 text-gray-400" />}
       />
       <MenuDivider />
       <MenuItem
-        label="Insert row above"
-        onClick={() => {
-          rowMutations.handleAddRow();
-          setContextMenu(null);
-        }}
-      />
-      <MenuItem
-        label="Insert row below"
-        onClick={() => {
-          rowMutations.handleAddRow();
-          setContextMenu(null);
-        }}
+        label="Insert record"
+        icon={<ArrowDownIcon className="h-4 w-4 text-gray-400" />}
       />
       <MenuDivider />
       <MenuItem
-        label="Delete row"
+        label="Duplicate record"
+        icon={<DuplicateIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuItem
+        label="Apply template"
+        icon={<ApplyTemplateIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuItem
+        label="Expand record"
+        icon={<ExpandRecordIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuDivider />
+      <MenuItem
+        label="Add comment"
+        icon={<AddCommentIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuItem
+        label="Copy cell URL"
+        icon={<CopyUrlIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuItem
+        label="Send record"
+        icon={<SendRecordIcon className="h-4 w-4 text-gray-400" />}
+      />
+      <MenuDivider />
+      <MenuItem
+        label="Delete record"
+        icon={<TrashIcon className="h-4 w-4 text-gray-400" />}
         danger
         onClick={() => {
           rowMutations.handleDeleteRow(rowId);

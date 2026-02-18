@@ -36,7 +36,7 @@ import {
   XIcon,
   SearchIcon,
   PlusIcon,
-} from "~/components/icons";
+} from "~/app/_components/ui/icons";
 import type { Base } from "~/types/base";
 import { useTableMutations } from "../../hooks/use-table-mutations";
 
