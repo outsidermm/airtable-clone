@@ -7,17 +7,15 @@ import type { ColumnType } from "generated/prisma/enums";
 import { useBase } from "../base-context";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
+import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface ColumnContextMenuProps {
   position: { x: number; y: number };
   column: GridColumn;
   viewConfig: ViewConfig;
   onRename: (columnId: number) => void;
-  onChangeType: (columnId: number, type: "TEXT" | "NUMBER") => void;
-  onUpdate?: (columnId: number, name: string, type: ColumnType) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
-  onDelete: (columnId: number) => void;
 }
 
 export function ColumnContextMenu({
@@ -25,11 +23,8 @@ export function ColumnContextMenu({
   column,
   viewConfig,
   onRename,
-  onChangeType,
-  onUpdate,
   onInsertLeft,
   onInsertRight,
-  onDelete,
 }: ColumnContextMenuProps) {
   const {
     openModal,
@@ -43,6 +38,8 @@ export function ColumnContextMenu({
     activeViewId,
     setActiveViewId,
   );
+  const columnMutations = useColumnMutations(activeTableId);
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(column.name);
   const [editType, setEditType] = useState<ColumnType>(column.type);
@@ -59,9 +56,7 @@ export function ColumnContextMenu({
   );
 
   const handleSaveEdit = () => {
-    if (onUpdate) {
-      onUpdate(column.id, editName.trim() || column.name, editType);
-    }
+    columnMutations.handleUpdateColumn(column.id, editName.trim() || column.name, editType);
     setShowEditModal(false);
     setContextMenu(null);
   };
@@ -145,14 +140,6 @@ export function ColumnContextMenu({
         }}
       />
       <MenuDivider />
-      <MenuItem
-        label={`Change to ${column.type === "TEXT" ? "Number" : "Text"}`}
-        disabled={column.primary}
-        onClick={() => {
-          onChangeType(column.id, column.type === "TEXT" ? "NUMBER" : "TEXT");
-          setContextMenu(null);
-        }}
-      />
       {column.primary && (
         <MenuItem
           label="Change primary field"
@@ -191,7 +178,7 @@ export function ColumnContextMenu({
         danger
         disabled={column.primary}
         onClick={() => {
-          onDelete(column.id);
+          columnMutations.handleDeleteColumn(column.id);
           setContextMenu(null);
         }}
       />

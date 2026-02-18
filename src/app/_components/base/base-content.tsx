@@ -16,10 +16,8 @@ import { AddTableModal } from "./modals/add-table-modal";
 import { AddColumnModal } from "./modals/add-column-modal";
 import { useTableMutations } from "../hooks/use-table-mutations";
 import { useColumnMutations } from "../hooks/use-column-mutations";
-import { useViewMutations } from "../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
 import type { GridColumn, GridRow } from "~/types/grid";
-import type { ColumnType } from "generated/prisma/enums";
 import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
 
@@ -137,12 +135,6 @@ export function BaseContent({
   const activeViewName = useMemo(() => {
     return views.find((v) => v.id === activeViewId)?.name ?? "Grid view";
   }, [views, activeViewId]);
-
-  const viewMutations = useViewMutations(
-    activeTableId,
-    activeViewId,
-    setActiveViewId,
-  );
 
   // --- Rows (use view.getData when we have a view, fallback to row.getRows) ---
   const viewDataQuery = api.view.getData.useInfiniteQuery(
@@ -262,16 +254,6 @@ export function BaseContent({
     [setContextMenu],
   );
 
-  const handleColumnChangeType = useCallback(
-    (columnId: number, type: "TEXT" | "NUMBER") => {
-      columnMutations.handleUpdateColumn(
-        columnId,
-        undefined,
-        type as ColumnType,
-      );
-    },
-    [columnMutations],
-  );
 
   const handleInsertColumnLeft = useCallback(
     (columnId: number) => {
@@ -472,13 +454,8 @@ export function BaseContent({
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
           viewConfig={viewConfig}
           onRename={handleColumnRenameFromMenu}
-          onChangeType={handleColumnChangeType}
           onInsertLeft={handleInsertColumnLeft}
           onInsertRight={handleInsertColumnRight}
-          onDelete={columnMutations.handleDeleteColumn}
-          onUpdate={(columnId: number, name: string, type: ColumnType) => {
-            columnMutations.handleUpdateColumn(columnId, name, type);
-          }}
         />
       )}
 
