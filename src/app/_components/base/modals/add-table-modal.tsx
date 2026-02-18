@@ -12,6 +12,7 @@ import {
   TeamIcon,
 } from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
+import { MenuItem, MenuDivider, MenuSectionHeader } from "../../ui/menu";
 
 interface AddTableModalProps {
   onAddTable: () => void;
@@ -61,81 +62,62 @@ export function AddTableModal({ onAddTable, anchorEl }: AddTableModalProps) {
           isDropdown ? { top: position.top, left: position.left } : undefined
         }
       >
-        <div className="px-4 py-4">
-          <p className="mb-1 px-2 text-xs text-gray-500">Add a blank table</p>
-          <button
-            className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50"
-            onClick={handleConfirm}
-          >
-            Start from scratch
-          </button>
-          <div className="my-2 h-px bg-gray-100" />
-
-          <p className="mb-1 px-2 text-xs text-gray-500">Build with Omni</p>
-          <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">New table</span>
-          </button>
-          <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              New table with web data
-            </span>
-            <span className="flex items-center gap-1 rounded-xl bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-500">
-              Beta
-            </span>
-          </button>
-          <div className="my-2 h-px bg-gray-100" />
-
-          <p className="mb-1 px-2 text-xs text-gray-500">
-            Add from other sources
-          </p>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
+        <div className="p-4">
+          <MenuSectionHeader label="Add a blank table" />
+          <MenuItem label="Start from scratch" onClick={handleConfirm} />
+          <MenuDivider />
+          <MenuSectionHeader label="Build with Omni" />
+          <MenuItem label="New table" />
+          <MenuItem
+            label="New table with web data"
+            rightElement={
+              <span className="flex items-center gap-1 rounded-xl bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-500">
+                Beta
+              </span>
+            }
+          />
+          <MenuDivider />
+          <MenuSectionHeader label="Add from other sources" />
+          <MenuItem
+            label="Airtable base"
+            icon={
               <Image
                 src="/airtable-color.svg"
                 alt="Airtable"
                 width={16}
                 height={16}
               />
-              Airtable base
-            </span>
-          </button>
-
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <DocumentIcon className="h-4 w-4 text-gray-400" />
-              CSV file
-            </span>
-          </button>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <GCalendarIcon className="h-4 w-4" />
-              Google Calendar
-            </span>
-          </button>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <GSheetIcon className="h-4 w-4" />
-              Google Sheets
-            </span>
-          </button>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <ExcelIcon className="h-4 w-4 text-green-700" />
-              Microsoft Excel
-            </span>
-          </button>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <SalesforceIcon className="h-4 w-4" />
-              Salesforce
-            </span>
-            <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-              <TeamIcon className="h-2.5 w-2.5" />
-              Business
-            </span>
-          </button>
-          <button className="flex w-full items-center justify-between px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
+            }
+          />
+          <MenuItem
+            label="CSV file"
+            icon={<DocumentIcon className="h-4 w-4 text-gray-400" />}
+          />
+          <MenuItem
+            label="Google Calendar"
+            icon={<GCalendarIcon className="h-4 w-4" />}
+          />
+          <MenuItem
+            label="Google Sheets"
+            icon={<GSheetIcon className="h-4 w-4 text-green-700" />}
+          />
+          <MenuItem
+            label="Microsoft Excel"
+            icon={<ExcelIcon className="h-4 w-4 text-green-700" />}
+          />
+          <MenuItem
+            label="Salesforce"
+            icon={<SalesforceIcon className="h-4 w-4" />}
+            rightElement={
+              <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
+                <TeamIcon className="h-2.5 w-2.5" />
+                Business
+              </span>
+            }
+          />
+          <MenuItem
+            label="Smartsheet"
+            icon={
               <Image
                 src="/SmartSheet.svg"
                 alt="Notion"
@@ -143,17 +125,15 @@ export function AddTableModal({ onAddTable, anchorEl }: AddTableModalProps) {
                 height={12}
                 className="ml-1"
               />
-              Smartsheet
-            </span>
-          </button>
-
-          <button className="flex w-full items-center justify-between rounded-xs px-2 py-2 text-sm text-gray-700 transition-all hover:bg-gray-50">
-            <span className="flex items-center gap-2.5">
-              <DocumentIcon className="h-4 w-4 text-gray-400" />
-              26 more sources...
-            </span>
-            <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
-          </button>
+            }
+          />
+          <MenuItem
+            label="26 more sources..."
+            icon={<DocumentIcon className="h-4 w-4 text-gray-400" />}
+            rightElement={
+              <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
+            }
+          />
         </div>
       </div>
     </>

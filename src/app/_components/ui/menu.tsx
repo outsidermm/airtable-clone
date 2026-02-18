@@ -108,7 +108,7 @@ export function MenuItem({
 
 export function MenuSectionHeader({ label }: { label: string }) {
   return (
-    <div className="mt-2 mb-1 px-3 text-[11px] font-medium tracking-wider text-gray-500 uppercase first:mt-1">
+    <div className="mt-2 mb-1 px-2 text-[11px] tracking-wider text-gray-500 first:mt-1">
       {label}
     </div>
   );
@@ -136,7 +136,7 @@ export function MenuBadge({
 
   return (
     <span
-      className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${variants[variant]}`}
+      className={`flex items-center gap-1 rounded-xl border px-1.5 py-0.5 text-[10px] font-medium ${variants[variant]}`}
     >
       {children}
     </span>

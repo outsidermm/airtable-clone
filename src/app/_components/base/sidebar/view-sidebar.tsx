@@ -34,6 +34,7 @@ import { useBase } from "../base-context";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import { SortableViewItem } from "./sortable-view-item";
 import type { View } from "~/types/view";
+import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
 
 interface ViewSidebarProps {
   views: View[];
@@ -214,82 +215,68 @@ export function ViewSidebar({
                   left: createMenuPosition.left,
                 }}
               >
-                <button
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                <MenuItem
                   onClick={() => {
                     setNewViewType("grid");
                     setShowCreateMenu(false);
                     setShowCreateForm(true);
                     // Keep createMenuPosition for the form
                   }}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <GridIcon className="h-4 w-4 text-blue-400" />
-                    Grid
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <CalendarIcon className="h-4 w-4 text-orange-400" />
-                    Calendar
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <GalleryIcon className="h-4 w-4 text-purple-400" />
-                    Gallery
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <KanbanIcon className="h-4 w-4 text-green-400" />
-                    Kanban
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <TimelineIcon className="h-4 w-4 text-red-400" />
-                    Timeline
-                  </span>
-                  <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                    <TeamIcon className="h-2.5 w-2.5" />
-                    Team
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <ListIcon className="h-4 w-4 text-violet-400" />
-                    List
-                  </span>
-                </button>
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <GanttIcon className="h-4 w-4 text-green-700" />
-                    Gantt
-                  </span>
-                  <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                    <TeamIcon className="h-2.5 w-2.5" />
-                    Team
-                  </span>
-                </button>
-                <div className="mx-2 my-1 border-t border-gray-200" />
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <FormIcon className="h-4 w-4 text-pink-400" />
-                    Form
-                  </span>
-                </button>
-                <div className="mx-2 my-1 border-t border-gray-200" />
-                <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                  <span className="flex items-center gap-2.5">
-                    <SectionIcon className="h-4 w-4 text-gray-400" />
-                    Section
-                  </span>
-                  <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                    <TeamIcon className="h-2.5 w-2.5" />
-                    Team
-                  </span>
-                </button>
+                  label="Grid"
+                  icon={<GridIcon className="h-4 w-4 text-blue-400" />}
+                />
+                <MenuItem
+                  label="Calendar"
+                  icon={<CalendarIcon className="h-4 w-4 text-orange-400" />}
+                />
+                <MenuItem
+                  label="Gallery"
+                  icon={<GalleryIcon className="h-4 w-4 text-purple-400" />}
+                />
+                <MenuItem
+                  label="Kanban"
+                  icon={<KanbanIcon className="h-4 w-4 text-green-400" />}
+                />
+                <MenuItem
+                  label="Timeline"
+                  icon={<TimelineIcon className="h-4 w-4 text-red-400" />}
+                  rightElement={
+                    <MenuBadge variant="blue">
+                      <TeamIcon className="h-2.5 w-2.5" />
+                      Team
+                    </MenuBadge>
+                  }
+                />
+                <MenuItem
+                  label="List"
+                  icon={<ListIcon className="h-4 w-4 text-violet-400" />}
+                />
+                <MenuItem
+                  label="Gantt"
+                  icon={<GanttIcon className="h-4 w-4 text-green-700" />}
+                  rightElement={
+                    <MenuBadge variant="blue">
+                      <TeamIcon className="h-2.5 w-2.5" />
+                      Team
+                    </MenuBadge>
+                  }
+                />
+                <MenuDivider />
+                <MenuItem
+                  label="Form"
+                  icon={<FormIcon className="h-4 w-4 text-pink-400" />}
+                />
+                <MenuDivider />
+                <MenuItem
+                  label="Section"
+                  icon={<SectionIcon className="h-4 w-4 text-gray-400" />}
+                  rightElement={
+                    <MenuBadge variant="blue">
+                      <TeamIcon className="h-2.5 w-2.5" />
+                      Team
+                    </MenuBadge>
+                  }
+                />
               </div>
             </>
           )}
