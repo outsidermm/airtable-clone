@@ -106,10 +106,14 @@ export function BaseToolbar({
   }, []);
 
   const handleUpdateFilters = useCallback(
-    (filters: FilterConfig[]) => {
+    (filters: FilterConfig[], filterGroupLogic?: "AND" | "OR") => {
       if (!activeViewId) return;
       // Filters change which rows are visible — row data must be refetched
-      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, filters }, { refetchRows: true });
+      viewMutations.handleUpdateView(
+        activeViewId,
+        { ...viewConfig, filters, filterGroupLogic: filterGroupLogic ?? viewConfig.filterGroupLogic ?? "AND" },
+        { refetchRows: true },
+      );
     },
     [viewConfig, viewMutations, activeViewId],
   );
@@ -457,6 +461,9 @@ export function BaseToolbar({
           </button>
           {activeDropdown === "search" && (
             <SearchDropdown
+              columns={columns}
+              filters={viewConfig.filters ?? []}
+              onUpdateFilters={handleUpdateFilters}
               onScrollToRow={onScrollToRow}
               onClose={closeDropdown}
             />

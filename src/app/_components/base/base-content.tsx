@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
 import { useToast } from "~/app/_components/ui/toast";
 import { GridTable } from "./table/grid-table";
@@ -36,6 +37,7 @@ interface BaseContentProps {
 const DEFAULT_VIEW_CONFIG: ViewConfig = {
   sorts: [],
   filters: [],
+  filterGroupLogic: "AND",
   hiddenColumns: [],
   rowHeight: "short",
 };
@@ -128,6 +130,7 @@ export function BaseContent({
     return {
       sorts: cfg.sorts ?? [],
       filters: cfg.filters ?? [],
+      filterGroupLogic: cfg.filterGroupLogic ?? "AND",
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
     };
@@ -145,6 +148,10 @@ export function BaseContent({
   const fetchKeyRef = useRef(0); // increments on reset to discard stale fetches
   const [pageStore, setPageStore] = useState<Map<number, GridRow[]>>(new Map());
   const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
+  // Local row reorder override — ordered list of row IDs to display instead of
+  // the page-store's natural server order.  Avoids touching the page store so
+  // no skeleton flash occurs.  Reset whenever the page store is refetched.
+  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(null);
 
   const fetchPage = useCallback(
     async (pageIndex: number) => {
@@ -201,7 +208,6 @@ export function BaseContent({
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeViewId, activeTableId, utils],
   );
 
@@ -211,12 +217,13 @@ export function BaseContent({
     pageStoreRef.current = new Map();
     loadingPagesRef.current = new Set();
     setPageStore(new Map());
-    setTotalRowCount(undefined);
+    setRowOrderOverride(null); // Reset any local row reorder — server is source of truth after refetch
+    // Do NOT clear totalRowCount here — keeps virtualizer size stable so scroll position is preserved.
+    // (totalRowCount is still reset on table/view switch in the effect below.)
     void fetchPage(0);
     for (const pageIndex of loadedPageIndices) {
       if (pageIndex !== 0) void fetchPage(pageIndex);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchPage]);
 
   useEffect(() => {
@@ -235,8 +242,7 @@ export function BaseContent({
       void fetchPage(0);
     }
     // fetchPage intentionally omitted — it captures activeViewId/activeTableId via closure
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeViewId, activeTableId]);
+  }, [activeViewId, activeTableId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -300,6 +306,15 @@ export function BaseContent({
     }));
   }, [searchQuery, searchResultsQuery.data]);
 
+  // Fast ID→row lookup used by rowOrderOverride
+  const rowById = useMemo(() => {
+    const map = new Map<number, GridRow>();
+    for (const pageRows of pageStore.values()) {
+      for (const row of pageRows) map.set(row.id, row);
+    }
+    return map;
+  }, [pageStore]);
+
   // --- Grid rows: search mode (dense) or page-store mode (sparse) ---
   const gridRows = useMemo<(GridRow | null)[]>(() => {
     // Search mode — show matching rows as a dense array, no skeleton needed
@@ -309,15 +324,64 @@ export function BaseContent({
     // Normal mode — sparse array where null = unloaded (renders as skeleton)
     if (!totalRowCount) return [];
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
-    for (const [pageIndex, pageRows] of pageStore) {
-      const startIdx = pageIndex * PAGE_SIZE;
-      pageRows.forEach((row, i) => {
-        const idx = startIdx + i;
-        if (idx < totalRowCount) sparse[idx] = row;
+
+    if (rowOrderOverride !== null) {
+      // Local-reorder mode: use the override for covered positions, page-store for the rest
+      rowOrderOverride.forEach((id, i) => {
+        if (i < totalRowCount) sparse[i] = rowById.get(id) ?? null;
       });
+      for (const [pageIndex, pageRows] of pageStore) {
+        const startIdx = pageIndex * PAGE_SIZE;
+        pageRows.forEach((row, i) => {
+          const idx = startIdx + i;
+          if (idx >= rowOrderOverride.length && idx < totalRowCount) {
+            sparse[idx] = row;
+          }
+        });
+      }
+    } else {
+      for (const [pageIndex, pageRows] of pageStore) {
+        const startIdx = pageIndex * PAGE_SIZE;
+        pageRows.forEach((row, i) => {
+          const idx = startIdx + i;
+          if (idx < totalRowCount) sparse[idx] = row;
+        });
+      }
     }
     return sparse;
-  }, [searchQuery, searchGridRows, pageStore, totalRowCount, PAGE_SIZE]);
+  }, [searchQuery, searchGridRows, pageStore, rowById, totalRowCount, rowOrderOverride]);
+
+  // --- Row reorder (local only — no DB order column) ---
+  // Uses a rowOrderOverride rather than rebuilding the page store, so no page
+  // refetch is triggered and the grid never flashes blank.
+  const handleReorderRow = useCallback(
+    (draggedRowIds: number[], targetRowId: number) => {
+      const draggedId = draggedRowIds[0]!;
+      setRowOrderOverride((prev) => {
+        // Build the base order from the current override or from the page store
+        let currentOrder: number[];
+        if (prev !== null) {
+          currentOrder = prev;
+        } else {
+          const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
+            (a, b) => a - b,
+          );
+          const flat: GridRow[] = [];
+          for (const pi of sortedPageIndices) {
+            flat.push(...(pageStoreRef.current.get(pi) ?? []));
+          }
+          currentOrder = flat.map((r) => r.id);
+        }
+
+        const oldIdx = currentOrder.indexOf(draggedId);
+        const newIdx = currentOrder.indexOf(targetRowId);
+        if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev;
+
+        return arrayMove(currentOrder, oldIdx, newIdx);
+      });
+    },
+    [],
+  );
 
   // --- Context menu handlers ---
 
@@ -447,6 +511,7 @@ export function BaseContent({
               columns={visibleColumns}
               rows={gridRows}
               onCellUpdate={handleCellUpdate}
+              onReorderRow={handleReorderRow}
               onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}

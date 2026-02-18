@@ -258,7 +258,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       count: rows.length,
       getScrollElement: () => parentRef.current,
       estimateSize: () => currentRowHeight,
-      overscan: 20,
+      overscan: 5,
     });
 
     useImperativeHandle(
@@ -288,8 +288,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       const firstPage = Math.floor(firstVirtualIndex / PAGE_SIZE);
       const lastPage = Math.floor(lastVirtualIndex / PAGE_SIZE);
       const maxPage = Math.ceil(rows.length / PAGE_SIZE) - 1;
-      // Request visible pages plus 2 pages ahead for smooth scrolling
-      for (let p = firstPage; p <= Math.min(lastPage + 2, maxPage); p++) {
+      // Request visible pages plus 1 page ahead for smooth scrolling
+      for (let p = firstPage; p <= Math.min(lastPage + 1, maxPage); p++) {
         onRequestPage(p);
       }
     }, [firstVirtualIndex, lastVirtualIndex, onRequestPage, rows.length]);
@@ -426,7 +426,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        <div ref={parentRef} className="flex-1 overflow-auto">
+        <div ref={parentRef} className="flex-1 overflow-x-auto overflow-y-scroll">
           <div
             className="flex min-h-full flex-col"
             style={{ minWidth: "fit-content" }}

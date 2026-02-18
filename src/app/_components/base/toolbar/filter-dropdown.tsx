@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { PlusIcon, QuestionIcon, TrashIcon } from "~/app/_components/ui/icons";
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
@@ -41,6 +41,7 @@ export function FilterDropdown({
   onClose,
 }: FilterDropdownProps) {
   const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
+  const valueDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const addFilter = useCallback(() => {
     const firstCol = columns[0];
@@ -62,6 +63,21 @@ export function FilterDropdown({
       );
       setLocalFilters(updated);
       onUpdateFilters(updated);
+    },
+    [localFilters, onUpdateFilters],
+  );
+
+  // Value changes are debounced — avoids firing a backend query on every keystroke
+  const updateFilterValue = useCallback(
+    (index: number, value: string | number) => {
+      const updated = localFilters.map((f, i) =>
+        i === index ? { ...f, value } : f,
+      );
+      setLocalFilters(updated); // Update UI immediately
+      if (valueDebounceRef.current) clearTimeout(valueDebounceRef.current);
+      valueDebounceRef.current = setTimeout(() => {
+        onUpdateFilters(updated);
+      }, 300);
     },
     [localFilters, onUpdateFilters],
   );
@@ -147,18 +163,18 @@ export function FilterDropdown({
                       ))}
                     </select>
 
-                    {/* Value input */}
+                    {/* Value input — debounced to avoid a backend fetch on every keystroke */}
                     {needsValue && (
                       <input
                         type={col?.type === "NUMBER" ? "number" : "text"}
                         value={filter.value ?? ""}
                         onChange={(e) =>
-                          updateFilter(index, {
-                            value:
-                              col?.type === "NUMBER"
-                                ? Number(e.target.value)
-                                : e.target.value,
-                          })
+                          updateFilterValue(
+                            index,
+                            col?.type === "NUMBER"
+                              ? Number(e.target.value)
+                              : e.target.value,
+                          )
                         }
                         placeholder="value"
                         className="w-20 flex-1 border border-gray-200 px-1.5 py-1 text-xs text-gray-700 outline-none"

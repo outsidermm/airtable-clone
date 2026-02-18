@@ -4,13 +4,21 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
 import { useBase } from "../base-context";
+import type { GridColumn } from "~/types/grid";
+import type { FilterConfig } from "~/server/api/routers/view";
 
 interface SearchDropdownProps {
+  columns: GridColumn[];
+  filters: FilterConfig[];
+  onUpdateFilters: (filters: FilterConfig[], filterGroupLogic?: "AND" | "OR") => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
 
 export function SearchDropdown({
+  columns,
+  filters,
+  onUpdateFilters,
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
@@ -21,12 +29,41 @@ export function SearchDropdown({
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout>(undefined);
 
-  // Debounce search
+  // Snapshot the filters that existed before this search box was opened.
+  // All search-derived filters are appended after this snapshot index.
+  const initialFiltersRef = useRef<FilterConfig[]>(filters);
+
+  // Always-current reference to apply a filter — avoids stale closure in the timeout
+  const applyFilterRef = useRef<(value: string) => void>(() => undefined);
+  applyFilterRef.current = (value: string) => {
+    if (!columns.length) return;
+    const numValue = parseFloat(value);
+    const isValidNum = !isNaN(numValue) && value.trim() !== "";
+
+    // Build one filter condition per visible column, matched to its data type.
+    // The view is updated with OR logic so any column match shows the row.
+    const searchFilters: FilterConfig[] = columns.reduce<FilterConfig[]>((acc, col) => {
+      if (col.type === "NUMBER") {
+        if (isValidNum) acc.push({ columnId: col.id, operator: "equals", value: numValue });
+      } else {
+        acc.push({ columnId: col.id, operator: "contains", value });
+      }
+      return acc;
+    }, []);
+
+    if (searchFilters.length === 0) return;
+    onUpdateFilters([...initialFiltersRef.current, ...searchFilters], "OR");
+  };
+
+  // Debounce search — also applies a view filter when typing stops
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setDebouncedQuery(query);
       setActiveIndex(0);
+      if (query.trim()) {
+        applyFilterRef.current(query.trim());
+      }
     }, 300);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -102,6 +139,12 @@ export function SearchDropdown({
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        // Immediately commit current query as a filter (bypasses the debounce timer)
+        if (query.trim()) {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setDebouncedQuery(query);
+          applyFilterRef.current(query.trim());
+        }
         if (e.shiftKey) {
           goToResult(Math.max(0, activeIndex - 1));
         } else {
@@ -109,7 +152,7 @@ export function SearchDropdown({
         }
       }
     },
-    [activeIndex, matchingCells.length, goToResult],
+    [query, activeIndex, matchingCells.length, goToResult],
   );
 
   useEffect(() => {

@@ -32,6 +32,8 @@ const filterConfigSchema = z.object({
 const viewConfigSchema = z.object({
   sorts: z.array(sortConfigSchema).optional().default([]),
   filters: z.array(filterConfigSchema).optional().default([]),
+  // "OR" is used by the search-to-filter feature so any column can match
+  filterGroupLogic: z.enum(["AND", "OR"]).optional().default("AND"),
   hiddenColumns: z.array(z.number().int()).optional().default([]),
   rowHeight: z.enum(["short", "medium", "tall", "extraTall"]).optional().default("short"),
 });
@@ -273,7 +275,7 @@ export const viewRouter = createTRPCRouter({
 
       // Parse view config
       const config = viewConfigSchema.parse(view.config);
-      const { filters, sorts, hiddenColumns } = config;
+      const { filters, sorts, hiddenColumns, filterGroupLogic = "AND" } = config;
 
       // Get all columns to determine types for filtering
       const columns = await ctx.db.column.findMany({
@@ -290,6 +292,10 @@ export const viewRouter = createTRPCRouter({
       filters.forEach((filter) => {
         const column = columnMap.get(filter.columnId);
         if (!column) return;
+
+        // Skip incomplete filters — operators that need a value but have none
+        const needsValue = !["is_empty", "is_not_empty"].includes(filter.operator);
+        if (needsValue && (filter.value === undefined || filter.value === "")) return;
 
         const colKey = String(filter.columnId);
         const isText = column.type === ColumnType.TEXT;
@@ -423,7 +429,13 @@ export const viewRouter = createTRPCRouter({
         whereClauses.push(`r.id > ${input.cursor}`);
       }
       if (filterConditions.length > 0) {
-        whereClauses.push(...filterConditions);
+        // OR: any filter can match — wrap in a single (A OR B OR …) clause
+        // AND: every filter must match — push conditions individually
+        if (filterGroupLogic === "OR") {
+          whereClauses.push(`(${filterConditions.join(" OR ")})`);
+        } else {
+          whereClauses.push(...filterConditions);
+        }
       }
 
       const whereClause = whereClauses.join(" AND ");
@@ -433,7 +445,11 @@ export const viewRouter = createTRPCRouter({
       // Build count WHERE clause (without cursor/offset conditions)
       const countWhereClauses: string[] = [`r."tableId" = ${view.tableId}`];
       if (filterConditions.length > 0) {
-        countWhereClauses.push(...filterConditions);
+        if (filterGroupLogic === "OR") {
+          countWhereClauses.push(`(${filterConditions.join(" OR ")})`);
+        } else {
+          countWhereClauses.push(...filterConditions);
+        }
       }
       const countWhereClause = countWhereClauses.join(" AND ");
 
