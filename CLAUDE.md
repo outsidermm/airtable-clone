@@ -255,6 +255,25 @@ Per README performance targets:
 6. **Client-side filtering**: All search, filter, sort must be database-level for 1M row performance
 7. **JSONB key format**: Cell keys in Row.cells must be column ID strings (e.g., `"42"`, not `42`). Use `String(columnId)` when building keys.
 
+## Current Architecture: Virtualized Infinite Scroll
+
+The table grid uses TanStack Virtual + TanStack Table with cursor-based infinite queries:
+- **Virtualizer count** = `totalRowCount` from backend (first page includes `COUNT(*)`)
+- Scrollbar is proportionate to the full dataset, not just loaded rows
+- Unloaded rows render as animated skeleton placeholders
+- Aggressive prefetching: triggers `fetchNextPage()` when within 10 rows of unloaded territory
+- Key files: `grid-table.tsx` (virtualizer), `base-content.tsx` (infinite query + totalRowCount extraction)
+
+## Future Tasks (NOT YET IMPLEMENTED)
+
+The following are planned improvements to be implemented in future iterations:
+
+1. **Backend Database Optimization**: Use `EXPLAIN ANALYZE` with the query planner to audit indexes on Row, Column, and View tables. Evaluate whether composite indexes, partial indexes, or index-only scans can improve cursor pagination and JSONB filter/sort query performance at scale.
+
+2. **Optimistic UI**: Implement optimistic updates for cell edits, row creation, row deletion, and column operations using React Query's `onMutate`/`onError`/`onSettled` pattern. This eliminates perceived latency by updating the UI immediately and rolling back on server error.
+
+3. **Frontend Performance Optimization**: Profile React re-renders with DevTools Profiler. Investigate memoization gaps, unnecessary context re-renders, and component splitting opportunities. Evaluate whether `React.memo` boundaries and `useDeferredValue` can improve scroll performance at 100k+ rows.
+
 ## Must not do
 1. Must ask user for permission before drastically changing design architecture in order to fulfill requests
 2. Design choices should be recommended and changed under EXPLICIT permission
