@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableHeaderCell } from "./sortable-header-cell";
 import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
-import type { GridColumn, ContextMenuState, GridRow } from "~/types/grid";
+import type { GridColumn, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
 import { ChevronDownIcon, PlusIcon, TextIcon } from "~/components/icons";
@@ -36,8 +36,6 @@ interface GridHeaderProps {
   sensors: SensorDescriptor<SensorOptions>[];
   handleDragEnd: (e: DragEndEvent) => void;
   headerGroups: Header<GridRow, unknown>[]; // from TanStack
-  // Actions
-  onContextMenu?: (state: ContextMenuState) => void;
 }
 
 export function GridHeader({
@@ -54,9 +52,8 @@ export function GridHeader({
   sensors,
   handleDragEnd,
   headerGroups,
-  onContextMenu,
 }: GridHeaderProps) {
-  const {openModal, activeTableId} = useBase();
+  const {openModal, activeTableId, setContextMenu} = useBase();
   const columnMutations = useColumnMutations(activeTableId);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [editingHeaderValue, setEditingHeaderValue] = useState("");
@@ -110,7 +107,7 @@ export function GridHeader({
             style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
             onContextMenu={(e) => {
               e.preventDefault();
-              onContextMenu?.({
+              setContextMenu({
                 type: "column",
                 position: { x: e.clientX, y: e.clientY },
                 data: { columnId: primaryColumn.id },
@@ -183,7 +180,7 @@ export function GridHeader({
                   style={{ width: header.getSize(), height: HEADER_HEIGHT }}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    onContextMenu?.({
+                    setContextMenu({
                       type: "column",
                       position: { x: e.clientX, y: e.clientY },
                       data: { columnId: col.id },
@@ -220,7 +217,7 @@ export function GridHeader({
                           className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
                           onClick={(e) => {
                             e.preventDefault();
-                            onContextMenu?.({
+                            setContextMenu({
                               type: "column",
                               position: { x: e.clientX, y: e.clientY },
                               data: { columnId: col.id },
