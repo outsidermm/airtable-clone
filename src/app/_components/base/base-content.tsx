@@ -385,9 +385,6 @@ export function BaseContent({
       <div className="flex flex-1 overflow-hidden">
         <ViewSidebar
           views={views}
-          onAddView={viewMutations.handleAddView}
-          onRenameView={viewMutations.handleRenameView}
-          onDeleteView={viewMutations.handleDeleteView}
           // onDuplicateView={viewMutations.handleDuplicateView}
           // onReorderViews={viewMutations.handleReorderViews}
           onMouseEnter={handleSidebarHoverEnter}

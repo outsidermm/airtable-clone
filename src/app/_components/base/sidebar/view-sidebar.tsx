@@ -45,6 +45,7 @@ import {
   UsersIcon,
 } from "~/components/icons";
 import { useBase } from "../base-context";
+import { useViewMutations } from "../../hooks/use-view-mutations";
 
 interface View {
   id: number;
@@ -53,9 +54,6 @@ interface View {
 
 interface ViewSidebarProps {
   views: View[];
-  onAddView: () => void;
-  onRenameView: (viewId: number, newName: string) => void;
-  onDeleteView: (viewId: number) => void;
   // onDuplicateView: (viewId: number) => void;
   // onReorderViews: (viewIds: number[]) => void;
   onMouseEnter?: () => void;
@@ -71,10 +69,8 @@ interface SortableViewItemProps {
   viewsLength: number;
   onDoubleClick: (view: View) => void;
   onSetEditingName: (name: string) => void;
-  onRenameSubmit: (viewId: number) => void;
   onSetEditingViewId: (id: number | null) => void;
   onSetViewMenuId: (id: number | null) => void;
-  onDeleteView: (viewId: number) => void;
   // onDuplicateView: (viewId: number) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
 }
@@ -87,10 +83,8 @@ function SortableViewItem({
   viewsLength,
   onDoubleClick,
   onSetEditingName,
-  onRenameSubmit,
   onSetEditingViewId,
   onSetViewMenuId,
-  onDeleteView,
   // onDuplicateView,
   editInputRef,
 }: SortableViewItemProps) {
@@ -104,7 +98,12 @@ function SortableViewItem({
   } = useSortable({
     id: view.id,
   });
-  const {activeTableId, setActiveViewId} = useBase();
+  const { activeTableId, setActiveViewId, activeViewId } = useBase();
+  const viewMutations = useViewMutations(
+    activeTableId,
+    activeViewId,
+    setActiveViewId,
+  );
   const isActive = activeTableId === view.id;
   // Only apply vertical transform, ignore horizontal
   const constrainedTransform = transform ? { ...transform, x: 0 } : transform;
@@ -113,6 +112,13 @@ function SortableViewItem({
     transform: CSS.Translate.toString(constrainedTransform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleRenameSubmit = (viewId: number) => {
+    if (editingName.trim() && editingName.trim() !== view.name.trim()) {
+      viewMutations.handleRenameView(viewId, editingName.trim());
+    }
+    onSetEditingViewId(null);
   };
 
   return (
@@ -125,9 +131,9 @@ function SortableViewItem({
             type="text"
             value={editingName}
             onChange={(e) => onSetEditingName(e.target.value)}
-            onBlur={() => onRenameSubmit(view.id)}
+            onBlur={() => handleRenameSubmit(view.id)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") onRenameSubmit(view.id);
+              if (e.key === "Enter") handleRenameSubmit(view.id);
               if (e.key === "Escape") onSetEditingViewId(null);
             }}
             className="w-full border border-gray-600 bg-white text-xs font-medium text-gray-700 outline-none"
@@ -206,7 +212,7 @@ function SortableViewItem({
                 </button>
                 <button
                   onClick={() => {
-                    onDeleteView(view.id);
+                    viewMutations.handleDeleteView(view.id);
                     onSetViewMenuId(null);
                   }}
                   disabled={viewsLength <= 1}
@@ -226,15 +232,19 @@ function SortableViewItem({
 
 export function ViewSidebar({
   views,
-  onAddView,
-  onRenameView,
-  onDeleteView,
   // onDuplicateView,
   // onReorderViews,
   onMouseEnter,
   onMouseLeave,
 }: ViewSidebarProps) {
-  const { isSidebarOpen } = useBase();
+  const { isSidebarOpen, activeTableId, activeViewId, setActiveViewId } =
+    useBase();
+  const viewMutations = useViewMutations(
+    activeTableId,
+    activeViewId,
+    setActiveViewId,
+  );
+
   const [editingViewId, setEditingViewId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -310,16 +320,6 @@ export function ViewSidebar({
   const handleDoubleClick = (view: View) => {
     setEditingViewId(view.id);
     setEditingName(view.name);
-  };
-
-  const handleRenameSubmit = (viewId: number) => {
-    if (
-      editingName.trim() &&
-      editingName.trim() !== views.find((v) => v.id === viewId)?.name
-    ) {
-      onRenameView(viewId, editingName.trim());
-    }
-    setEditingViewId(null);
   };
 
   // Apply local view order (frontend only, no backend persistence)
@@ -556,7 +556,7 @@ export function ViewSidebar({
                   </button>
                   <button
                     onClick={() => {
-                      onAddView();
+                      viewMutations.handleAddView();
                       setShowCreateForm(false);
                       setCreateMenuPosition(null);
                       setNewViewName("Grid view");
@@ -621,10 +621,8 @@ export function ViewSidebar({
                 viewsLength={views.length}
                 onDoubleClick={handleDoubleClick}
                 onSetEditingName={setEditingName}
-                onRenameSubmit={handleRenameSubmit}
                 onSetEditingViewId={setEditingViewId}
                 onSetViewMenuId={setViewMenuId}
-                onDeleteView={onDeleteView}
                 // onDuplicateView={onDuplicateView}
                 editInputRef={editInputRef}
               />
