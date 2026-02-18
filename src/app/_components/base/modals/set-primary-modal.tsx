@@ -9,20 +9,21 @@ import {
   TextIcon,
   XIcon,
 } from "~/components/icons";
+import { useBase } from "../base-context";
+import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface SetPrimaryModalProps {
   columns: GridColumn[];
   currentPrimaryId: number;
-  onConfirm: (columnId: number) => void;
-  onClose: () => void;
 }
 
 export function SetPrimaryModal({
   columns,
   currentPrimaryId,
-  onConfirm,
-  onClose,
 }: SetPrimaryModalProps) {
+  const { activeTableId, openModal } = useBase();
+  const columnMutations = useColumnMutations(activeTableId);
+
   const [selectedColumnId, setSelectedColumnId] =
     useState<number>(currentPrimaryId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -39,9 +40,10 @@ export function SetPrimaryModal({
 
   const handleConfirm = () => {
     if (selectedColumnId !== currentPrimaryId) {
-      onConfirm(selectedColumnId);
+      columnMutations.handleSetPrimaryColumn(selectedColumnId);
+      openModal(null);
     }
-    onClose();
+    openModal(null);
   };
 
   useEffect(() => {
@@ -53,15 +55,19 @@ export function SetPrimaryModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-50 bg-black/40"
+        onClick={() => {
+          openModal(null);
+        }}
+      />
 
       <div
         ref={modalRef}
         className="fixed top-1/2 left-1/2 z-50 w-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-8 shadow-2xl"
       >
-        {/* Close Button (Cross) */}
         <button
-          onClick={onClose}
+          onClick={() => openModal(null)}
           className="absolute top-4 right-4 rounded-full p-1 text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-600"
         >
           <XIcon className="h-5 w-5" />
@@ -164,7 +170,7 @@ export function SetPrimaryModal({
 
         <div className="flex justify-end gap-3 rounded-b-xl bg-gray-50/50 px-6 py-4">
           <button
-            onClick={onClose}
+            onClick={() => openModal(null)}
             className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
           >
             Cancel

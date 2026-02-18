@@ -510,11 +510,6 @@ export function BaseContent({
           currentPrimaryId={
             allColumns.find((c) => c.primary)?.id ?? allColumns[0]!.id
           }
-          onConfirm={(columnId) => {
-            columnMutations.handleSetPrimaryColumn(columnId);
-            openModal(null);
-          }}
-          onClose={() => openModal(null)}
         />
       )}
 
