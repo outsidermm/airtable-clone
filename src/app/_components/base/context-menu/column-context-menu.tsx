@@ -9,6 +9,24 @@ import { useBase } from "../base-context";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ChangePrimaryFieldIcon,
+  CopyUrlIcon,
+  DependenciesIcon,
+  DuplicateIcon,
+  FilterIcon,
+  GroupIcon,
+  HideIcon,
+  InfoIcon,
+  LockIcon,
+  PencilIcon,
+  RunAgentIcon,
+  SortAscIcon,
+  SortDescIcon,
+  TrashIcon,
+} from "../../ui/icons";
 
 interface ColumnContextMenuProps {
   column: GridColumn;
@@ -31,7 +49,7 @@ export function ColumnContextMenu({
     setActiveViewId,
     activeTableId,
     setContextMenu,
-    contextMenu
+    contextMenu,
   } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
@@ -57,7 +75,11 @@ export function ColumnContextMenu({
   );
 
   const handleSaveEdit = () => {
-    columnMutations.handleUpdateColumn(column.id, editName.trim() || column.name, editType);
+    columnMutations.handleUpdateColumn(
+      column.id,
+      editName.trim() || column.name,
+      editType,
+    );
     setShowEditModal(false);
     setContextMenu(null);
   };
@@ -129,6 +151,7 @@ export function ColumnContextMenu({
   return (
     <ContextMenu>
       <MenuItem
+        icon={<PencilIcon className="h-4 w-4" />}
         label="Edit field"
         onClick={() => {
           setShowEditModal(true);
@@ -136,15 +159,32 @@ export function ColumnContextMenu({
       />
       <MenuDivider />
       <MenuItem
-        label="Rename field"
+        label="Duplicate field"
+        icon={<DuplicateIcon className="h-4 w-4" />}
         onClick={() => {
           onRename(column.id);
           setContextMenu(null);
         }}
       />
-      <MenuDivider />
+      <MenuItem
+        label="Insert field to the left"
+        icon={<ArrowLeftIcon className="h-4 w-4" />}
+        onClick={() => {
+          onInsertLeft(column.id);
+          setContextMenu(null);
+        }}
+      />
+      <MenuItem
+        label="Insert field to the right"
+        icon={<ArrowRightIcon className="h-4 w-4" />}
+        onClick={() => {
+          onInsertRight(column.id);
+          setContextMenu(null);
+        }}
+      />
       {column.primary && (
         <MenuItem
+        icon={<ChangePrimaryFieldIcon className="h-4 w-4" />}
           label="Change primary field"
           onClick={() => {
             openModal("set-primary");
@@ -153,8 +193,23 @@ export function ColumnContextMenu({
         />
       )}
       <MenuDivider />
+      <MenuItem label="Summarize field" icon={<RunAgentIcon className="h-4 w-4" />} />
+      <MenuItem label="Write headline for field" icon={<RunAgentIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Copy field URL" icon={<CopyUrlIcon className="h-4 w-4" />} />
+      <MenuItem label="Edit field description" icon={<InfoIcon className="h-4 w-4" />} />
+      <MenuItem label="Edit field permissions" icon={<LockIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Sort A → Z" icon={<SortAscIcon className="h-4 w-4" />} />
+      <MenuItem label="Sort Z → A" icon={<SortDescIcon className="h-4 w-4" />} />
+      <MenuDivider />
+      <MenuItem label="Filter by this field" icon={<FilterIcon className="h-4 w-4" />} />
+      <MenuItem label="Group by this field" icon={<GroupIcon className="h-4 w-4" />} />
+      <MenuItem label="Show dependencies" icon={<DependenciesIcon className="h-4 w-4" />} />
+      <MenuDivider />
       <MenuItem
         label="Hide field"
+        icon={<HideIcon className="h-4 w-4" />}
         disabled={column.primary}
         onClick={() => {
           handleUpdateHiddenColumns([column.id]);
@@ -162,22 +217,8 @@ export function ColumnContextMenu({
         }}
       />
       <MenuItem
-        label="Insert field to the left"
-        onClick={() => {
-          onInsertLeft(column.id);
-          setContextMenu(null);
-        }}
-      />
-      <MenuItem
-        label="Insert field to the right"
-        onClick={() => {
-          onInsertRight(column.id);
-          setContextMenu(null);
-        }}
-      />
-      <MenuDivider />
-      <MenuItem
         label="Delete field"
+        icon={<TrashIcon className="h-4 w-4 text-gray-700" />}
         danger
         disabled={column.primary}
         onClick={() => {

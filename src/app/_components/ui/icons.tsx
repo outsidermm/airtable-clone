@@ -218,28 +218,6 @@ export const SortIcon = (props: IconProps) => (
   </svg>
 );
 
-export const SortAscIcon = (props: IconProps) => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 15l7-7 7 7"
-    />
-  </svg>
-);
-
-export const SortDescIcon = (props: IconProps) => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M19 9l-7 7-7-7"
-    />
-  </svg>
-);
-
 export const HideIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
     <path
@@ -1254,6 +1232,38 @@ export const RunAgentIcon = (props: IconProps) => (
       strokeWidth={2}
       d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
     />
+  </svg>
+);
+
+export const ChangePrimaryFieldIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    {/* Key Head */}
+    <circle 
+      cx="8" 
+      cy="16" 
+      r="3" 
+      strokeWidth={2} 
+    />
+    {/* Key Shaft and Teeth */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M10.5 13.5L20 4m-3 1l3 3m-5-2l3 3"
+    />
+  </svg>
+);
+
+export const SortDescIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+  </svg>
+);
+
+
+export const SortAscIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
   </svg>
 );
 
