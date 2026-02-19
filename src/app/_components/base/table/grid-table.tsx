@@ -50,7 +50,6 @@ import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 import { PAGE_SIZE } from "../constants";
 
-
 interface GridTableProps {
   columns: GridColumn[];
   // Sparse array: null slots are unloaded rows (render as skeleton)
@@ -75,10 +74,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     },
     ref,
   ) {
-    const {activeTableId } = useBase();
+    const { activeTableId, registerRowIdSwapListener, registerColumnIdSwapListener } = useBase();
     const rowMutations = useRowMutations(activeTableId);
     const columnMutations = useColumnMutations(activeTableId);
-
 
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
     const parentRef = useRef<HTMLDivElement>(null);
@@ -143,7 +141,79 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       setShowLastRowTooltip,
     });
 
-    // --- 4. Helpers ---
+    // --- 4. Stable key map for optimistic rows ---
+    // Maps rowId → stable React key string. When a temp row (negative ID) is first
+    // rendered, it gets key "temp-N" stored here. On ID swap, the key is transferred
+    // to the real row ID so React reuses the component instance instead of remounting.
+    const stableKeyMapRef = useRef<Map<number, string>>(new Map());
+
+    const handleRowIdSwap = useCallback(
+      (tempId: number, realRowId: number) => {
+        // Transfer the stable key so the post-swap render uses the same React key
+        const stableKey = stableKeyMapRef.current.get(tempId);
+        if (stableKey) {
+          stableKeyMapRef.current.delete(tempId);
+          stableKeyMapRef.current.set(realRowId, stableKey);
+        }
+        // Update local selection/editing state to reference the real ID
+        setEditingCell((prev) =>
+          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
+        );
+        setSelectedCell((prev) =>
+          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
+        );
+      },
+      [setSelectedCell],
+    );
+
+    useEffect(() => {
+      registerRowIdSwapListener(handleRowIdSwap);
+    }, [registerRowIdSwapListener, handleRowIdSwap]);
+
+    // --- 4b. Stable key map for optimistic columns ---
+    // Same pattern as rows: "temp-col-N" keys survive the tempId → realId swap.
+    const stableColumnKeyMapRef = useRef<Map<number, string>>(new Map());
+
+    const handleColumnIdSwap = useCallback(
+      (tempId: number, realColId: number) => {
+        const stableKey = stableColumnKeyMapRef.current.get(tempId);
+        if (stableKey) {
+          stableColumnKeyMapRef.current.delete(tempId);
+          stableColumnKeyMapRef.current.set(realColId, stableKey);
+        }
+        setEditingCell((prev) =>
+          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
+        );
+        setSelectedCell((prev) =>
+          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
+        );
+      },
+      [setSelectedCell],
+    );
+
+    useEffect(() => {
+      registerColumnIdSwapListener(handleColumnIdSwap);
+    }, [registerColumnIdSwapListener, handleColumnIdSwap]);
+
+    // Build a stable-key map for GridCell keys in SortableRow.
+    // Temp columns (id < 0) get "temp-col-N"; after the ID swap the real column ID
+    // inherits the same key so React reuses the GridCell instance (no remount/blur).
+    const columnKeyMap = useMemo(() => {
+      const map = new Map<number, string>();
+      nonPrimaryColumns.forEach((col, idx) => {
+        if (col.id < 0) {
+          const key = `temp-col-${idx}`;
+          stableColumnKeyMapRef.current.set(col.id, key);
+          map.set(col.id, key);
+        } else {
+          const stableKey = stableColumnKeyMapRef.current.get(col.id);
+          if (stableKey) map.set(col.id, stableKey);
+        }
+      });
+      return map;
+    }, [nonPrimaryColumns]);
+
+    // --- 5. Helpers ---
 
     // Cell Updates with Debounce
     const handleCellChange = useCallback(
@@ -258,7 +328,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       count: rows.length,
       getScrollElement: () => parentRef.current,
       estimateSize: () => currentRowHeight,
-      overscan: 20,
+      overscan: 5,
     });
 
     useImperativeHandle(
@@ -285,13 +355,19 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     useEffect(() => {
       if (rows.length === 0) return;
-      const firstPage = Math.floor(firstVirtualIndex / PAGE_SIZE);
-      const lastPage = Math.floor(lastVirtualIndex / PAGE_SIZE);
-      const maxPage = Math.ceil(rows.length / PAGE_SIZE) - 1;
-      // Request visible pages plus 2 pages ahead for smooth scrolling
-      for (let p = firstPage; p <= Math.min(lastPage + 2, maxPage); p++) {
-        onRequestPage(p);
-      }
+      // Debounce page requests to avoid loading intermediate pages during fast scroll.
+      // The cleanup function cancels the previous timer on each re-render, so only
+      // the final scroll position within a 50ms window triggers actual fetches.
+      const id = setTimeout(() => {
+        const firstPage = Math.floor(firstVirtualIndex / PAGE_SIZE);
+        const lastPage = Math.floor(lastVirtualIndex / PAGE_SIZE);
+        const maxPage = Math.ceil(rows.length / PAGE_SIZE) - 1;
+        // Request visible pages plus 1 page ahead for smooth scrolling
+        for (let p = firstPage; p <= Math.min(lastPage + 1, maxPage); p++) {
+          onRequestPage(p);
+        }
+      }, 50);
+      return () => clearTimeout(id);
     }, [firstVirtualIndex, lastVirtualIndex, onRequestPage, rows.length]);
 
     // --- 7. Auto Scroll on Drag ---
@@ -346,7 +422,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       () => nonPrimaryColumns.map((c) => `col-${c.id}`),
       [nonPrimaryColumns],
     );
-    const rowOrder = useMemo(() => nonNullRows.map((r) => `row-${r.id}`), [nonNullRows]);
+    const rowOrder = useMemo(
+      () => nonNullRows.map((r) => `row-${r.id}`),
+      [nonNullRows],
+    );
 
     const handleDragEnd = useCallback(
       (event: DragEndEvent) => {
@@ -362,10 +441,20 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           const oldIdx = all.findIndex((c) => c.id === activeId);
           const newIdx = all.findIndex((c) => c.id === overId);
 
-          if (newIdx === 0) columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
+          if (newIdx === 0)
+            columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
           else if (oldIdx < newIdx)
-            columnMutations.handleReorderColumn(activeId, all[newIdx]!.id, null);
-          else columnMutations.handleReorderColumn(activeId, null, all[newIdx]!.id);
+            columnMutations.handleReorderColumn(
+              activeId,
+              all[newIdx]!.id,
+              null,
+            );
+          else
+            columnMutations.handleReorderColumn(
+              activeId,
+              null,
+              all[newIdx]!.id,
+            );
         } else if (
           activeStr.startsWith("row-") &&
           overStr.startsWith("row-") &&
@@ -426,7 +515,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        <div ref={parentRef} className="flex-1 overflow-auto">
+        <div
+          ref={parentRef}
+          className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
+        >
           <div
             className="flex min-h-full flex-col"
             style={{ minWidth: "fit-content" }}
@@ -483,19 +575,25 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                             className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
                             style={{ width: frozenWidth }}
                           >
-                            <div className="flex h-full w-[34px] items-center justify-center">
+                            <div className="flex h-full w-8.5 items-center justify-center">
                               <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
                             </div>
                             <div className="flex-1 px-2">
                               <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
                             </div>
                           </div>
-                          <div className="flex" style={{ width: totalScrollableWidth }}>
+                          <div
+                            className="flex"
+                            style={{ width: totalScrollableWidth }}
+                          >
                             {nonPrimaryColumns.map((col) => (
                               <div
                                 key={col.id}
                                 className="flex items-center border-r border-gray-200 px-2"
-                                style={{ width: columnSizing[String(col.id)] ?? col.width }}
+                                style={{
+                                  width:
+                                    columnSizing[String(col.id)] ?? col.width,
+                                }}
                               >
                                 <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
                               </div>
@@ -522,9 +620,20 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                       ? (rowToSelectedColumns.get(rowData.id) ?? null)
                       : null;
 
+                    // Compute a stable React key: temp rows write "temp-N" into the map;
+                    // after the ID swap the real row ID also resolves to "temp-N" so
+                    // React reuses the component instance rather than remounting it.
+                    if (rowData.id < 0) {
+                      stableKeyMapRef.current.set(rowData.id, `temp-${virtualRow.index}`);
+                    }
+                    const rowKey =
+                      rowData.id < 0
+                        ? `temp-${virtualRow.index}`
+                        : (stableKeyMapRef.current.get(rowData.id) ?? tableRow.id);
+
                     return (
                       <SortableRow
-                        key={tableRow.id}
+                        key={rowKey}
                         rowId={rowData.id}
                         virtualStart={virtualRow.start}
                         virtualIndex={virtualRow.index}
@@ -555,6 +664,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         setHoveredRowId={setHoveredRowId}
                         totalScrollableWidth={totalScrollableWidth}
                         showLastRowTooltip={showLastRowTooltip}
+                        columnKeyMap={columnKeyMap}
                       />
                     );
                   })}

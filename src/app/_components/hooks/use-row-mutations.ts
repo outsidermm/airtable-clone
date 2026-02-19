@@ -3,12 +3,47 @@ import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
 
 export function useRowMutations(activeTableId: number) {
-  const { refetchRows } = useBase();
+  const { refetchRows, optimisticAddRow, optimisticDeleteRow, onRowCreated } = useBase();
 
-  const createRow = api.row.create.useMutation({ onSuccess: () => refetchRows() });
-  const bulkCreateRow = api.row.bulkCreate.useMutation({ onSuccess: () => refetchRows() });
-  const deleteRow = api.row.delete.useMutation({ onSuccess: () => refetchRows() });
-  const bulkDeleteRow = api.row.bulkDelete.useMutation({ onSuccess: () => refetchRows() });
+  const createRow = api.row.create.useMutation({
+    onMutate: () => {
+      // Show the new row immediately at the bottom of the table
+      return optimisticAddRow();
+    },
+    onSuccess: (data, _vars, context) => {
+      // Swap the temp ID for the real row ID and flush any pending cell edits
+      const tempId = context?.tempId;
+      if (tempId !== undefined) {
+        onRowCreated(tempId, data.id);
+      }
+    },
+    onError: (_err, _vars, context) => {
+      // Revert the optimistic row if the server rejected the mutation
+      context?.revert();
+    },
+    // No onSettled refetch — onRowCreatedImpl handles in-place update.
+    // Refetching here would race against pending cell saves and briefly blank typed values.
+  });
+
+  const bulkCreateRow = api.row.bulkCreate.useMutation({
+    onSuccess: () => refetchRows(),
+  });
+
+  const bulkDeleteRow = api.row.bulkDelete.useMutation({
+    onSuccess: () => refetchRows(),
+  });
+
+  const deleteRow = api.row.delete.useMutation({
+    onMutate: ({ id }) => {
+      // Remove the row immediately so the user sees instant feedback
+      return optimisticDeleteRow(id);
+    },
+    onError: (_err, _vars, context) => {
+      // Restore the row if the server rejected the deletion
+      context?.revert();
+    },
+    onSettled: () => refetchRows(),
+  });
 
   const handleAddRow = useCallback(() => {
     createRow.mutate({ tableId: activeTableId });
@@ -35,5 +70,10 @@ export function useRowMutations(activeTableId: number) {
     [bulkDeleteRow],
   );
 
-  return { handleAddRow, handleBulkAddRow, handleDeleteRow, handleBulkDeleteRow };
+  return {
+    handleAddRow,
+    handleBulkAddRow,
+    handleDeleteRow,
+    handleBulkDeleteRow,
+  };
 }

@@ -5,6 +5,22 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+/* Force always-visible scrollbar (macOS hides overlay scrollbars by default) */
+.force-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.force-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.force-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+.force-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Disable text selection except for inputs */
 body {
   user-select: none;

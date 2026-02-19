@@ -2,6 +2,19 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import {
   ChevronDownIcon,
   NumberIcon,
   PlusIcon,
@@ -12,6 +25,7 @@ import {
 } from "~/app/_components/ui/icons";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
+import { SortableItem } from "./sortable-item";
 
 interface SortDropdownProps {
   columns: GridColumn[];
@@ -39,17 +53,37 @@ export function SortDropdown({
   onUpdateSorts,
   onClose,
 }: SortDropdownProps) {
-  // Initialize with existing sorts, or empty array
   const [localSorts, setLocalSorts] = useState<LocalSortConfig[]>(sorts);
 
-  // Track which dropdown menu is currently open: { index: 0, type: 'column' | 'direction' }
   const [openMenu, setOpenMenu] = useState<{
     index: number;
     type: "column" | "direction";
   } | null>(null);
 
-  // Search state for the "Empty State" initial view
   const [globalSearch, setGlobalSearch] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = Number(active.id);
+      const newIndex = Number(over.id);
+
+      const updated = arrayMove(localSorts, oldIndex, newIndex);
+      setLocalSorts(updated);
+
+      const validSorts = updated.filter(
+        (s) => s.columnId !== null,
+      ) as SortConfig[];
+      onUpdateSorts(validSorts);
+    },
+    [localSorts, onUpdateSorts],
+  );
 
   // Helper: Filter columns for the initial empty state
   const filteredGlobalColumns = columns.filter((c) =>
@@ -170,132 +204,147 @@ export function SortDropdown({
             </div>
           </div>
         ) : (
-          /* --- STATE B: LIST OF SORTS --- */
-          <div className="mt-3 max-h-3/4 overflow-y-visible px-3 pb-1">
-            <div className="space-y-3">
-              {localSorts.map((sort, index) => {
-                const selectedColumn = columns.find(
-                  (c) => c.id === sort.columnId,
-                );
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localSorts.map((_, i) => String(i))}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="mt-3 max-h-3/4 overflow-y-visible px-3 pb-1">
+                <div className="space-y-3">
+                  {localSorts.map((sort, index) => {
+                    const selectedColumn = columns.find(
+                      (c) => c.id === sort.columnId,
+                    );
 
-                return (
-                  <div
-                    key={index}
-                    className="flex w-full items-center justify-between gap-2"
-                  >
-                    <div className="flex flex-1 items-center gap-2">
-                      {/* --- Custom Column Dropdown --- */}
-                      <div className="relative flex-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenu(
-                              openMenu?.index === index &&
-                                openMenu.type === "column"
-                                ? null
-                                : { index, type: "column" },
-                            );
-                          }}
-                          className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          <span className="truncate">
-                            {selectedColumn
-                              ? selectedColumn.name
-                              : "Select a field..."}
-                          </span>
-                          <ChevronDownIcon className="ml-1 h-2 w-2 text-gray-400" />
-                        </button>
+                    return (
+                      <SortableItem key={String(index)} id={String(index)}>
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <div className="flex flex-1 items-center gap-2">
+                            <div className="relative flex-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenu(
+                                    openMenu?.index === index &&
+                                      openMenu.type === "column"
+                                      ? null
+                                      : { index, type: "column" },
+                                  );
+                                }}
+                                className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                              >
+                                <span className="truncate">
+                                  {selectedColumn
+                                    ? selectedColumn.name
+                                    : "Select a field..."}
+                                </span>
+                                <ChevronDownIcon className="ml-1 h-2 w-2 text-gray-400" />
+                              </button>
 
-                        {/* Column Menu Popup */}
-                        {openMenu?.index === index &&
-                          openMenu.type === "column" && (
-                            <ColumnPickerMenu
-                              columns={columns}
-                              onSelect={(colId) =>
-                                updateSort(index, { columnId: colId })
-                              }
-                              onClose={() => setOpenMenu(null)}
-                              localSorts={localSorts}
-                            />
-                          )}
-                      </div>
+                              {openMenu?.index === index &&
+                                openMenu.type === "column" && (
+                                  <ColumnPickerMenu
+                                    columns={columns}
+                                    onSelect={(colId) =>
+                                      updateSort(index, { columnId: colId })
+                                    }
+                                    onClose={() => setOpenMenu(null)}
+                                    localSorts={localSorts}
+                                  />
+                                )}
+                            </div>
 
-                      {/* --- Custom Direction Dropdown --- */}
-                      {/* Only show direction if a column is selected */}
-                      {sort.columnId !== null && (
-                        <div className="relative w-24 shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenu(
-                                openMenu?.index === index &&
-                                  openMenu.type === "direction"
-                                  ? null
-                                  : { index, type: "direction" },
-                              );
-                            }}
-                            className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                          >
-                            <span>
-                              {getDirectionLabel(sort.columnId, sort.direction)}
-                            </span>
-                            <ChevronDownIcon className="h-2 w-2 text-gray-500" />
-                          </button>
-
-                          {/* Direction Menu Popup */}
-                          {openMenu?.index === index &&
-                            openMenu.type === "direction" && (
-                              <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-xl">
+                            {sort.columnId !== null && (
+                              <div className="relative w-24 shrink-0">
                                 <button
-                                  onClick={() =>
-                                    updateSort(index, { direction: "asc" })
-                                  }
-                                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-gray-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenu(
+                                      openMenu?.index === index &&
+                                        openMenu.type === "direction"
+                                        ? null
+                                        : { index, type: "direction" },
+                                    );
+                                  }}
+                                  className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                                 >
                                   <span>
-                                    {getDirectionLabel(sort.columnId, "asc")}
+                                    {getDirectionLabel(
+                                      sort.columnId,
+                                      sort.direction,
+                                    )}
                                   </span>
+                                  <ChevronDownIcon className="h-2 w-2 text-gray-500" />
                                 </button>
-                                <button
-                                  onClick={() =>
-                                    updateSort(index, { direction: "desc" })
-                                  }
-                                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-gray-50"
-                                >
-                                  <span>
-                                    {getDirectionLabel(sort.columnId, "desc")}
-                                  </span>
-                                </button>
+
+                                {openMenu?.index === index &&
+                                  openMenu.type === "direction" && (
+                                    <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-xl">
+                                      <button
+                                        onClick={() =>
+                                          updateSort(index, {
+                                            direction: "asc",
+                                          })
+                                        }
+                                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-gray-50"
+                                      >
+                                        <span>
+                                          {getDirectionLabel(
+                                            sort.columnId,
+                                            "asc",
+                                          )}
+                                        </span>
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          updateSort(index, {
+                                            direction: "desc",
+                                          })
+                                        }
+                                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-gray-50"
+                                      >
+                                        <span>
+                                          {getDirectionLabel(
+                                            sort.columnId,
+                                            "desc",
+                                          )}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
                               </div>
                             )}
+                          </div>
+
+                          <button
+                            onClick={() => removeSort(index)}
+                            className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100"
+                          >
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      )}
-                    </div>
+                      </SortableItem>
+                    );
+                  })}
+                </div>
 
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => removeSort(index)}
-                      className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100"
-                    >
-                      <XIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Add Another Sort Button */}
-            <div className="mt-2 flex items-center gap-2 pt-2">
-              <button
-                onClick={() => addSort(undefined)} // Pass undefined for empty row
-                disabled={localSorts.length >= columns.length}
-                className="flex items-center rounded px-1 py-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
-              >
-                <PlusIcon className="mr-1 h-3.5 w-3.5" />
-                Add another sort
-              </button>
-            </div>
-          </div>
+                <div className="mt-2 flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => addSort(undefined)}
+                    disabled={localSorts.length >= columns.length}
+                    className="flex items-center rounded px-1 py-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                  >
+                    <PlusIcon className="mr-1 h-3.5 w-3.5" />
+                    Add another sort
+                  </button>
+                </div>
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </>

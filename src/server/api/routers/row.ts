@@ -87,6 +87,7 @@ export const rowRouter = createTRPCRouter({
 
       // Offset-based path: subquery seek to find cursor at position N, then range scan
       if (input.offset !== undefined && input.offset > 0 && !input.cursor) {
+        const sqlStart = Date.now();
         const [totalCount, seekResult] = await Promise.all([
           isFirstPage
             ? ctx.db.row.count({ where: { tableId: input.tableId } })
@@ -101,7 +102,7 @@ export const rowRouter = createTRPCRouter({
 
         const seekId = seekResult[0]?.id;
         if (seekId === undefined) {
-          return { rows: [], nextCursor: undefined, totalCount };
+          return { rows: [], nextCursor: undefined, totalCount, sqlMs: Date.now() - sqlStart };
         }
 
         const rows = await ctx.db.row.findMany({
@@ -109,6 +110,7 @@ export const rowRouter = createTRPCRouter({
           take: input.limit + 1,
           orderBy: { id: "asc" },
         });
+        const sqlMs = Date.now() - sqlStart;
 
         let nextCursor: number | undefined;
         if (rows.length > input.limit) {
@@ -116,10 +118,11 @@ export const rowRouter = createTRPCRouter({
           nextCursor = nextItem!.id;
         }
 
-        return { rows, nextCursor, totalCount };
+        return { rows, nextCursor, totalCount, sqlMs };
       }
 
       // Cursor-based path (sequential / first page)
+      const sqlStart = Date.now();
       const [totalCount, rows] = await Promise.all([
         isFirstPage
           ? ctx.db.row.count({ where: { tableId: input.tableId } })
@@ -132,6 +135,7 @@ export const rowRouter = createTRPCRouter({
           orderBy: { id: "asc" },
         }),
       ]);
+      const sqlMs = Date.now() - sqlStart;
 
       let nextCursor: number | undefined;
       if (rows.length > input.limit) {
@@ -139,7 +143,7 @@ export const rowRouter = createTRPCRouter({
         nextCursor = nextItem!.id;
       }
 
-      return { rows, nextCursor, totalCount };
+      return { rows, nextCursor, totalCount, sqlMs };
     }),
 
   // Delete a row

@@ -4,13 +4,21 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/app/_components/ui/icons";
 import { api } from "~/trpc/react";
 import { useBase } from "../base-context";
+import type { GridColumn } from "~/types/grid";
+import type { FilterConfig } from "~/server/api/routers/view";
 
 interface SearchDropdownProps {
+  columns: GridColumn[];
+  filters: FilterConfig[];
+  onUpdateFilters: (filters: FilterConfig[], filterGroupLogic?: "AND" | "OR") => void;
   onScrollToRow?: (rowId: number) => void;
   onClose: () => void;
 }
 
 export function SearchDropdown({
+  columns,
+  filters,
+  onUpdateFilters,
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
@@ -21,12 +29,41 @@ export function SearchDropdown({
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout>(undefined);
 
-  // Debounce search
+  // Snapshot the filters that existed before this search box was opened.
+  // All search-derived filters are appended after this snapshot index.
+  const initialFiltersRef = useRef<FilterConfig[]>(filters);
+
+  // Always-current reference to apply a filter — avoids stale closure in the timeout
+  const applyFilterRef = useRef<(value: string) => void>(() => undefined);
+  applyFilterRef.current = (value: string) => {
+    if (!columns.length) return;
+    const numValue = parseFloat(value);
+    const isValidNum = !isNaN(numValue) && value.trim() !== "";
+
+    // Build one filter condition per visible column, matched to its data type.
+    // The view is updated with OR logic so any column match shows the row.
+    const searchFilters: FilterConfig[] = columns.reduce<FilterConfig[]>((acc, col) => {
+      if (col.type === "NUMBER") {
+        if (isValidNum) acc.push({ columnId: col.id, operator: "equals", value: numValue });
+      } else {
+        acc.push({ columnId: col.id, operator: "contains", value });
+      }
+      return acc;
+    }, []);
+
+    if (searchFilters.length === 0) return;
+    onUpdateFilters([...initialFiltersRef.current, ...searchFilters], "OR");
+  };
+
+  // Debounce search — also applies a view filter when typing stops
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setDebouncedQuery(query);
       setActiveIndex(0);
+      if (query.trim()) {
+        applyFilterRef.current(query.trim());
+      }
     }, 300);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -38,38 +75,23 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
-  // Build flat array of matching cells (must be before useEffect that uses it)
-  const matchingCells = useMemo(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) return [];
-    const cells: Array<{ rowId: number; columnId: number }> = [];
-    for (const row of searchResults.data) {
-      const rowCells = row.cells as Record<string, string | number | null>;
-      for (const [key, value] of Object.entries(rowCells)) {
-        if (
-          value != null &&
-          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
-        ) {
-          cells.push({ rowId: row.id, columnId: Number(key) });
-        }
-      }
-    }
-    return cells;
-  }, [searchResults.data, debouncedQuery]);
+  // Use the pre-processed cell locations returned by the server — no client re-filtering needed
+  const matchingCells = useMemo(
+    () =>
+      (searchResults.data as { matchingCells: Array<{ rowId: number; columnId: number }> } | undefined)
+        ?.matchingCells ?? [],
+    [searchResults.data],
+  );
 
-  // Build highlight map from results - highlight all matching cells
+  // Build highlight map from results and sync to context
   useEffect(() => {
-    if (
-      !searchResults.data ||
-      debouncedQuery.length === 0 ||
-      matchingCells.length === 0
-    ) {
+    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
       setHighlightedCells(new Map());
       setActiveSearchCell(undefined);
       setSearchQuery("");
       return;
     }
 
-    // Highlight all matching cells
     const highlights = new Map<number, Set<number>>();
     for (const cell of matchingCells) {
       if (!highlights.has(cell.rowId)) {
@@ -78,14 +100,11 @@ export function SearchDropdown({
       highlights.get(cell.rowId)!.add(cell.columnId);
     }
 
-    // Pass the active cell and search query
-    const activeCell = matchingCells[activeIndex];
-    
     setHighlightedCells(highlights);
-    setActiveSearchCell(activeCell);
+    setActiveSearchCell(matchingCells[activeIndex]);
     setSearchQuery(debouncedQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
+  }, [searchResults.data, debouncedQuery, matchingCells, activeIndex,
+      setHighlightedCells, setActiveSearchCell, setSearchQuery]);
 
   const goToResult = useCallback(
     (index: number) => {
@@ -102,6 +121,12 @@ export function SearchDropdown({
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        // Immediately commit current query as a filter (bypasses the debounce timer)
+        if (query.trim()) {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setDebouncedQuery(query);
+          applyFilterRef.current(query.trim());
+        }
         if (e.shiftKey) {
           goToResult(Math.max(0, activeIndex - 1));
         } else {
@@ -109,7 +134,7 @@ export function SearchDropdown({
         }
       }
     },
-    [activeIndex, matchingCells.length, goToResult],
+    [query, activeIndex, matchingCells.length, goToResult],
   );
 
   useEffect(() => {
