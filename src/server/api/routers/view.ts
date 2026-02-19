@@ -454,6 +454,7 @@ export const viewRouter = createTRPCRouter({
       const countWhereClause = countWhereClauses.join(" AND ");
 
       // Execute count (first page only) and row IDs in parallel
+      const sqlStart = Date.now();
       const [countResult, rowIds] = await Promise.all([
         isFirstPage
           ? ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
@@ -498,6 +499,7 @@ export const viewRouter = createTRPCRouter({
           id: { in: rowIds.map((r) => r.id) },
         },
       });
+      const sqlMs = Date.now() - sqlStart;
 
       // Sort rows to match the order from the query
       const rowMap = new Map(rows.map((r) => [r.id, r]));
@@ -507,6 +509,7 @@ export const viewRouter = createTRPCRouter({
         rows: sortedRows,
         nextCursor,
         totalCount,
+        sqlMs,
       };
     }),
 

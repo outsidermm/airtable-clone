@@ -426,7 +426,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        <div ref={parentRef} className="flex-1 overflow-x-auto overflow-y-scroll">
+        <div ref={parentRef} className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll">
           <div
             className="flex min-h-full flex-col"
             style={{ minWidth: "fit-content" }}

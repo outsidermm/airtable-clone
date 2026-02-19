@@ -37,6 +37,7 @@ import {
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { RowHeightOption } from "~/types/row";
 import { RowHeightDropdown } from "./row-height-dropdown";
+import { PerformancePanel } from "./performance-panel";
 import { useBase } from "../base-context";
 
 type ToolbarDropdown =
@@ -46,6 +47,7 @@ type ToolbarDropdown =
   | "sort"
   | "rowHeight"
   | "search"
+  | "perf"
   | "viewMenu"
   | null;
 
@@ -467,6 +469,22 @@ export function BaseToolbar({
               onScrollToRow={onScrollToRow}
               onClose={closeDropdown}
             />
+          )}
+        </div>
+
+        {/* Performance panel */}
+        <div className="relative">
+          <button
+            onClick={() => toggleDropdown("perf")}
+            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 ${
+              activeDropdown === "perf" ? "bg-gray-100 font-medium" : ""
+            }`}
+            title="Query performance"
+          >
+            Perf
+          </button>
+          {activeDropdown === "perf" && (
+            <PerformancePanel onClose={closeDropdown} />
           )}
         </div>
       </div>

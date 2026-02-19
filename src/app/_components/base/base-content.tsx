@@ -21,6 +21,7 @@ import type { GridColumn, GridRow } from "~/types/grid";
 import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
 import { PAGE_SIZE } from "./constants";
+import { pushQueryEntry } from "~/lib/query-log";
 
 interface Table {
   id: number;
@@ -169,6 +170,7 @@ export function BaseContent({
         let newRows: GridRow[];
         let fetchedTotalCount: number | undefined;
 
+        const fetchStart = Date.now();
         if (activeViewId) {
           const data = await utils.view.getData.fetch(
             { viewId: activeViewId, offset, limit: PAGE_SIZE },
@@ -179,6 +181,7 @@ export function BaseContent({
             cells: row.cells as Record<string, string | number | null>,
           }));
           fetchedTotalCount = data.totalCount;
+          pushQueryEntry({ path: "view.getData", label: `viewId=${activeViewId} page=${pageIndex}`, sqlMs: data.sqlMs, totalMs: Date.now() - fetchStart, rowCount: newRows.length });
         } else if (activeTableId) {
           const data = await utils.row.getRows.fetch(
             { tableId: activeTableId, offset, limit: PAGE_SIZE },
@@ -189,6 +192,7 @@ export function BaseContent({
             cells: row.cells as Record<string, string | number | null>,
           }));
           fetchedTotalCount = data.totalCount;
+          pushQueryEntry({ path: "row.getRows", label: `tableId=${activeTableId} page=${pageIndex}`, sqlMs: data.sqlMs, totalMs: Date.now() - fetchStart, rowCount: newRows.length });
         } else {
           return;
         }
