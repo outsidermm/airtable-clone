@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
-import { HighlightedText } from "../../grid-table/highlighted-text";
 import type { CellAddress } from "~/types/cell";
 import { useBase } from "../../base-context";
 
@@ -106,7 +105,7 @@ export const GridCell = memo(function GridCell({
     >
       {cellBg === "bg-yellow-100" && searchQuery ? (
         <div className="w-full text-xs text-gray-900">
-          <HighlightedText text={displayValue} query={searchQuery} />
+          {displayValue}
         </div>
       ) : (
         <>
