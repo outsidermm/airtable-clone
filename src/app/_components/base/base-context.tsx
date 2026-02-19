@@ -38,6 +38,28 @@ interface BaseContextType {
   // Page store refresh — registered by base-content, called by mutation hooks
   refetchRows: () => void;
   registerRefetchRows: (fn: () => void) => void;
+
+  // Optimistic row operations — registered by base-content
+  optimisticAddRow: () => { tempId: number; revert: () => void };
+  optimisticDeleteRow: (rowId: number) => { revert: () => void };
+  registerOptimisticAddRow: (fn: () => { tempId: number; revert: () => void }) => void;
+  registerOptimisticDeleteRow: (fn: (rowId: number) => { revert: () => void }) => void;
+
+  // Called by createRow.onSuccess to swap temp ID → real ID and flush pending edits
+  onRowCreated: (tempId: number, realRowId: number) => void;
+  registerOnRowCreated: (fn: (tempId: number, realRowId: number) => void) => void;
+
+  // Notifies grid-table to update its stable key map and selection state on row ID swap
+  notifyRowIdSwap: (tempId: number, realId: number) => void;
+  registerRowIdSwapListener: (fn: (tempId: number, realId: number) => void) => void;
+
+  // Column parallel: flush buffered cell edits when a temp column gets its real ID
+  onColumnCreated: (tempColId: number, realColId: number) => void;
+  registerOnColumnCreated: (fn: (tempColId: number, realColId: number) => void) => void;
+
+  // Notifies grid-table to update stable column key map + selection state on column ID swap
+  notifyColumnIdSwap: (tempId: number, realId: number) => void;
+  registerColumnIdSwapListener: (fn: (tempId: number, realId: number) => void) => void;
 }
 
 const BaseContext = createContext<BaseContextType | undefined>(undefined);
@@ -75,6 +97,68 @@ export function BaseProvider({
     refetchRowsFnRef.current = fn;
   }, []);
 
+  // Optimistic row operation refs — registered by base-content
+  const optimisticAddRowFnRef = useRef<() => { tempId: number; revert: () => void }>(
+    () => ({ tempId: -1, revert: () => undefined })
+  );
+  const optimisticDeleteRowFnRef = useRef<(rowId: number) => { revert: () => void }>(
+    () => ({ revert: () => undefined })
+  );
+  const optimisticAddRow = useCallback(() => optimisticAddRowFnRef.current(), []);
+  const optimisticDeleteRow = useCallback((rowId: number) => optimisticDeleteRowFnRef.current(rowId), []);
+  const registerOptimisticAddRow = useCallback(
+    (fn: () => { tempId: number; revert: () => void }) => { optimisticAddRowFnRef.current = fn; },
+    [],
+  );
+  const registerOptimisticDeleteRow = useCallback(
+    (fn: (rowId: number) => { revert: () => void }) => { optimisticDeleteRowFnRef.current = fn; },
+    [],
+  );
+
+  // onRowCreated — called when createRow.onSuccess fires, swaps tempId → realId in page store
+  const onRowCreatedFnRef = useRef<(tempId: number, realRowId: number) => void>(() => undefined);
+  const onRowCreated = useCallback(
+    (tempId: number, realRowId: number) => { onRowCreatedFnRef.current(tempId, realRowId); },
+    [],
+  );
+  const registerOnRowCreated = useCallback(
+    (fn: (tempId: number, realRowId: number) => void) => { onRowCreatedFnRef.current = fn; },
+    [],
+  );
+
+  // notifyRowIdSwap — tells grid-table to update stable keys + selection state
+  const rowIdSwapListenerRef = useRef<(tempId: number, realId: number) => void>(() => undefined);
+  const notifyRowIdSwap = useCallback(
+    (tempId: number, realId: number) => { rowIdSwapListenerRef.current(tempId, realId); },
+    [],
+  );
+  const registerRowIdSwapListener = useCallback(
+    (fn: (tempId: number, realId: number) => void) => { rowIdSwapListenerRef.current = fn; },
+    [],
+  );
+
+  // onColumnCreated — flush buffered cell edits when a temp column gets its real ID
+  const onColumnCreatedFnRef = useRef<(tempColId: number, realColId: number) => void>(() => undefined);
+  const onColumnCreated = useCallback(
+    (tempColId: number, realColId: number) => { onColumnCreatedFnRef.current(tempColId, realColId); },
+    [],
+  );
+  const registerOnColumnCreated = useCallback(
+    (fn: (tempColId: number, realColId: number) => void) => { onColumnCreatedFnRef.current = fn; },
+    [],
+  );
+
+  // notifyColumnIdSwap — tells grid-table to update stable column keys + selection state
+  const columnIdSwapListenerRef = useRef<(tempId: number, realId: number) => void>(() => undefined);
+  const notifyColumnIdSwap = useCallback(
+    (tempId: number, realId: number) => { columnIdSwapListenerRef.current(tempId, realId); },
+    [],
+  );
+  const registerColumnIdSwapListener = useCallback(
+    (fn: (tempId: number, realId: number) => void) => { columnIdSwapListenerRef.current = fn; },
+    [],
+  );
+
   // Helper to open modals with an optional anchor (for positioning)
   const openModal = (type: BaseModalType, anchor: HTMLElement | null = null) => {
     setActiveModal(type);
@@ -104,6 +188,18 @@ export function BaseProvider({
       setContextMenu,
       refetchRows,
       registerRefetchRows,
+      optimisticAddRow,
+      optimisticDeleteRow,
+      registerOptimisticAddRow,
+      registerOptimisticDeleteRow,
+      onRowCreated,
+      registerOnRowCreated,
+      notifyRowIdSwap,
+      registerRowIdSwapListener,
+      onColumnCreated,
+      registerOnColumnCreated,
+      notifyColumnIdSwap,
+      registerColumnIdSwapListener,
     }}>
       {children}
     </BaseContext.Provider>

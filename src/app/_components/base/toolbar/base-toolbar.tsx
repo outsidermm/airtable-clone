@@ -72,7 +72,8 @@ export function BaseToolbar({
   activeViewName,
   onScrollToRow,
 }: BaseToolbarProps) {
-  const { activeTableId, activeViewId, setActiveViewId, refetchRows } = useBase();
+  const { activeTableId, activeViewId, setActiveViewId, refetchRows } =
+    useBase();
   const viewMutations = useViewMutations(
     activeTableId,
     activeViewId,
@@ -113,7 +114,12 @@ export function BaseToolbar({
       // Filters change which rows are visible — row data must be refetched
       viewMutations.handleUpdateView(
         activeViewId,
-        { ...viewConfig, filters, filterGroupLogic: filterGroupLogic ?? viewConfig.filterGroupLogic ?? "AND" },
+        {
+          ...viewConfig,
+          filters,
+          filterGroupLogic:
+            filterGroupLogic ?? viewConfig.filterGroupLogic ?? "AND",
+        },
         { refetchRows: true },
       );
     },
@@ -124,21 +130,16 @@ export function BaseToolbar({
     (sorts: SortConfig[]) => {
       if (!activeViewId) return;
       // Sorts change row ordering — row data must be refetched
-      viewMutations.handleUpdateView(activeViewId, { ...viewConfig, sorts }, { refetchRows: true });
+      viewMutations.handleUpdateView(
+        activeViewId,
+        { ...viewConfig, sorts },
+        { refetchRows: true },
+      );
     },
     [viewConfig, viewMutations, activeViewId],
   );
 
-  const handleUpdateHiddenColumns = useCallback(
-    (ids: number[]) => {
-      if (!activeViewId) return;
-      viewMutations.handleUpdateView(activeViewId, {
-        ...viewConfig,
-        hiddenColumns: ids,
-      });
-    },
-    [viewConfig, viewMutations, activeViewId],
-  );
+
 
   const handleUpdateRowHeight = useCallback(
     (rowHeight: RowHeightOption) => {
@@ -160,6 +161,7 @@ export function BaseToolbar({
     },
     [activeTableId, bulkCreateMutation, isSeeding],
   );
+
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -342,13 +344,13 @@ export function BaseToolbar({
             }`}
           >
             <HideIcon className="h-3.5 w-3.5" />
-            {hiddenFieldMsg}
+            <span className="hidden md:inline">{hiddenFieldMsg}</span>
           </button>
           {activeDropdown === "hideFields" && (
             <HideFieldsDropdown
               columns={columns}
               hiddenColumnIds={viewConfig.hiddenColumns ?? []}
-              onUpdateHiddenColumns={handleUpdateHiddenColumns}
+              viewConfig={viewConfig}
               onClose={closeDropdown}
             />
           )}
@@ -365,7 +367,7 @@ export function BaseToolbar({
             }`}
           >
             <FilterIcon className="h-3.5 w-3.5" />
-            {filterFieldMsg}
+            <span className="hidden md:inline">{filterFieldMsg}</span>
           </button>
           {activeDropdown === "filter" && (
             <FilterDropdown
@@ -384,7 +386,7 @@ export function BaseToolbar({
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
           >
             <GroupIcon className="h-3.5 w-3.5" />
-            Group
+            <span className="hidden md:inline">Group</span>
           </button>
           {activeDropdown === "group" && (
             <>
@@ -412,7 +414,7 @@ export function BaseToolbar({
             }`}
           >
             <SortIcon className="h-3.5 w-3.5" />
-            {sortFieldMsg}
+            <span className="hidden md:inline">{sortFieldMsg}</span>
           </button>
           {activeDropdown === "sort" && (
             <SortDropdown
@@ -427,7 +429,7 @@ export function BaseToolbar({
         {/* Color */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ColorIcon className="h-3.5 w-3.5" />
-          Color
+          <span className="hidden md:inline">Color</span>
         </button>
 
         {/* Row height (icon only) */}

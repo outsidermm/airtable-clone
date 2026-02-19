@@ -41,6 +41,8 @@ interface SortableRowProps {
   setHoveredRowId: (id: number | null) => void;
   totalScrollableWidth: number;
   showLastRowTooltip: boolean;
+  // Stable React keys for temp/swapped columns — prevents GridCell remount on ID swap
+  columnKeyMap: Map<number, string>;
 }
 
 export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
@@ -68,6 +70,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     setHoveredRowId,
     totalScrollableWidth,
     showLastRowTooltip,
+    columnKeyMap,
   } = props;
 
   const {highlightedCells, activeSearchCell, searchQuery, setContextMenu} = useBase();
@@ -93,7 +96,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
   };
 
   // Helper to keep the render clean
-  const renderCell = (col: GridColumn, width: number, isPrimary: boolean) => {
+  const renderCell = (col: GridColumn, width: number, _isPrimary: boolean) => {
     const isSelectedCell = selectedColumnId === col.id;
     const isEditing = editingColumnId === col.id;
 
@@ -105,7 +108,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
 
     return (
       <GridCell
-        key={col.id}
+        key={columnKeyMap.get(col.id) ?? String(col.id)}
         rowId={rowId}
         columnId={col.id}
         rowIndex={virtualIndex}

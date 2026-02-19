@@ -3,11 +3,28 @@ import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
 
 export function useRowMutations(activeTableId: number) {
-  const { refetchRows } = useBase();
-  const utils = api.useUtils();
+  const { refetchRows, optimisticAddRow, optimisticDeleteRow, onRowCreated } = useBase();
+
   const createRow = api.row.create.useMutation({
-    onSuccess: () => refetchRows(),
+    onMutate: () => {
+      // Show the new row immediately at the bottom of the table
+      return optimisticAddRow();
+    },
+    onSuccess: (data, _vars, context) => {
+      // Swap the temp ID for the real row ID and flush any pending cell edits
+      const tempId = context?.tempId;
+      if (tempId !== undefined) {
+        onRowCreated(tempId, data.id);
+      }
+    },
+    onError: (_err, _vars, context) => {
+      // Revert the optimistic row if the server rejected the mutation
+      context?.revert();
+    },
+    // No onSettled refetch — onRowCreatedImpl handles in-place update.
+    // Refetching here would race against pending cell saves and briefly blank typed values.
   });
+
   const bulkCreateRow = api.row.bulkCreate.useMutation({
     onSuccess: () => refetchRows(),
   });
@@ -17,10 +34,15 @@ export function useRowMutations(activeTableId: number) {
   });
 
   const deleteRow = api.row.delete.useMutation({
-    onMutate: async () => {
-      await utils.row.getRows.cancel();
+    onMutate: ({ id }) => {
+      // Remove the row immediately so the user sees instant feedback
+      return optimisticDeleteRow(id);
     },
-    onSuccess: () => refetchRows(),
+    onError: (_err, _vars, context) => {
+      // Restore the row if the server rejected the deletion
+      context?.revert();
+    },
+    onSettled: () => refetchRows(),
   });
 
   const handleAddRow = useCallback(() => {

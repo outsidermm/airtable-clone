@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LexoRank } from "lexorank";
 import { ColumnType } from "generated/prisma/enums";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -107,14 +108,12 @@ export const columnRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        // Verify ownership
         const column = await getColumnWithOwnership(
           tx,
           input.id,
           ctx.session.user.id,
         );
 
-        // Calculate new position
         const newOrder = await calculateColumnPosition(tx, column.tableId, {
           afterColumnId: input.afterColumnId,
           beforeColumnId: input.beforeColumnId,

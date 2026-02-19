@@ -62,6 +62,11 @@ export function BaseContent({
     setContextMenu,
     searchQuery,
     registerRefetchRows,
+    registerOptimisticAddRow,
+    registerOptimisticDeleteRow,
+    registerOnRowCreated,
+    notifyRowIdSwap,
+    registerOnColumnCreated,
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -149,6 +154,17 @@ export function BaseContent({
   const fetchKeyRef = useRef(0); // increments on reset to discard stale fetches
   const [pageStore, setPageStore] = useState<Map<number, GridRow[]>>(new Map());
   const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
+  // Ref always tracks the latest totalRowCount for use in optimistic callbacks
+  // (avoids stale-closure issues during rapid successive mutations)
+  const totalRowCountRef = useRef<number>(0);
+  // Stores cell edits typed into temp (optimistic) rows — keyed by negative tempRowId.
+  // Flushed to the server in onRowCreatedImpl when the real row ID arrives.
+  const pendingOptimisticEditsRef = useRef<Map<number, Record<string, string | number | null>>>(new Map());
+
+  // Stores cell edits typed into temp (optimistic) columns — keyed by negative tempColId,
+  // then by rowId. Flushed in onColumnCreatedImpl when the real column ID arrives.
+  const pendingColumnEditsRef = useRef<Map<number, Map<number, string | number | null>>>(new Map());
+
   // Local row reorder override — ordered list of row IDs to display instead of
   // the page-store's natural server order.  Avoids touching the page store so
   // no skeleton flash occurs.  Reset whenever the page store is refetched.
@@ -204,7 +220,9 @@ export function BaseContent({
         setPageStore(new Map(pageStoreRef.current));
 
         if (pageIndex === 0 && fetchedTotalCount !== undefined) {
-          setTotalRowCount(fetchedTotalCount);
+          const count = fetchedTotalCount;
+          totalRowCountRef.current = count;
+          setTotalRowCount(count);
         }
       } finally {
         if (fetchKeyRef.current === myFetchKey) {
@@ -215,24 +233,176 @@ export function BaseContent({
     [activeViewId, activeTableId, utils],
   );
 
-  // Exposed to mutation hooks via base-context so they can clear and reload the page store
+  // Force-refetch a page in the background without clearing the page store.
+  // Unlike fetchPage, this bypasses the dedup check so already-loaded pages
+  // are refreshed in place. Data updates smoothly with no skeleton flash.
+  const silentRefetchPage = useCallback(
+    async (pageIndex: number) => {
+      const myFetchKey = fetchKeyRef.current;
+      try {
+        const offset = pageIndex * PAGE_SIZE;
+        let newRows: GridRow[];
+        let fetchedTotalCount: number | undefined;
+
+        if (activeViewId) {
+          const data = await utils.view.getData.fetch(
+            { viewId: activeViewId, offset, limit: PAGE_SIZE },
+            { staleTime: 0 },
+          );
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+        } else if (activeTableId) {
+          const data = await utils.row.getRows.fetch(
+            { tableId: activeTableId, offset, limit: PAGE_SIZE },
+            { staleTime: 0 },
+          );
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+        } else {
+          return;
+        }
+
+        if (fetchKeyRef.current !== myFetchKey) return;
+
+        pageStoreRef.current.set(pageIndex, newRows);
+        setPageStore(new Map(pageStoreRef.current));
+
+        if (pageIndex === 0 && fetchedTotalCount !== undefined) {
+          const count = fetchedTotalCount;
+          totalRowCountRef.current = count;
+          setTotalRowCount(count);
+        }
+      } catch {
+        // Silently ignore errors — this is a background sync
+      }
+    },
+    [activeViewId, activeTableId, utils],
+  );
+
+  // Exposed to mutation hooks via base-context.
+  // Refreshes all loaded pages in-place (no page store clearing) so the grid
+  // never flashes to an all-skeleton state. Data updates smoothly as pages arrive.
   const refetchLoadedPages = useCallback(() => {
     const loadedPageIndices = [...pageStoreRef.current.keys()];
-    pageStoreRef.current = new Map();
+    // Clear loading locks so silentRefetchPage can re-fetch these pages
     loadingPagesRef.current = new Set();
-    setPageStore(new Map());
-    setRowOrderOverride(null); // Reset any local row reorder — server is source of truth after refetch
-    // Do NOT clear totalRowCount here — keeps virtualizer size stable so scroll position is preserved.
-    // (totalRowCount is still reset on table/view switch in the effect below.)
-    void fetchPage(0);
+    setRowOrderOverride(null);
+    void silentRefetchPage(0);
     for (const pageIndex of loadedPageIndices) {
-      if (pageIndex !== 0) void fetchPage(pageIndex);
+      if (pageIndex !== 0) void silentRefetchPage(pageIndex);
     }
-  }, [fetchPage]);
+  }, [silentRefetchPage]);
 
   useEffect(() => {
     registerRefetchRows(refetchLoadedPages);
   }, [registerRefetchRows, refetchLoadedPages]);
+
+  // --- Optimistic row mutations ---
+  // These functions directly mutate the page store for instant visual feedback,
+  // returning a revert function in case the server mutation fails.
+
+  const optimisticAddRowImpl = useCallback((): { tempId: number; revert: () => void } => {
+    const tempId = -(Date.now());
+    const tempRow: GridRow = { id: tempId, cells: {} };
+
+    // Use ref to always read the current count, even during rapid successive calls
+    const prevCount = totalRowCountRef.current;
+    const newCount = prevCount + 1;
+    const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
+
+    // Update ref immediately so the next optimistic call sees the correct count
+    totalRowCountRef.current = newCount;
+
+    const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
+    pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
+    setPageStore(new Map(pageStoreRef.current));
+    setTotalRowCount(newCount);
+
+    return {
+      tempId,
+      revert: () => {
+        pendingOptimisticEditsRef.current.delete(tempId);
+        totalRowCountRef.current = prevCount;
+        const page = pageStoreRef.current.get(lastPageIndex);
+        if (page) {
+          const filtered = page.filter((r) => r.id !== tempId);
+          if (filtered.length === 0) {
+            pageStoreRef.current.delete(lastPageIndex);
+          } else {
+            pageStoreRef.current.set(lastPageIndex, filtered);
+          }
+        }
+        setPageStore(new Map(pageStoreRef.current));
+        setTotalRowCount(prevCount);
+      },
+    };
+  }, []); // No dependencies — reads from refs
+
+  const optimisticDeleteRowImpl = useCallback((rowId: number): { revert: () => void } => {
+    // Find the row across all loaded pages
+    let foundPageIndex = -1;
+    let foundPosition = -1;
+    let foundRow: GridRow | undefined;
+
+    for (const [pageIndex, pageRows] of pageStoreRef.current) {
+      const pos = pageRows.findIndex((r) => r.id === rowId);
+      if (pos !== -1) {
+        foundPageIndex = pageIndex;
+        foundPosition = pos;
+        foundRow = pageRows[pos];
+        break;
+      }
+    }
+
+    const prevCount = totalRowCountRef.current;
+    const newCount = Math.max(0, prevCount - 1);
+    totalRowCountRef.current = newCount;
+    setTotalRowCount(newCount);
+
+    if (foundPageIndex === -1 || !foundRow) {
+      // Row not in any loaded page — just adjust the count
+      return {
+        revert: () => {
+          totalRowCountRef.current = prevCount;
+          setTotalRowCount(prevCount);
+        },
+      };
+    }
+
+    // Remove from page store
+    const page = [...(pageStoreRef.current.get(foundPageIndex) ?? [])];
+    page.splice(foundPosition, 1);
+    pageStoreRef.current.set(foundPageIndex, page);
+    setPageStore(new Map(pageStoreRef.current));
+
+    const capturedRow = foundRow;
+    const capturedPageIndex = foundPageIndex;
+    const capturedPosition = foundPosition;
+    return {
+      revert: () => {
+        totalRowCountRef.current = prevCount;
+        setTotalRowCount(prevCount);
+        const currentPage = [...(pageStoreRef.current.get(capturedPageIndex) ?? [])];
+        currentPage.splice(capturedPosition, 0, capturedRow);
+        pageStoreRef.current.set(capturedPageIndex, currentPage);
+        setPageStore(new Map(pageStoreRef.current));
+      },
+    };
+  }, []); // No dependencies — reads from refs
+
+  useEffect(() => {
+    registerOptimisticAddRow(optimisticAddRowImpl);
+  }, [registerOptimisticAddRow, optimisticAddRowImpl]);
+
+  useEffect(() => {
+    registerOptimisticDeleteRow(optimisticDeleteRowImpl);
+  }, [registerOptimisticDeleteRow, optimisticDeleteRowImpl]);
 
   // Reset page store and reload page 0 whenever view or table changes
   useEffect(() => {
@@ -241,6 +411,7 @@ export function BaseContent({
     loadingPagesRef.current = new Set();
     setPageStore(new Map());
     setTotalRowCount(undefined);
+    totalRowCountRef.current = 0;
 
     if (activeViewId ?? activeTableId) {
       void fetchPage(0);
@@ -271,7 +442,25 @@ export function BaseContent({
 
   // --- Cells ---
   const updateCell = api.cell.update.useMutation({
-    onSuccess: () => refetchLoadedPages(),
+    onSuccess: (_, variables) => {
+      // Update the cell in the page store directly — avoids a full page refetch
+      // and keeps the displayed value consistent after the user scrolls away and back.
+      const colKey = String(variables.columnId);
+      const savedValue = variables.value;
+      for (const [pageIndex, pageRows] of pageStoreRef.current) {
+        const rowIdx = pageRows.findIndex((r) => r.id === variables.rowId);
+        if (rowIdx !== -1) {
+          const newRows = [...pageRows];
+          newRows[rowIdx] = {
+            ...newRows[rowIdx]!,
+            cells: { ...newRows[rowIdx]!.cells, [colKey]: savedValue },
+          };
+          pageStoreRef.current.set(pageIndex, newRows);
+          setPageStore(new Map(pageStoreRef.current));
+          break;
+        }
+      }
+    },
     onError: (error: { message: string }) => {
       toast.error(error.message);
     },
@@ -282,19 +471,129 @@ export function BaseContent({
       const col = allColumns.find((c) => c.id === columnId);
       if (!col) return;
 
-      if (col.type === "NUMBER") {
-        const num = parseFloat(value);
-        updateCell.mutate({
-          rowId,
-          columnId,
-          value: isNaN(num) ? null : num,
-        });
-      } else {
-        updateCell.mutate({ rowId, columnId, value });
+      const colKey = String(columnId);
+      const convertedValue: string | number | null =
+        col.type === "NUMBER"
+          ? (isNaN(parseFloat(value)) ? null : parseFloat(value))
+          : value;
+
+      const isTempRow = rowId < 0;
+      const isTempCol = columnId < 0;
+
+      if (isTempRow || isTempCol) {
+        // Update the page store visually so the user sees their input immediately
+        for (const [pageIndex, pageRows] of pageStoreRef.current) {
+          const rowIdx = pageRows.findIndex((r) => r.id === rowId);
+          if (rowIdx !== -1) {
+            const newRows = [...pageRows];
+            newRows[rowIdx] = {
+              ...newRows[rowIdx]!,
+              cells: { ...newRows[rowIdx]!.cells, [colKey]: convertedValue },
+            };
+            pageStoreRef.current.set(pageIndex, newRows);
+            setPageStore(new Map(pageStoreRef.current));
+            break;
+          }
+        }
+
+        if (isTempRow && !isTempCol) {
+          // Buffer by row: flushed when the row gets its real ID
+          const existing = pendingOptimisticEditsRef.current.get(rowId) ?? {};
+          pendingOptimisticEditsRef.current.set(rowId, { ...existing, [colKey]: convertedValue });
+        } else if (isTempCol && !isTempRow) {
+          // Buffer by column: flushed when the column gets its real ID
+          const colEdits = pendingColumnEditsRef.current.get(columnId) ?? new Map<number, string | number | null>();
+          colEdits.set(rowId, convertedValue);
+          pendingColumnEditsRef.current.set(columnId, colEdits);
+        }
+        // Double-temp (both row and column are optimistic): visual update only
+        return;
       }
+
+      updateCell.mutate({ rowId, columnId, value: convertedValue });
     },
     [allColumns, updateCell],
   );
+
+  // Called by createRow.onSuccess: swaps temp ID for real ID in the page store,
+  // then fires updateCell mutations for any edits typed before the server responded.
+  const onRowCreatedImpl = useCallback(
+    (tempId: number, realRowId: number) => {
+      const pendingEdits = pendingOptimisticEditsRef.current.get(tempId);
+      pendingOptimisticEditsRef.current.delete(tempId);
+
+      // Notify grid-table BEFORE swapping the page store so it can find the temp
+      // row's virtual position while rows still contains the negative ID.
+      notifyRowIdSwap(tempId, realRowId);
+
+      for (const [pageIndex, pageRows] of pageStoreRef.current) {
+        const rowIdx = pageRows.findIndex((r) => r.id === tempId);
+        if (rowIdx !== -1) {
+          const newRows = [...pageRows];
+          newRows[rowIdx] = { ...newRows[rowIdx]!, id: realRowId };
+          pageStoreRef.current.set(pageIndex, newRows);
+          setPageStore(new Map(pageStoreRef.current));
+          break;
+        }
+      }
+
+      if (pendingEdits) {
+        for (const [colKey, value] of Object.entries(pendingEdits)) {
+          updateCell.mutate({ rowId: realRowId, columnId: Number(colKey), value });
+        }
+      }
+    },
+    [updateCell, notifyRowIdSwap],
+  );
+
+  useEffect(() => {
+    registerOnRowCreated(onRowCreatedImpl);
+  }, [registerOnRowCreated, onRowCreatedImpl]);
+
+  // Called by createColumn.onSuccess: renames the temp column key in every page-store
+  // row and flushes any cell edits the user typed before the server responded.
+  const onColumnCreatedImpl = useCallback(
+    (tempColId: number, realColId: number) => {
+      const pendingEdits = pendingColumnEditsRef.current.get(tempColId);
+      pendingColumnEditsRef.current.delete(tempColId);
+
+      // Rename the cell key across all loaded pages (String(tempColId) → String(realColId))
+      const tempKey = String(tempColId);
+      const realKey = String(realColId);
+      let changed = false;
+      for (const [pageIndex, pageRows] of pageStoreRef.current) {
+        let pageChanged = false;
+        const updatedRows = pageRows.map((row) => {
+          if (tempKey in row.cells) {
+            const { [tempKey]: val, ...rest } = row.cells;
+            pageChanged = true;
+            // val could be undefined due to noUncheckedIndexedAccess — omit if so
+            const newCells: Record<string, string | number | null> =
+              val !== undefined ? { ...rest, [realKey]: val } : { ...rest };
+            return { ...row, cells: newCells };
+          }
+          return row;
+        });
+        if (pageChanged) {
+          pageStoreRef.current.set(pageIndex, updatedRows);
+          changed = true;
+        }
+      }
+      if (changed) setPageStore(new Map(pageStoreRef.current));
+
+      // Flush buffered edits to the server now that the real column ID is known
+      if (pendingEdits) {
+        for (const [rowId, value] of pendingEdits) {
+          updateCell.mutate({ rowId, columnId: realColId, value });
+        }
+      }
+    },
+    [updateCell],
+  );
+
+  useEffect(() => {
+    registerOnColumnCreated(onColumnCreatedImpl);
+  }, [registerOnColumnCreated, onColumnCreatedImpl]);
 
   // --- Search-as-filter: when a search query is active, show only matching rows ---
   const searchResultsQuery = api.cell.search.useQuery(
@@ -473,9 +772,9 @@ export function BaseContent({
     setActiveViewId(null);
   }, [activeTableId, setActiveViewId]);
 
-  const isLoading =
-    tableQuery.isLoading ||
-    (!searchQuery && pageStore.size === 0 && totalRowCount === undefined);
+  // Only block rendering on column schema — once columns are known the grid can
+  // mount immediately and rows will fill in as pages load (sparse skeleton rows).
+  const isLoading = tableQuery.isLoading;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
