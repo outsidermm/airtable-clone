@@ -4,11 +4,24 @@ import { useBase } from "../base/base-context";
 
 export function useRowMutations(activeTableId: number) {
   const { refetchRows } = useBase();
+  const utils = api.useUtils();
+  const createRow = api.row.create.useMutation({
+    onSuccess: () => refetchRows(),
+  });
+  const bulkCreateRow = api.row.bulkCreate.useMutation({
+    onSuccess: () => refetchRows(),
+  });
 
-  const createRow = api.row.create.useMutation({ onSuccess: () => refetchRows() });
-  const bulkCreateRow = api.row.bulkCreate.useMutation({ onSuccess: () => refetchRows() });
-  const deleteRow = api.row.delete.useMutation({ onSuccess: () => refetchRows() });
-  const bulkDeleteRow = api.row.bulkDelete.useMutation({ onSuccess: () => refetchRows() });
+  const bulkDeleteRow = api.row.bulkDelete.useMutation({
+    onSuccess: () => refetchRows(),
+  });
+
+  const deleteRow = api.row.delete.useMutation({
+    onMutate: async () => {
+      await utils.row.getRows.cancel();
+    },
+    onSuccess: () => refetchRows(),
+  });
 
   const handleAddRow = useCallback(() => {
     createRow.mutate({ tableId: activeTableId });
@@ -35,5 +48,10 @@ export function useRowMutations(activeTableId: number) {
     [bulkDeleteRow],
   );
 
-  return { handleAddRow, handleBulkAddRow, handleDeleteRow, handleBulkDeleteRow };
+  return {
+    handleAddRow,
+    handleBulkAddRow,
+    handleDeleteRow,
+    handleBulkDeleteRow,
+  };
 }

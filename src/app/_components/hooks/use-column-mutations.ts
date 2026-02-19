@@ -1,18 +1,28 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import type { ColumnType } from "generated/prisma/enums";
+import { useBase } from "../base/base-context";
 
 export function useColumnMutations(activeTableId: number) {
   const utils = api.useUtils();
+  const { activeViewId } = useBase();
 
-  // Column operations only change the schema, not cell data — only invalidate table metadata
   const invalidate = useCallback(() => {
+    // Only invalidate the table schema
     void utils.table.getById.invalidate({ id: activeTableId });
-  }, [utils, activeTableId]);
+    // Scope row invalidation to active source only
+    if (activeViewId) {
+      void utils.view.getData.invalidate({ viewId: activeViewId });
+    } else {
+      void utils.row.getRows.invalidate({ tableId: activeTableId });
+    }
+  }, [utils, activeTableId, activeViewId]);
 
   const createColumn = api.column.create.useMutation({ onSuccess: invalidate });
   const updateColumn = api.column.update.useMutation({ onSuccess: invalidate });
-  const reorderColumn = api.column.reorder.useMutation({ onSuccess: invalidate });
+  const reorderColumn = api.column.reorder.useMutation({
+    onSuccess: invalidate,
+  });
   const setPrimaryColumn = api.column.setPrimary.useMutation({
     onSuccess: invalidate,
   });
@@ -20,7 +30,12 @@ export function useColumnMutations(activeTableId: number) {
 
   // Only send ONE of afterColumnId / beforeColumnId — backend rejects both
   const handleAddColumn = useCallback(
-    (opts?: { afterColumnId?: number; beforeColumnId?: number; name?: string; type?: ColumnType }) => {
+    (opts?: {
+      afterColumnId?: number;
+      beforeColumnId?: number;
+      name?: string;
+      type?: ColumnType;
+    }) => {
       if (opts?.afterColumnId != null) {
         createColumn.mutate({
           tableId: activeTableId,
@@ -36,7 +51,11 @@ export function useColumnMutations(activeTableId: number) {
           type: opts.type,
         });
       } else {
-        createColumn.mutate({ tableId: activeTableId, name: opts?.name, type: opts?.type });
+        createColumn.mutate({
+          tableId: activeTableId,
+          name: opts?.name,
+          type: opts?.type,
+        });
       }
     },
     [activeTableId, createColumn],

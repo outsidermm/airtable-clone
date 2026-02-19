@@ -50,7 +50,6 @@ import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 import { PAGE_SIZE } from "../constants";
 
-
 interface GridTableProps {
   columns: GridColumn[];
   // Sparse array: null slots are unloaded rows (render as skeleton)
@@ -75,10 +74,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     },
     ref,
   ) {
-    const {activeTableId } = useBase();
+    const { activeTableId } = useBase();
     const rowMutations = useRowMutations(activeTableId);
     const columnMutations = useColumnMutations(activeTableId);
-
 
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
     const parentRef = useRef<HTMLDivElement>(null);
@@ -346,7 +344,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       () => nonPrimaryColumns.map((c) => `col-${c.id}`),
       [nonPrimaryColumns],
     );
-    const rowOrder = useMemo(() => nonNullRows.map((r) => `row-${r.id}`), [nonNullRows]);
+    const rowOrder = useMemo(
+      () => nonNullRows.map((r) => `row-${r.id}`),
+      [nonNullRows],
+    );
 
     const handleDragEnd = useCallback(
       (event: DragEndEvent) => {
@@ -362,10 +363,20 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           const oldIdx = all.findIndex((c) => c.id === activeId);
           const newIdx = all.findIndex((c) => c.id === overId);
 
-          if (newIdx === 0) columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
+          if (newIdx === 0)
+            columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
           else if (oldIdx < newIdx)
-            columnMutations.handleReorderColumn(activeId, all[newIdx]!.id, null);
-          else columnMutations.handleReorderColumn(activeId, null, all[newIdx]!.id);
+            columnMutations.handleReorderColumn(
+              activeId,
+              all[newIdx]!.id,
+              null,
+            );
+          else
+            columnMutations.handleReorderColumn(
+              activeId,
+              null,
+              all[newIdx]!.id,
+            );
         } else if (
           activeStr.startsWith("row-") &&
           overStr.startsWith("row-") &&
@@ -426,7 +437,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        <div ref={parentRef} className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll">
+        <div
+          ref={parentRef}
+          className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
+        >
           <div
             className="flex min-h-full flex-col"
             style={{ minWidth: "fit-content" }}
@@ -483,19 +497,25 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                             className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
                             style={{ width: frozenWidth }}
                           >
-                            <div className="flex h-full w-[34px] items-center justify-center">
+                            <div className="flex h-full w-8.5 items-center justify-center">
                               <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
                             </div>
                             <div className="flex-1 px-2">
                               <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
                             </div>
                           </div>
-                          <div className="flex" style={{ width: totalScrollableWidth }}>
+                          <div
+                            className="flex"
+                            style={{ width: totalScrollableWidth }}
+                          >
                             {nonPrimaryColumns.map((col) => (
                               <div
                                 key={col.id}
                                 className="flex items-center border-r border-gray-200 px-2"
-                                style={{ width: columnSizing[String(col.id)] ?? col.width }}
+                                style={{
+                                  width:
+                                    columnSizing[String(col.id)] ?? col.width,
+                                }}
                               >
                                 <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
                               </div>
