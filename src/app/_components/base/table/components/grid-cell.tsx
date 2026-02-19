@@ -46,7 +46,7 @@ export const GridCell = memo(function GridCell({
   onBlur,
 }: GridCellProps) {
   const { setContextMenu } = useBase();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const displayValue = useMemo(() => {
     if (value === null || value === undefined) return "";

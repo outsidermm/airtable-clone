@@ -75,38 +75,23 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
-  // Build flat array of matching cells (must be before useEffect that uses it)
-  const matchingCells = useMemo(() => {
-    if (!searchResults.data || debouncedQuery.length === 0) return [];
-    const cells: Array<{ rowId: number; columnId: number }> = [];
-    for (const row of searchResults.data) {
-      const rowCells = row.cells as Record<string, string | number | null>;
-      for (const [key, value] of Object.entries(rowCells)) {
-        if (
-          value != null &&
-          String(value).toLowerCase().includes(debouncedQuery.toLowerCase())
-        ) {
-          cells.push({ rowId: row.id, columnId: Number(key) });
-        }
-      }
-    }
-    return cells;
-  }, [searchResults.data, debouncedQuery]);
+  // Use the pre-processed cell locations returned by the server — no client re-filtering needed
+  const matchingCells = useMemo(
+    () =>
+      (searchResults.data as { matchingCells: Array<{ rowId: number; columnId: number }> } | undefined)
+        ?.matchingCells ?? [],
+    [searchResults.data],
+  );
 
-  // Build highlight map from results - highlight all matching cells
+  // Build highlight map from results and sync to context
   useEffect(() => {
-    if (
-      !searchResults.data ||
-      debouncedQuery.length === 0 ||
-      matchingCells.length === 0
-    ) {
+    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
       setHighlightedCells(new Map());
       setActiveSearchCell(undefined);
       setSearchQuery("");
       return;
     }
 
-    // Highlight all matching cells
     const highlights = new Map<number, Set<number>>();
     for (const cell of matchingCells) {
       if (!highlights.has(cell.rowId)) {
@@ -115,14 +100,11 @@ export function SearchDropdown({
       highlights.get(cell.rowId)!.add(cell.columnId);
     }
 
-    // Pass the active cell and search query
-    const activeCell = matchingCells[activeIndex];
-    
     setHighlightedCells(highlights);
-    setActiveSearchCell(activeCell);
+    setActiveSearchCell(matchingCells[activeIndex]);
     setSearchQuery(debouncedQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults.data, debouncedQuery, matchingCells.length, activeIndex]);
+  }, [searchResults.data, debouncedQuery, matchingCells, activeIndex,
+      setHighlightedCells, setActiveSearchCell, setSearchQuery]);
 
   const goToResult = useCallback(
     (index: number) => {

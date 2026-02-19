@@ -1,9 +1,23 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { PlusIcon, QuestionIcon, TrashIcon } from "~/app/_components/ui/icons";
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
+import { SortableItem } from "./sortable-item";
 
 interface FilterDropdownProps {
   columns: GridColumn[];
@@ -42,6 +56,25 @@ export function FilterDropdown({
 }: FilterDropdownProps) {
   const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
   const valueDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = Number(active.id);
+      const newIndex = Number(over.id);
+
+      const updated = arrayMove(localFilters, oldIndex, newIndex);
+      setLocalFilters(updated);
+      onUpdateFilters(updated);
+    },
+    [localFilters, onUpdateFilters],
+  );
 
   const addFilter = useCallback(() => {
     const firstCol = columns[0];
@@ -110,88 +143,102 @@ export function FilterDropdown({
             <QuestionIcon className="ml-1 inline h-3.5 w-3.5" />
           </div>
         ) : (
-          <div className="max-h-64 space-y-2 overflow-y-auto">
-            <p className="text-xs text-gray-600">In this view, show records</p>
-            {localFilters.map((filter, index) => {
-              const col = columns.find((c) => c.id === filter.columnId);
-              const operators = getOperators(col);
-              const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localFilters.map((_, i) => String(i))}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                <p className="text-xs text-gray-600">
+                  In this view, show records
+                </p>
+                {localFilters.map((filter, index) => {
+                  const col = columns.find((c) => c.id === filter.columnId);
+                  const operators = getOperators(col);
+                  const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
 
-              return (
-                <div key={index} className="flex items-center gap-1.5 px-2">
-                  <span className="shrink-0 text-xs text-gray-500">
-                    {index === 0 ? "Where" : "And"}
-                  </span>
-                  <div className="flex w-full items-center">
-                    {/* Column select */}
-                    <select
-                      value={filter.columnId}
-                      onChange={(e) => {
-                        const newCol = columns.find(
-                          (c) => c.id === Number(e.target.value),
-                        );
-                        updateFilter(index, {
-                          columnId: Number(e.target.value),
-                          operator:
-                            newCol?.type === "NUMBER" ? "equals" : "contains",
-                          value: "",
-                        });
-                      }}
-                      className="rounded-l border border-gray-200 py-1 text-xs text-gray-700"
-                    >
-                      {columns.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                  return (
+                    <SortableItem key={String(index)} id={String(index)}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 text-xs text-gray-500">
+                          {index === 0 ? "Where" : "And"}
+                        </span>
+                        <div className="flex w-full items-center">
+                          <select
+                            value={filter.columnId}
+                            onChange={(e) => {
+                              const newCol = columns.find(
+                                (c) => c.id === Number(e.target.value),
+                              );
+                              updateFilter(index, {
+                                columnId: Number(e.target.value),
+                                operator:
+                                  newCol?.type === "NUMBER"
+                                    ? "equals"
+                                    : "contains",
+                                value: "",
+                              });
+                            }}
+                            className="rounded-l border border-gray-200 py-1 text-xs text-gray-700"
+                          >
+                            {columns.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
 
-                    {/* Operator select */}
-                    <select
-                      value={filter.operator}
-                      onChange={(e) =>
-                        updateFilter(index, {
-                          operator: e.target.value as FilterConfig["operator"],
-                        })
-                      }
-                      className="border border-gray-200 px-1.5 py-1 text-xs text-gray-700"
-                    >
-                      {operators.map((op) => (
-                        <option key={op.value} value={op.value}>
-                          {op.label}
-                        </option>
-                      ))}
-                    </select>
+                          <select
+                            value={filter.operator}
+                            onChange={(e) =>
+                              updateFilter(index, {
+                                operator: e.target
+                                  .value as FilterConfig["operator"],
+                              })
+                            }
+                            className="border border-gray-200 px-1.5 py-1 text-xs text-gray-700"
+                          >
+                            {operators.map((op) => (
+                              <option key={op.value} value={op.value}>
+                                {op.label}
+                              </option>
+                            ))}
+                          </select>
 
-                    {/* Value input — debounced to avoid a backend fetch on every keystroke */}
-                    {needsValue && (
-                      <input
-                        type={col?.type === "NUMBER" ? "number" : "text"}
-                        value={filter.value ?? ""}
-                        onChange={(e) =>
-                          updateFilterValue(
-                            index,
-                            col?.type === "NUMBER"
-                              ? Number(e.target.value)
-                              : e.target.value,
-                          )
-                        }
-                        placeholder="value"
-                        className="w-20 flex-1 border border-gray-200 px-1.5 py-1 text-xs text-gray-700 outline-none"
-                      />
-                    )}
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeFilter(index)}
-                      className="shrink-0 border border-gray-200 p-1 text-gray-700 hover:bg-gray-300"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          {needsValue && (
+                            <input
+                              type={col?.type === "NUMBER" ? "number" : "text"}
+                              value={filter.value ?? ""}
+                              onChange={(e) =>
+                                updateFilterValue(
+                                  index,
+                                  col?.type === "NUMBER"
+                                    ? Number(e.target.value)
+                                    : e.target.value,
+                                )
+                              }
+                              placeholder="value"
+                              className="w-20 flex-1 border border-gray-200 px-1.5 py-1 text-xs text-gray-700 outline-none"
+                            />
+                          )}
+                          <button
+                            onClick={() => removeFilter(index)}
+                            className="shrink-0 border border-gray-200 p-1 text-gray-700 hover:bg-gray-300"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </SortableItem>
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
 
         <div
