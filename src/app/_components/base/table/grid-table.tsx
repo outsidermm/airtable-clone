@@ -93,6 +93,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
+    // Number of non-primary columns added to the frozen panel by dragging the freeze line
+    const [frozenExtraCount, setFrozenExtraCount] = useState(0);
 
     // --- 2. Derived State ---
     const primaryColumn = useMemo(
@@ -103,8 +105,16 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       () => columns.filter((c) => !c.primary),
       [columns],
     );
-    const frozenWidth =
-      CHECKBOX_WIDTH + (primaryColumn ? primaryColumnWidth : 0);
+    // Clamp frozenExtraCount in case columns are removed while some are frozen
+    const clampedFrozenExtraCount = Math.min(frozenExtraCount, Math.max(0, nonPrimaryColumns.length - 1));
+    const frozenNonPrimary = useMemo(
+      () => nonPrimaryColumns.slice(0, clampedFrozenExtraCount),
+      [nonPrimaryColumns, clampedFrozenExtraCount],
+    );
+    const scrollableColumns = useMemo(
+      () => nonPrimaryColumns.slice(clampedFrozenExtraCount),
+      [nonPrimaryColumns, clampedFrozenExtraCount],
+    );
     const selectedRowIds = useMemo(() => {
       const set = new Set<string>();
       for (const [key, val] of Object.entries(rowSelection)) {
@@ -298,10 +308,15 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       columnResizeMode: "onChange",
     });
 
-    const totalScrollableWidth =
-      table
-        .getHeaderGroups()[0]
-        ?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
+    const allHeaders = table.getHeaderGroups()[0]?.headers ?? [];
+    const extraFrozenWidth = allHeaders
+      .filter((_, i) => i < clampedFrozenExtraCount)
+      .reduce((sum, h) => sum + h.getSize(), 0);
+    const frozenWidth =
+      CHECKBOX_WIDTH + (primaryColumn ? primaryColumnWidth : 0) + extraFrozenWidth;
+    const totalScrollableWidth = allHeaders
+      .filter((_, i) => i >= clampedFrozenExtraCount)
+      .reduce((sum, h) => sum + h.getSize(), 0);
 
     // --- 6. Virtualization ---
     const tableRows = table.getRowModel().rows;
@@ -421,9 +436,47 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     );
+    // Only scrollable columns participate in drag-to-reorder (frozen extras are not draggable)
     const columnOrder = useMemo(
-      () => nonPrimaryColumns.map((c) => `col-${c.id}`),
-      [nonPrimaryColumns],
+      () => scrollableColumns.map((c) => `col-${c.id}`),
+      [scrollableColumns],
+    );
+
+    // --- Freeze line drag handler ---
+    // Dragging the border at the right of the frozen section snaps columns in/out.
+    const handleFrozenBorderDragStart = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const colWidths = nonPrimaryColumns.map(
+          (col) => columnSizing[String(col.id)] ?? col.width,
+        );
+        const initialExtraFrozenWidth = colWidths
+          .slice(0, clampedFrozenExtraCount)
+          .reduce((s, w) => s + w, 0);
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const targetPos = Math.max(0, initialExtraFrozenWidth + delta);
+
+          let newCount = 0;
+          let accum = 0;
+          for (let i = 0; i < nonPrimaryColumns.length - 1; i++) {
+            const w = colWidths[i] ?? 0;
+            if (targetPos >= accum + w / 2) newCount = i + 1;
+            accum += w;
+          }
+          setFrozenExtraCount(newCount);
+        };
+
+        const handleMouseUp = () => {
+          document.removeEventListener("mousemove", handleMouseMove);
+          document.removeEventListener("mouseup", handleMouseUp);
+        };
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseup", handleMouseUp);
+      },
+      [nonPrimaryColumns, clampedFrozenExtraCount, columnSizing],
     );
     const rowOrder = useMemo(
       () => nonNullRows.map((r) => `row-${r.id}`),
@@ -549,8 +602,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               totalScrollableWidth={totalScrollableWidth}
               primaryColumn={primaryColumn}
               nonPrimaryColumns={nonPrimaryColumns}
+              frozenNonPrimaryCount={clampedFrozenExtraCount}
               primaryColumnWidth={primaryColumnWidth}
               handlePrimaryResizeStart={handlePrimaryResizeStart}
+              handleFrozenBorderDragStart={handleFrozenBorderDragStart}
               isAllSelected={table.getIsAllRowsSelected()}
               onToggleAllSelected={table.getToggleAllRowsSelectedHandler()}
               sorts={sorts}
@@ -674,6 +729,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         primaryColumn={primaryColumn}
                         primaryColumnWidth={primaryColumnWidth}
                         nonPrimaryColumns={nonPrimaryColumns}
+                        frozenNonPrimaryCount={clampedFrozenExtraCount}
                         columnSizing={columnSizing}
                         selectedColumnId={selectedColumnId}
                         editingColumnId={editingColumnId}
