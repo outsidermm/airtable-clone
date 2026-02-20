@@ -27,6 +27,7 @@ export const rowRouter = createTRPCRouter({
     }),
 
   // Bulk create rows (optimized for 100k+ rows)
+// Bulk create rows (optimized for 100k+ rows)
   bulkCreate: protectedProcedure
     .input(
       z.object({
@@ -36,25 +37,21 @@ export const rowRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify ownership and fetch columns outside the transaction to minimise
-      // lock hold time. Column list is also needed for index management.
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
+      
       const columns = await ctx.db.column.findMany({
         where: { tableId: input.tableId },
         orderBy: { order: "asc" },
       });
 
-      // Drop per-column trgm GIN indexes before bulk insert so PostgreSQL does
-      // not maintain them on every inserted row (~3–5x speedup for seeded data).
-      // Non-CONCURRENTLY is intentional: drops are instant and we want them
-      // done before the long-running insert begins.
-      await Promise.all(
-        columns.map((c) =>
-          ctx.db.$executeRawUnsafe(
-            `DROP INDEX IF EXISTS "idx_row_cells_col${c.id}_trgm"`,
-          ),
-        ),
-      );
+      // FIX 1: Combine DROP INDEX into a single atomic statement
+      if (columns.length > 0) {
+        const indexNames = columns
+          .map((c) => `"idx_row_cells_col${c.id}_trgm"`)
+          .join(", ");
+        
+        await ctx.db.$executeRawUnsafe(`DROP INDEX IF EXISTS ${indexNames}`);
+      }
 
       try {
         const result = await ctx.db.$transaction(
@@ -69,25 +66,27 @@ export const rowRouter = createTRPCRouter({
               : await bulkCreateRows(tx, input.tableId, input.count);
             return { count, sqlMs: Date.now() - sqlStart };
           },
-          { maxWait: 60000, timeout: 120000 },
+          { maxWait: 600000, timeout: 1200000 },
         );
         return result;
       } finally {
-        // Recreate trgm indexes concurrently after insert (non-blocking; fire-and-forget).
-        // CONCURRENTLY avoids taking an AccessExclusiveLock while reading users resume.
-        void Promise.all(
-          columns.map((c) =>
-            ctx.db
-              .$executeRawUnsafe(
+        // FIX 2: Recreate trgm indexes sequentially to avoid deadlocks
+        // We wrap this in an async IIFE so it remains fire-and-forget 
+        // without blocking the tRPC response return.
+        void (async () => {
+          for (const c of columns) {
+            try {
+              await ctx.db.$executeRawUnsafe(
                 `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_row_cells_col${c.id}_trgm"` +
                   ` ON "Row" USING GIN ((cells->>'${c.id}') gin_trgm_ops)` +
                   ` WHERE "tableId" = ${input.tableId}`,
-              )
-              .catch(() => {
-                /* ignore — another concurrent request may have rebuilt it already */
-              }),
-          ),
-        );
+              );
+            } catch (error) {
+              /* ignore — another concurrent request may have rebuilt it already */
+              console.error(`Failed to recreate index for column ${c.id}:`, error);
+            }
+          }
+        })();
       }
     }),
 
