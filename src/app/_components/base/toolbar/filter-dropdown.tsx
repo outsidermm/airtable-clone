@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -14,7 +14,15 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { PlusIcon, QuestionIcon, TrashIcon } from "~/app/_components/ui/icons";
+import {
+  ChevronDownIcon,
+  NumberIcon,
+  PlusIcon,
+  QuestionIcon,
+  SearchIcon,
+  TextIcon,
+  TrashIcon,
+} from "~/app/_components/ui/icons";
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 import { SortableItem } from "./sortable-item";
@@ -55,6 +63,13 @@ export function FilterDropdown({
   onClose,
 }: FilterDropdownProps) {
   const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
+  const [conjunction, setConjunction] = useState<"and" | "or">("and");
+
+  const [openMenu, setOpenMenu] = useState<{
+    index: number;
+    type: "column" | "operator" | "conjunction";
+  } | null>(null);
+
   const valueDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const sensors = useSensors(
@@ -87,6 +102,9 @@ export function FilterDropdown({
     const updated = [...localFilters, newFilter];
     setLocalFilters(updated);
     onUpdateFilters(updated);
+
+    // Automatically open the column picker for the new filter
+    setOpenMenu({ index: updated.length - 1, type: "column" });
   }, [columns, localFilters, onUpdateFilters]);
 
   const updateFilter = useCallback(
@@ -96,17 +114,17 @@ export function FilterDropdown({
       );
       setLocalFilters(updated);
       onUpdateFilters(updated);
+      setOpenMenu(null);
     },
     [localFilters, onUpdateFilters],
   );
 
-  // Value changes are debounced — avoids firing a backend query on every keystroke
   const updateFilterValue = useCallback(
     (index: number, value: string | number) => {
       const updated = localFilters.map((f, i) =>
         i === index ? { ...f, value } : f,
       );
-      setLocalFilters(updated); // Update UI immediately
+      setLocalFilters(updated);
       if (valueDebounceRef.current) clearTimeout(valueDebounceRef.current);
       valueDebounceRef.current = setTimeout(() => {
         onUpdateFilters(updated);
@@ -129,10 +147,16 @@ export function FilterDropdown({
     return col.type === "NUMBER" ? NUMBER_OPERATORS : TEXT_OPERATORS;
   };
 
+  const containerWidthClass =
+    localFilters.length === 0 ? "w-80" : "w-[44rem] max-w-[90vw]";
+
   return (
     <>
-      <div className="fixed inset-0 z-50" onClick={onClose} />
-      <div className="absolute top-full -right-20 z-50 mt-1 w-148 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg">
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+
+      <div
+        className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg transition-all ${containerWidthClass}`}
+      >
         <div className="pb-2">
           <h3 className="text-sm font-medium text-gray-900">Filter</h3>
         </div>
@@ -152,64 +176,158 @@ export function FilterDropdown({
               items={localFilters.map((_, i) => String(i))}
               strategy={verticalListSortingStrategy}
             >
-              <div className="max-h-64 space-y-2 overflow-y-auto">
-                <p className="text-xs text-gray-600">
+              <div className="max-h-80 space-y-2 overflow-visible pt-1 pb-2">
+                <p className="mb-2 text-xs text-gray-600">
                   In this view, show records
                 </p>
                 {localFilters.map((filter, index) => {
                   const col = columns.find((c) => c.id === filter.columnId);
                   const operators = getOperators(col);
                   const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+                  const currentOpLabel =
+                    operators.find((op) => op.value === filter.operator)
+                      ?.label ?? filter.operator;
 
                   return (
-                    <SortableItem key={String(index)} id={String(index)}>
-                      <div className="flex items-center gap-1.5">
-                        <span className="shrink-0 text-xs text-gray-500">
-                          {index === 0 ? "Where" : "And"}
-                        </span>
-                        <div className="flex w-full items-center">
-                          <select
-                            value={filter.columnId}
-                            onChange={(e) => {
-                              const newCol = columns.find(
-                                (c) => c.id === Number(e.target.value),
+                    <SortableItem
+                      key={String(index)}
+                      id={String(index)}
+                      dragHandleClassName="border border-gray-200 p-1.5 rounded-r"
+                      hideDragHandle={localFilters.length === 1}
+                    >
+                      <div className="flex w-full items-center">
+                        {/* 1. Conjunction (Where / And / Or) */}
+                        <div className="relative mr-2 w-16 shrink-0 text-xs text-gray-500">
+                          {index === 0 ? (
+                            <span className="px-1">Where</span>
+                          ) : index === 1 ? (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenu(
+                                    openMenu?.index === index &&
+                                      openMenu.type === "conjunction"
+                                      ? null
+                                      : { index, type: "conjunction" },
+                                  );
+                                }}
+                                className="flex w-full items-center justify-between rounded border border-gray-200 px-1 py-1.5 hover:bg-gray-50"
+                              >
+                                {conjunction}
+                                <ChevronDownIcon className="h-3 w-3" />
+                              </button>
+
+                              {openMenu?.index === index &&
+                                openMenu.type === "conjunction" && (
+                                  <div className="absolute top-full left-0 z-50 w-16 rounded border border-gray-200 bg-white p-1 shadow-xl">
+                                    <button
+                                      onClick={() => {
+                                        setConjunction("and");
+                                        setOpenMenu(null);
+                                      }}
+                                      className="block w-full rounded px-2 py-1 text-left text-xs"
+                                    >
+                                      and
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setConjunction("or");
+                                        setOpenMenu(null);
+                                      }}
+                                      className="block w-full rounded px-2 py-1 text-left text-xs"
+                                    >
+                                      or
+                                    </button>
+                                  </div>
+                                )}
+                            </>
+                          ) : (
+                            <span className="px-1">{conjunction}</span>
+                          )}
+                        </div>
+
+                        {/* 2. Column Picker */}
+                        <div className="relative flex-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenu(
+                                openMenu?.index === index &&
+                                  openMenu.type === "column"
+                                  ? null
+                                  : { index, type: "column" },
                               );
-                              updateFilter(index, {
-                                columnId: Number(e.target.value),
-                                operator:
-                                  newCol?.type === "NUMBER"
-                                    ? "equals"
-                                    : "contains",
-                                value: "",
-                              });
                             }}
-                            className="rounded-l border border-gray-200 py-1 text-xs text-gray-700"
+                            className="flex w-full items-center justify-between rounded-l border border-gray-200 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                           >
-                            {columns.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
+                            <span className="truncate">
+                              {col ? col.name : "Select field..."}
+                            </span>
+                            <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-400" />
+                          </button>
 
-                          <select
-                            value={filter.operator}
-                            onChange={(e) =>
-                              updateFilter(index, {
-                                operator: e.target
-                                  .value as FilterConfig["operator"],
-                              })
-                            }
-                            className="border border-gray-200 px-1.5 py-1 text-xs text-gray-700"
+                          {openMenu?.index === index &&
+                            openMenu.type === "column" && (
+                              <FilterColumnPickerMenu
+                                columns={columns}
+                                onSelect={(colId) => {
+                                  const newCol = columns.find(
+                                    (c) => c.id === colId,
+                                  );
+                                  updateFilter(index, {
+                                    columnId: colId,
+                                    operator:
+                                      newCol?.type === "NUMBER"
+                                        ? "equals"
+                                        : "contains",
+                                    value: "",
+                                  });
+                                }}
+                                onClose={() => setOpenMenu(null)}
+                              />
+                            )}
+                        </div>
+
+                        {/* 3. Operator Picker */}
+                        <div className="relative w-40 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenu(
+                                openMenu?.index === index &&
+                                  openMenu.type === "operator"
+                                  ? null
+                                  : { index, type: "operator" },
+                              );
+                            }}
+                            className="flex w-full items-center justify-between border border-gray-200 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                           >
-                            {operators.map((op) => (
-                              <option key={op.value} value={op.value}>
-                                {op.label}
-                              </option>
-                            ))}
-                          </select>
+                            <span className="truncate">{currentOpLabel}</span>
+                            <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-400" />
+                          </button>
 
-                          {needsValue && (
+                          {openMenu?.index === index &&
+                            openMenu.type === "operator" && (
+                              <FilterOperatorPickerMenu
+                                operators={operators}
+                                onSelect={(opValue) => {
+                                  updateFilter(index, {
+                                    operator:
+                                      opValue as FilterConfig["operator"],
+                                    ...(NO_VALUE_OPERATORS.has(opValue) && {
+                                      value: "",
+                                    }),
+                                  });
+                                }}
+                                onClose={() => setOpenMenu(null)}
+                              />
+                            )}
+                        </div>
+
+                        {/* 4. Value Input */}
+                        <div className="w-48 shrink-0">
+                          {needsValue ? (
                             <input
                               type={col?.type === "NUMBER" ? "number" : "text"}
                               value={filter.value ?? ""}
@@ -221,15 +339,22 @@ export function FilterDropdown({
                                     : e.target.value,
                                 )
                               }
-                              placeholder="value"
-                              className="w-20 flex-1 border border-gray-200 px-1.5 py-1 text-xs text-gray-700 outline-none"
+                              placeholder="Enter a value"
+                              className="w-full border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-400"
                             />
+                          ) : (
+                            <div className="h-7" />
                           )}
+                        </div>
+
+                        {/* 5. Actions (Trash left, Drag Handle right) */}
+                        <div className="flex shrink-0 items-center border border-gray-200">
                           <button
                             onClick={() => removeFilter(index)}
-                            className="shrink-0 border border-gray-200 p-1 text-gray-700 hover:bg-gray-300"
+                            className="p-1.5 text-gray-400 hover:bg-gray-100"
+                            title="Remove condition"
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <TrashIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
@@ -242,25 +367,142 @@ export function FilterDropdown({
         )}
 
         <div
-          className={`flex items-start gap-2 ${
-            filters.length === 0 ? "flex-col" : "flex-row"
+          className={`mt-2 flex items-start gap-4 border-t border-gray-100 pt-3 ${
+            localFilters.length === 0 ? "flex-col gap-2" : "flex-row"
           }`}
         >
           <button
             onClick={addFilter}
-            className="py-1 text-xs text-gray-600 hover:font-medium hover:text-gray-800"
+            className="flex items-center text-xs text-gray-600 hover:font-medium hover:text-gray-900"
           >
-            <PlusIcon className="mr-1 inline h-3.5 w-3.5" />
+            <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
             Add condition
           </button>
           <button
             onClick={addFilter}
-            className="py-1 text-xs text-gray-600 hover:font-medium hover:text-gray-800"
+            className="flex items-center text-xs text-gray-600 hover:font-medium hover:text-gray-900"
           >
-            <PlusIcon className="mr-1 inline h-3.5 w-3.5" />
+            <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
             Add condition group
-            <QuestionIcon className="ml-1 inline h-3.5 w-3.5" />
+            <QuestionIcon className="ml-1 h-3.5 w-3.5" />
           </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// --- Sub-component for the searchable column menu ---
+interface FilterColumnPickerMenuProps {
+  columns: GridColumn[];
+  onSelect: (id: number) => void;
+  onClose: () => void;
+}
+
+function FilterColumnPickerMenu({
+  columns,
+  onSelect,
+  onClose,
+}: FilterColumnPickerMenuProps) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const filtered = columns.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <>
+      <div className="fixed inset-0 z-60" onClick={onClose} />
+      <div className="absolute top-full left-0 z-70 mt-1 w-56 rounded-md border border-gray-200 bg-white p-1 shadow-xl">
+        <div className="mb-1 flex items-center gap-2 px-2 pt-1 pb-1.5">
+          <input
+            ref={inputRef}
+            type="text"
+            className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
+            placeholder="Find a field"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="max-h-48 overflow-y-auto">
+          {filtered.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => onSelect(col.id)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
+            >
+              {col.type === "NUMBER" ? (
+                <NumberIcon className="h-3.5 w-3.5 text-gray-400" />
+              ) : (
+                <TextIcon className="h-3.5 w-3.5 text-gray-400" />
+              )}
+              <span className="truncate">{col.name}</span>
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <div className="px-2 py-2 text-xs text-gray-400">No results</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// --- Sub-component for the searchable operator menu ---
+interface FilterOperatorPickerMenuProps {
+  operators: readonly { value: string; label: string }[];
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}
+
+function FilterOperatorPickerMenu({
+  operators,
+  onSelect,
+  onClose,
+}: FilterOperatorPickerMenuProps) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const filtered = operators.filter((op) =>
+    op.label.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <>
+      <div className="fixed inset-0 z-60" onClick={onClose} />
+      <div className="absolute top-full left-0 z-70 mt-1 w-48 rounded-md border border-gray-200 bg-white p-1 shadow-xl">
+        <div className="mb-1 flex items-center gap-2 px-2 pt-1 pb-1.5">
+          <input
+            ref={inputRef}
+            type="text"
+            className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
+            placeholder="Find an operator"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="max-h-48 overflow-y-auto">
+          {filtered.map((op) => (
+            <button
+              key={op.value}
+              onClick={() => onSelect(op.value)}
+              className="flex w-full items-center px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
+            >
+              <span className="truncate">{op.label}</span>
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <div className="px-2 py-2 text-xs text-gray-400">No results</div>
+          )}
         </div>
       </div>
     </>
