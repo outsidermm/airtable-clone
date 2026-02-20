@@ -146,7 +146,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     >
       {/* === FROZEN SECTION === */}
       <div
-        className={`sticky left-0 z-10 flex shrink-0 border-b border-gray-200 ${rowBg}`}
+        className={`sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
           borderRight: "2px solid rgb(209, 213, 219)",
