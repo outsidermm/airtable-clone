@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { pushQueryEntry } from "~/lib/query-log";
 import type { GridColumn } from "~/types/grid";
 import type {
   ViewConfig,
@@ -81,13 +82,22 @@ export function BaseToolbar({
   );
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const seedStartRef = useRef(0);
 
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
       setIsSeeding(true);
+      seedStartRef.current = Date.now();
     },
     onSuccess: (data) => {
       setIsSeeding(false);
+      pushQueryEntry({
+        path: "row.bulkCreate",
+        label: `count=${data.count.toLocaleString()}`,
+        sqlMs: data.sqlMs,
+        totalMs: Date.now() - seedStartRef.current,
+        rowCount: data.count,
+      });
       refetchRows();
       alert(`Successfully created ${data.count.toLocaleString()} rows!`);
     },
@@ -139,8 +149,6 @@ export function BaseToolbar({
     [viewConfig, viewMutations, activeViewId],
   );
 
-
-
   const handleUpdateRowHeight = useCallback(
     (rowHeight: RowHeightOption) => {
       if (!activeViewId) return;
@@ -161,7 +169,6 @@ export function BaseToolbar({
     },
     [activeTableId, bulkCreateMutation, isSeeding],
   );
-
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -373,6 +380,7 @@ export function BaseToolbar({
             <FilterDropdown
               columns={columns}
               filters={viewConfig.filters ?? []}
+              filterGroupLogic={viewConfig.filterGroupLogic ?? "AND"}
               onUpdateFilters={handleUpdateFilters}
               onClose={closeDropdown}
             />
@@ -452,7 +460,7 @@ export function BaseToolbar({
         {/* Share and sync */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ShareIcon className="h-3.5 w-3.5" />
-          Share and sync
+          <span className="hidden md:inline">Share and sync</span>
         </button>
 
         {/* Search */}

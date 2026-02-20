@@ -64,6 +64,7 @@ export function BaseContent({
     registerRefetchRows,
     registerOptimisticAddRow,
     registerOptimisticDeleteRow,
+    registerOptimisticInsertRowNear,
     registerOnRowCreated,
     notifyRowIdSwap,
     registerOnColumnCreated,
@@ -74,6 +75,13 @@ export function BaseContent({
 
   const utils = api.useUtils();
   const toast = useToast();
+
+  // --- Base: keep live data for header (name, starred) ---
+  const baseQuery = api.base.getById.useQuery(
+    { id: baseId },
+    { initialData: base as never },
+  );
+  const liveBase = (baseQuery.data ?? base) as Base;
 
   // --- Tables ---
   const tablesQuery = api.table.getAllByBase.useQuery(
@@ -139,6 +147,7 @@ export function BaseContent({
       filterGroupLogic: cfg.filterGroupLogic ?? "AND",
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
+      columnOrder: cfg.columnOrder,
     };
   }, [viewQuery.data?.config]);
 
@@ -396,6 +405,65 @@ export function BaseContent({
     };
   }, []); // No dependencies — reads from refs
 
+  // Inserts an optimistic temp row adjacent to a target row in the display order.
+  // The temp row is placed in the last page (for ID lookup) but displayed via rowOrderOverride.
+  const optimisticInsertRowNearImpl = useCallback(
+    (targetRowId: number, position: "above" | "below"): { tempId: number; revert: () => void } => {
+      const tempId = -(Date.now());
+      const tempRow: GridRow = { id: tempId, cells: {} };
+
+      const prevCount = totalRowCountRef.current;
+      const newCount = prevCount + 1;
+      totalRowCountRef.current = newCount;
+
+      const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
+      const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
+      pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
+      setPageStore(new Map(pageStoreRef.current));
+      setTotalRowCount(newCount);
+
+      // Use functional update to read the latest rowOrderOverride without stale closure
+      setRowOrderOverride((prev) => {
+        let currentOrder: number[];
+        if (prev !== null) {
+          currentOrder = prev;
+        } else {
+          const sortedPageIndices = [...pageStoreRef.current.keys()].sort((a, b) => a - b);
+          const flat: GridRow[] = [];
+          for (const pi of sortedPageIndices) flat.push(...(pageStoreRef.current.get(pi) ?? []));
+          currentOrder = flat.map((r) => r.id);
+        }
+        const targetIdx = currentOrder.indexOf(targetRowId);
+        const insertIdx = position === "above" ? targetIdx : targetIdx + 1;
+        const newOrder = [...currentOrder];
+        if (insertIdx >= 0 && insertIdx <= newOrder.length) {
+          newOrder.splice(insertIdx, 0, tempId);
+        } else {
+          newOrder.push(tempId);
+        }
+        return newOrder;
+      });
+
+      return {
+        tempId,
+        revert: () => {
+          pendingOptimisticEditsRef.current.delete(tempId);
+          totalRowCountRef.current = prevCount;
+          const page = pageStoreRef.current.get(lastPageIndex);
+          if (page) {
+            const filtered = page.filter((r) => r.id !== tempId);
+            if (filtered.length === 0) pageStoreRef.current.delete(lastPageIndex);
+            else pageStoreRef.current.set(lastPageIndex, filtered);
+          }
+          setPageStore(new Map(pageStoreRef.current));
+          setTotalRowCount(prevCount);
+          setRowOrderOverride(null);
+        },
+      };
+    },
+    [], // No dependencies — reads from refs, uses functional state updates
+  );
+
   useEffect(() => {
     registerOptimisticAddRow(optimisticAddRowImpl);
   }, [registerOptimisticAddRow, optimisticAddRowImpl]);
@@ -403,6 +471,10 @@ export function BaseContent({
   useEffect(() => {
     registerOptimisticDeleteRow(optimisticDeleteRowImpl);
   }, [registerOptimisticDeleteRow, optimisticDeleteRowImpl]);
+
+  useEffect(() => {
+    registerOptimisticInsertRowNear(optimisticInsertRowNearImpl);
+  }, [registerOptimisticInsertRowNear, optimisticInsertRowNearImpl]);
 
   // Reset page store and reload page 0 whenever view or table changes
   useEffect(() => {
@@ -432,17 +504,66 @@ export function BaseContent({
     }));
   }, [tableQuery.data]);
 
-  // Filter out hidden columns
+  // Filter out hidden columns and apply per-view column order when set
   const visibleColumns = useMemo(() => {
     const hiddenSet = new Set(viewConfig.hiddenColumns ?? []);
-    return allColumns.filter((c) => !hiddenSet.has(c.id));
-  }, [allColumns, viewConfig.hiddenColumns]);
+    const filtered = allColumns.filter((c) => !hiddenSet.has(c.id));
+
+    const colOrder = viewConfig.columnOrder;
+    if (!colOrder?.length) return filtered;
+
+    // Sort by the view's column order; columns not in the list go to the end
+    const orderMap = new Map(colOrder.map((id, idx) => [id, idx]));
+    return [...filtered].sort((a, b) => {
+      const ai = orderMap.get(a.id) ?? Infinity;
+      const bi = orderMap.get(b.id) ?? Infinity;
+      return ai - bi;
+    });
+  }, [allColumns, viewConfig.hiddenColumns, viewConfig.columnOrder]);
 
   const columnMutations = useColumnMutations(activeTableId);
 
+  // --- Per-view column ordering ---
+  const updateViewConfigMutation = api.view.update.useMutation({
+    onSuccess: () => {
+      if (activeViewId) void utils.view.getById.invalidate({ id: activeViewId });
+    },
+  });
+
+  const handleReorderColumns = useCallback(
+    (newOrder: number[]) => {
+      if (!activeViewId) return;
+      updateViewConfigMutation.mutate({
+        id: activeViewId,
+        config: { ...viewConfig, columnOrder: newOrder },
+      });
+    },
+    [activeViewId, viewConfig, updateViewConfigMutation],
+  );
+
   // --- Cells ---
+  // Tracks the start time of each in-flight cell update, keyed by "rowId:colId".
+  const cellUpdateStartRef = useRef<Map<string, number>>(new Map());
+
   const updateCell = api.cell.update.useMutation({
-    onSuccess: (_, variables) => {
+    onMutate: (variables) => {
+      cellUpdateStartRef.current.set(
+        `${variables.rowId}:${variables.columnId}`,
+        Date.now(),
+      );
+    },
+    onSuccess: (data, variables) => {
+      // Log to performance panel
+      const key = `${variables.rowId}:${variables.columnId}`;
+      const startTime = cellUpdateStartRef.current.get(key);
+      cellUpdateStartRef.current.delete(key);
+      pushQueryEntry({
+        path: "cell.update",
+        label: `row=${variables.rowId} col=${variables.columnId}`,
+        sqlMs: data.sqlMs,
+        totalMs: startTime !== undefined ? Date.now() - startTime : 0,
+      });
+
       // Update the cell in the page store directly — avoids a full page refetch
       // and keeps the displayed value consistent after the user scrolls away and back.
       const colKey = String(variables.columnId);
@@ -515,10 +636,11 @@ export function BaseContent({
     [allColumns, updateCell],
   );
 
-  // Called by createRow.onSuccess: swaps temp ID for real ID in the page store,
+  // Called by createRow/duplicateRow.onSuccess: swaps temp ID for real ID in the page store,
   // then fires updateCell mutations for any edits typed before the server responded.
+  // Pass `cells` to also update the stored cell data (used by row.duplicate).
   const onRowCreatedImpl = useCallback(
-    (tempId: number, realRowId: number) => {
+    (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => {
       const pendingEdits = pendingOptimisticEditsRef.current.get(tempId);
       pendingOptimisticEditsRef.current.delete(tempId);
 
@@ -530,12 +652,22 @@ export function BaseContent({
         const rowIdx = pageRows.findIndex((r) => r.id === tempId);
         if (rowIdx !== -1) {
           const newRows = [...pageRows];
-          newRows[rowIdx] = { ...newRows[rowIdx]!, id: realRowId };
+          newRows[rowIdx] = {
+            ...newRows[rowIdx]!,
+            id: realRowId,
+            ...(cells !== undefined ? { cells } : {}),
+          };
           pageStoreRef.current.set(pageIndex, newRows);
           setPageStore(new Map(pageStoreRef.current));
           break;
         }
       }
+
+      // Swap tempId in rowOrderOverride so the inserted/duplicated row stays in position
+      setRowOrderOverride((prev) => {
+        if (!prev) return prev;
+        return prev.map((id) => (id === tempId ? realRowId : id));
+      });
 
       if (pendingEdits) {
         for (const [colKey, value] of Object.entries(pendingEdits)) {
@@ -601,9 +733,23 @@ export function BaseContent({
     { enabled: !!activeTableId && searchQuery.length > 0 },
   );
 
+  // Log search queries to the performance panel whenever results arrive
+  useEffect(() => {
+    if (!searchResultsQuery.data) return;
+    pushQueryEntry({
+      path: "cell.search",
+      label: `query="${searchQuery}"`,
+      sqlMs: searchResultsQuery.data.sqlMs,
+      totalMs: 0,
+      rowCount: searchResultsQuery.data.rows.length,
+    });
+    // Intentionally only re-run when data reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchResultsQuery.data]);
+
   const searchGridRows = useMemo<GridRow[] | null>(() => {
     if (!searchQuery || !searchResultsQuery.data) return null;
-    return searchResultsQuery.data.map((row) => ({
+    return searchResultsQuery.data.rows.map((row) => ({
       id: row.id,
       cells: row.cells as Record<string, string | number | null>,
     }));
@@ -779,7 +925,7 @@ export function BaseContent({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <BaseHeader base={base} tables={tables} />
+      <BaseHeader base={liveBase} tables={tables} />
 
       {/* Toolbar */}
       <BaseToolbar
@@ -815,6 +961,7 @@ export function BaseContent({
               rows={gridRows}
               onCellUpdate={handleCellUpdate}
               onReorderRow={handleReorderRow}
+              onReorderColumns={handleReorderColumns}
               onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
@@ -846,6 +993,7 @@ export function BaseContent({
           onRename={handleColumnRenameFromMenu}
           onInsertLeft={handleInsertColumnLeft}
           onInsertRight={handleInsertColumnRight}
+          onDuplicate={columnMutations.handleDuplicateColumn}
         />
       )}
 

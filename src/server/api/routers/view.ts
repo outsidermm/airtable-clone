@@ -36,6 +36,10 @@ const viewConfigSchema = z.object({
   filterGroupLogic: z.enum(["AND", "OR"]).optional().default("AND"),
   hiddenColumns: z.array(z.number().int()).optional().default([]),
   rowHeight: z.enum(["short", "medium", "tall", "extraTall"]).optional().default("short"),
+  // Per-view column display order (array of column IDs). When undefined, columns
+  // display in their global order (Column.order LexoRank). When set, this order
+  // takes precedence so different views can have different column arrangements.
+  columnOrder: z.array(z.number().int()).optional(),
 });
 
 export type SortConfig = z.infer<typeof sortConfigSchema>;
@@ -341,10 +345,11 @@ export const viewRouter = createTRPCRouter({
 
           case "equals":
             if (isText) {
+              // Use @> containment — leverages the GIN jsonb_path_ops index on Row.cells
               filterConditions.push(
-                `r.cells->>'${colKey}' = $${filterParams.length + 1}`
+                `r.cells @> jsonb_build_object($${filterParams.length + 1}::text, $${filterParams.length + 2}::text)`
               );
-              filterParams.push(filter.value!);
+              filterParams.push(colKey, String(filter.value!));
             } else {
               filterConditions.push(
                 `(r.cells->>'${colKey}')::float = $${filterParams.length + 1}`
@@ -453,18 +458,19 @@ export const viewRouter = createTRPCRouter({
       }
       const countWhereClause = countWhereClauses.join(" AND ");
 
-      // Execute count (first page only) and row IDs in parallel
+      // Execute count (first page only) and full row data in parallel.
+      // Single-query approach: select id + cells together, no second findMany round-trip.
       const sqlStart = Date.now();
-      const [countResult, rowIds] = await Promise.all([
+      const [countResult, rawRows] = await Promise.all([
         isFirstPage
           ? ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
               `SELECT COUNT(*) as count FROM "Row" r WHERE ${countWhereClause}`,
               ...filterParams
             )
           : Promise.resolve(undefined),
-        ctx.db.$queryRawUnsafe<Array<{ id: number }>>(
+        ctx.db.$queryRawUnsafe<Array<{ id: number; cells: unknown }>>(
           `
-          SELECT r.id
+          SELECT r.id, r.cells
           FROM "Row" r
           WHERE ${whereClause}
           ORDER BY ${orderByClause}
@@ -474,39 +480,19 @@ export const viewRouter = createTRPCRouter({
           ...filterParams
         ),
       ]);
+      const sqlMs = Date.now() - sqlStart;
 
       const totalCount = countResult ? Number(countResult[0]?.count ?? 0) : undefined;
 
       // Check if there are more rows
       let nextCursor: number | undefined;
-      if (rowIds.length > input.limit) {
-        const nextItem = rowIds.pop();
+      if (rawRows.length > input.limit) {
+        const nextItem = rawRows.pop();
         nextCursor = nextItem!.id;
       }
 
-      // If no rows, return empty result
-      if (rowIds.length === 0) {
-        return {
-          rows: [],
-          nextCursor: undefined,
-          totalCount,
-        };
-      }
-
-      // Get full row data — cells are already on the row as JSONB
-      const rows = await ctx.db.row.findMany({
-        where: {
-          id: { in: rowIds.map((r) => r.id) },
-        },
-      });
-      const sqlMs = Date.now() - sqlStart;
-
-      // Sort rows to match the order from the query
-      const rowMap = new Map(rows.map((r) => [r.id, r]));
-      const sortedRows = rowIds.map((r) => rowMap.get(r.id)!);
-
       return {
-        rows: sortedRows,
+        rows: rawRows,
         nextCursor,
         totalCount,
         sqlMs,

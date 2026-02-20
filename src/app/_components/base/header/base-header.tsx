@@ -118,6 +118,13 @@ Teammates will see this guide when they first open the base and can find it anyt
     setShowDeleteBaseConfirm(true);
   };
 
+  // Sync baseNameValue when the live base.name prop updates (after a rename mutation)
+  useEffect(() => {
+    if (!isRenamingBase) {
+      setBaseNameValue(base.name);
+    }
+  }, [base.name, isRenamingBase]);
+
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
       tableSearchRef.current.focus();

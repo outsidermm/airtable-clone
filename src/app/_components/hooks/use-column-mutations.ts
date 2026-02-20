@@ -79,6 +79,10 @@ export function useColumnMutations(activeTableId: number) {
     onSuccess: invalidate,
   });
 
+  const duplicateColumn = api.column.duplicate.useMutation({
+    onSuccess: invalidate,
+  });
+
   const deleteColumn = api.column.delete.useMutation({
     onMutate: async (input) => {
       await utils.table.getById.cancel({ id: activeTableId });
@@ -170,11 +174,19 @@ export function useColumnMutations(activeTableId: number) {
     [deleteColumn],
   );
 
+  const handleDuplicateColumn = useCallback(
+    (columnId: number) => {
+      duplicateColumn.mutate({ id: columnId });
+    },
+    [duplicateColumn],
+  );
+
   return {
     handleAddColumn,
     handleUpdateColumn,
     handleReorderColumn,
     handleSetPrimaryColumn,
     handleDeleteColumn,
+    handleDuplicateColumn,
   };
 }

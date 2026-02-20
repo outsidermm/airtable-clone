@@ -1,14 +1,18 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
+import { pushQueryEntry } from "~/lib/query-log";
 
 export function useRowMutations(activeTableId: number) {
-  const { refetchRows, optimisticAddRow, optimisticDeleteRow, onRowCreated } = useBase();
+  const { refetchRows, optimisticAddRow, optimisticDeleteRow, optimisticInsertRowNear, onRowCreated } = useBase();
+
+  // Holds params for the next insertRowNear/duplicateRow optimistic call
+  const insertNearParamsRef = useRef<{ targetRowId: number; position: "above" | "below" } | null>(null);
 
   const createRow = api.row.create.useMutation({
     onMutate: () => {
       // Show the new row immediately at the bottom of the table
-      return optimisticAddRow();
+      return { ...optimisticAddRow(), startTime: Date.now() };
     },
     onSuccess: (data, _vars, context) => {
       // Swap the temp ID for the real row ID and flush any pending cell edits
@@ -16,6 +20,12 @@ export function useRowMutations(activeTableId: number) {
       if (tempId !== undefined) {
         onRowCreated(tempId, data.id);
       }
+      pushQueryEntry({
+        path: "row.create",
+        label: `rowId=${data.id}`,
+        sqlMs: data.sqlMs,
+        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+      });
     },
     onError: (_err, _vars, context) => {
       // Revert the optimistic row if the server rejected the mutation
@@ -33,10 +43,49 @@ export function useRowMutations(activeTableId: number) {
     onSuccess: () => refetchRows(),
   });
 
+  // Mutation for insert-above / insert-below — same backend as create,
+  // but optimistically positions the new row via rowOrderOverride
+  const insertRowNearMutation = api.row.create.useMutation({
+    onMutate: () => {
+      const params = insertNearParamsRef.current;
+      insertNearParamsRef.current = null;
+      if (!params) return { ...optimisticAddRow(), startTime: Date.now() };
+      return { ...optimisticInsertRowNear(params.targetRowId, params.position), startTime: Date.now() };
+    },
+    onSuccess: (data, _vars, context) => {
+      if (context?.tempId !== undefined) onRowCreated(context.tempId, data.id);
+    },
+    onError: (_err, _vars, context) => { context?.revert?.(); },
+    // No refetchRows — rowOrderOverride must be preserved to keep the position
+  });
+
+  // Duplicate a row (copies cell data from the server)
+  const duplicateRowMutation = api.row.duplicate.useMutation({
+    onMutate: (vars) => {
+      return { ...optimisticInsertRowNear(vars.id, "below"), startTime: Date.now() };
+    },
+    onSuccess: (data, _vars, context) => {
+      if (context?.tempId !== undefined) {
+        // Pass cells so the temp row shows the duplicated data without a refetch
+        onRowCreated(context.tempId, data.id, data.cells as Record<string, string | number | null>);
+      }
+    },
+    onError: (_err, _vars, context) => { context?.revert?.(); },
+    // No refetchRows — rowOrderOverride must be preserved to keep the position
+  });
+
   const deleteRow = api.row.delete.useMutation({
     onMutate: ({ id }) => {
       // Remove the row immediately so the user sees instant feedback
-      return optimisticDeleteRow(id);
+      return { ...optimisticDeleteRow(id), startTime: Date.now() };
+    },
+    onSuccess: (data, _vars, context) => {
+      pushQueryEntry({
+        path: "row.delete",
+        label: `rowId=${data.id}`,
+        sqlMs: data.sqlMs,
+        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+      });
     },
     onError: (_err, _vars, context) => {
       // Restore the row if the server rejected the deletion
@@ -70,10 +119,36 @@ export function useRowMutations(activeTableId: number) {
     [bulkDeleteRow],
   );
 
+  const handleInsertRowAbove = useCallback(
+    (rowId: number) => {
+      insertNearParamsRef.current = { targetRowId: rowId, position: "above" };
+      insertRowNearMutation.mutate({ tableId: activeTableId });
+    },
+    [activeTableId, insertRowNearMutation],
+  );
+
+  const handleInsertRowBelow = useCallback(
+    (rowId: number) => {
+      insertNearParamsRef.current = { targetRowId: rowId, position: "below" };
+      insertRowNearMutation.mutate({ tableId: activeTableId });
+    },
+    [activeTableId, insertRowNearMutation],
+  );
+
+  const handleDuplicateRow = useCallback(
+    (rowId: number) => {
+      duplicateRowMutation.mutate({ id: rowId });
+    },
+    [duplicateRowMutation],
+  );
+
   return {
     handleAddRow,
     handleBulkAddRow,
     handleDeleteRow,
     handleBulkDeleteRow,
+    handleInsertRowAbove,
+    handleInsertRowBelow,
+    handleDuplicateRow,
   };
 }

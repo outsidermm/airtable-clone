@@ -64,20 +64,13 @@ function SortableColumnItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between px-3 py-1.5 hover:bg-gray-50"
+      className="flex items-center justify-between px-5 py-1.5 hover:bg-gray-50"
     >
       <div className="flex items-center gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
-        >
-          <DragHandle className="h-3 w-3 text-gray-400 hover:text-gray-600" />
-        </div>
         <button
           onClick={onToggle}
           className={`flex h-2 w-3 items-center rounded-full px-0.5 transition-colors ${
-            isVisible ? "bg-green-500" : "bg-gray-300"
+            isVisible ? "bg-green-600" : "bg-gray-300"
           }`}
         >
           <div
@@ -92,6 +85,13 @@ function SortableColumnItem({
           <TextIcon className="h-3 w-3 text-gray-400" />
         )}
         <span className="text-xs text-gray-700">{column.name}</span>
+      </div>
+      <div
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+      >
+        <DragHandle className="h-3 w-3 text-gray-400 hover:text-gray-600" />
       </div>
     </div>
   );
@@ -154,11 +154,23 @@ export function HideFieldsDropdown({
       // Persist the new column order to the server
       const activeColId = Number(String(active.id));
       if (newIndex === 0) {
-        columnMutations.handleReorderColumn(activeColId, null, localColumns[0]!.id);
+        columnMutations.handleReorderColumn(
+          activeColId,
+          null,
+          localColumns[0]!.id,
+        );
       } else if (oldIndex < newIndex) {
-        columnMutations.handleReorderColumn(activeColId, localColumns[newIndex]!.id, null);
+        columnMutations.handleReorderColumn(
+          activeColId,
+          localColumns[newIndex]!.id,
+          null,
+        );
       } else {
-        columnMutations.handleReorderColumn(activeColId, null, localColumns[newIndex]!.id);
+        columnMutations.handleReorderColumn(
+          activeColId,
+          null,
+          localColumns[newIndex]!.id,
+        );
       }
     },
     [localColumns, columnMutations],

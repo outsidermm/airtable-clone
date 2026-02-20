@@ -9,6 +9,7 @@ import {
   AIIcon,
   ApplyTemplateIcon,
   ArrowDownIcon,
+  ArrowUpIcon,
   CopyUrlIcon,
   DuplicateIcon,
   ExpandRecordIcon,
@@ -30,13 +31,29 @@ export function RecordContextMenu() {
       />
       <MenuDivider />
       <MenuItem
-        label="Insert record"
+        label="Insert record above"
+        icon={<ArrowUpIcon className="h-4 w-4 text-gray-400" />}
+        onClick={() => {
+          rowMutations.handleInsertRowAbove(rowId);
+          setContextMenu(null);
+        }}
+      />
+      <MenuItem
+        label="Insert record below"
         icon={<ArrowDownIcon className="h-4 w-4 text-gray-400" />}
+        onClick={() => {
+          rowMutations.handleInsertRowBelow(rowId);
+          setContextMenu(null);
+        }}
       />
       <MenuDivider />
       <MenuItem
         label="Duplicate record"
         icon={<DuplicateIcon className="h-4 w-4 text-gray-400" />}
+        onClick={() => {
+          rowMutations.handleDuplicateRow(rowId);
+          setContextMenu(null);
+        }}
       />
       <MenuItem
         label="Apply template"

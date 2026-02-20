@@ -23,6 +23,7 @@ interface SortableRowProps {
   primaryColumn: GridColumn | null;
   primaryColumnWidth: number;
   nonPrimaryColumns: GridColumn[];
+  frozenNonPrimaryCount: number;
   columnSizing: Record<string, number>;
   // Narrow per-row selection props — avoids re-rendering unaffected rows
   selectedColumnId: number | null;
@@ -59,6 +60,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     primaryColumn,
     primaryColumnWidth,
     nonPrimaryColumns,
+    frozenNonPrimaryCount,
     columnSizing,
     selectedColumnId,
     editingColumnId,
@@ -146,7 +148,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     >
       {/* === FROZEN SECTION === */}
       <div
-        className={`sticky left-0 z-10 flex shrink-0 border-b border-gray-200 ${rowBg}`}
+        className={`sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
           borderRight: "2px solid rgb(209, 213, 219)",
@@ -203,6 +205,10 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
 
         {/* Primary Cell */}
         {primaryColumn && renderCell(primaryColumn, primaryColumnWidth, true)}
+        {/* Frozen non-primary cells */}
+        {nonPrimaryColumns.slice(0, frozenNonPrimaryCount).map((col) =>
+          renderCell(col, columnSizing[String(col.id)] ?? col.width, false),
+        )}
       </div>
 
       {/* === SCROLLABLE SECTION === */}
@@ -210,7 +216,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >
-        {nonPrimaryColumns.map((col) =>
+        {nonPrimaryColumns.slice(frozenNonPrimaryCount).map((col) =>
           renderCell(col, columnSizing[String(col.id)] ?? col.width, false),
         )}
       </div>

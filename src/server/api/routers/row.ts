@@ -16,16 +16,18 @@ export const rowRouter = createTRPCRouter({
       // Verify ownership
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
-      // Create row with empty cells
-      return ctx.db.row.create({
+      const sqlStart = Date.now();
+      const row = await ctx.db.row.create({
         data: {
           tableId: input.tableId,
           cells: {},
         },
       });
+      return { ...row, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk create rows (optimized for 100k+ rows)
+// Bulk create rows (optimized for 100k+ rows)
   bulkCreate: protectedProcedure
     .input(
       z.object({
@@ -35,37 +37,57 @@ export const rowRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(
-        async (tx) => {
-          // Verify ownership
-          await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
+      await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
+      
+      const columns = await ctx.db.column.findMany({
+        where: { tableId: input.tableId },
+        orderBy: { order: "asc" },
+      });
 
-          // Get table columns for seeding
-          let rowIds: number[];
-          if (input.seed) {
-            const columns = await tx.column.findMany({
-              where: { tableId: input.tableId },
-              orderBy: { order: "asc" },
-            });
+      // FIX 1: Combine DROP INDEX into a single atomic statement
+      if (columns.length > 0) {
+        const indexNames = columns
+          .map((c) => `"idx_row_cells_col${c.id}_trgm"`)
+          .join(", ");
+        
+        await ctx.db.$executeRawUnsafe(`DROP INDEX IF EXISTS ${indexNames}`);
+      }
 
-            // Bulk create with varied seeded data
-            rowIds = await bulkCreateRows(tx, input.tableId, input.count, {
-              generateVariedData: true,
-              columnIds: columns.map(c => c.id),
-              columnTypes: columns.map(c => c.type),
-            });
-          } else {
-            // Bulk create with empty cells
-            rowIds = await bulkCreateRows(tx, input.tableId, input.count);
+      try {
+        const result = await ctx.db.$transaction(
+          async (tx) => {
+            const sqlStart = Date.now();
+            const count = input.seed
+              ? await bulkCreateRows(tx, input.tableId, input.count, {
+                  generateVariedData: true,
+                  columnIds: columns.map((c) => c.id),
+                  columnTypes: columns.map((c) => c.type),
+                })
+              : await bulkCreateRows(tx, input.tableId, input.count);
+            return { count, sqlMs: Date.now() - sqlStart };
+          },
+          { maxWait: 600000, timeout: 1200000 },
+        );
+        return result;
+      } finally {
+        // FIX 2: Recreate trgm indexes sequentially to avoid deadlocks
+        // We wrap this in an async IIFE so it remains fire-and-forget 
+        // without blocking the tRPC response return.
+        void (async () => {
+          for (const c of columns) {
+            try {
+              await ctx.db.$executeRawUnsafe(
+                `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_row_cells_col${c.id}_trgm"` +
+                  ` ON "Row" USING GIN ((cells->>'${c.id}') gin_trgm_ops)` +
+                  ` WHERE "tableId" = ${input.tableId}`,
+              );
+            } catch (error) {
+              /* ignore — another concurrent request may have rebuilt it already */
+              console.error(`Failed to recreate index for column ${c.id}:`, error);
+            }
           }
-
-          return { count: rowIds.length, rowIds };
-        },
-        {
-          maxWait: 60000,
-          timeout: 120000,
-        },
-      );
+        })();
+      }
     }),
 
   // Get rows with cursor-based or offset-based pagination (optimized for 1M rows)
@@ -146,10 +168,31 @@ export const rowRouter = createTRPCRouter({
       return { rows, nextCursor, totalCount, sqlMs };
     }),
 
+  // Duplicate a row (copies all cell data)
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.row.findUnique({
+        where: { id: input.id },
+        include: { table: { include: { base: true } } },
+      });
+
+      if (!row) throw new Error("Row not found");
+      if (row.table.base.userId !== ctx.session.user.id) throw new Error("Access denied");
+
+      const sqlStart = Date.now();
+      const newRow = await ctx.db.row.create({
+        data: { tableId: row.tableId, cells: row.cells ?? {} },
+      });
+      return { ...newRow, sqlMs: Date.now() - sqlStart };
+    }),
+
   // Delete a row
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
+      const sqlStart = Date.now();
+
       // Get row with ownership verification
       const row = await ctx.db.row.findUnique({
         where: { id: input.id },
@@ -168,9 +211,10 @@ export const rowRouter = createTRPCRouter({
         throw new Error("Access denied");
       }
 
-      return ctx.db.row.delete({
+      const deleted = await ctx.db.row.delete({
         where: { id: input.id },
       });
+      return { ...deleted, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk delete rows

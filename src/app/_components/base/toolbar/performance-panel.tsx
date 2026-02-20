@@ -22,7 +22,7 @@ export function PerformancePanel({ onClose }: PerformancePanelProps) {
   return (
     <>
       <div className="fixed inset-0 z-50" onClick={onClose} />
-      <div className="absolute top-full right-0 z-50 mt-1 w-[640px] rounded border border-gray-200 bg-white shadow-lg">
+      <div className="absolute top-full right-0 z-50 mt-1 w-160 rounded border border-gray-200 bg-white shadow-lg">
         <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
           <h3 className="text-xs font-medium text-gray-700">Query Performance</h3>
           <div className="flex items-center gap-3">
