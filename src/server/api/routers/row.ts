@@ -148,6 +148,25 @@ export const rowRouter = createTRPCRouter({
       return { rows, nextCursor, totalCount, sqlMs };
     }),
 
+  // Duplicate a row (copies all cell data)
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.row.findUnique({
+        where: { id: input.id },
+        include: { table: { include: { base: true } } },
+      });
+
+      if (!row) throw new Error("Row not found");
+      if (row.table.base.userId !== ctx.session.user.id) throw new Error("Access denied");
+
+      const sqlStart = Date.now();
+      const newRow = await ctx.db.row.create({
+        data: { tableId: row.tableId, cells: row.cells ?? {} },
+      });
+      return { ...newRow, sqlMs: Date.now() - sqlStart };
+    }),
+
   // Delete a row
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))

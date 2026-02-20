@@ -1134,6 +1134,17 @@ export const ArrowDownIcon = (props: IconProps) => (
   </svg>
 );
 
+export const ArrowUpIcon = (props: IconProps) => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 10l7-7m0 0l7 7m-7-7v18"
+    />
+  </svg>
+);
+
 // 3. Apply Template (Magic Wand)
 export const ApplyTemplateIcon = (props: IconProps) => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>

@@ -178,6 +178,52 @@ export const columnRouter = createTRPCRouter({
       });
     }),
 
+  // Duplicate a column (copies schema and cell data)
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const newColumn = await ctx.db.$transaction(async (tx) => {
+        const column = await getColumnWithOwnership(tx, input.id, ctx.session.user.id);
+
+        const order = await calculateColumnPosition(tx, column.tableId, {
+          afterColumnId: input.id,
+        });
+
+        const newCol = await tx.column.create({
+          data: {
+            tableId: column.tableId,
+            name: `${column.name} (copy)`,
+            type: column.type,
+            order,
+            primary: false,
+          },
+        });
+
+        // Copy cell data: add the new column key with the same value as the source
+        const colKey = String(input.id);
+        const newColKey = String(newCol.id);
+        await tx.$executeRawUnsafe(
+          `UPDATE "Row" SET cells = cells || jsonb_build_object('${newColKey}', cells->'${colKey}')` +
+            ` WHERE "tableId" = ${column.tableId} AND cells ? '${colKey}'`,
+        );
+
+        return newCol;
+      });
+
+      // Fire-and-forget: create trgm index for the new column
+      const colId = newColumn.id;
+      const tableId = newColumn.tableId;
+      void ctx.db
+        .$executeRawUnsafe(
+          `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_row_cells_col${colId}_trgm"` +
+            ` ON "Row" USING GIN ((cells->>'${colId}') gin_trgm_ops)` +
+            ` WHERE "tableId" = ${tableId}`,
+        )
+        .catch(() => { /* best-effort */ });
+
+      return newColumn;
+    }),
+
   // Get all columns for a table
   getAllByTable: protectedProcedure
     .input(z.object({ tableId: z.number().int() }))

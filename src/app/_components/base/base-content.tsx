@@ -64,6 +64,7 @@ export function BaseContent({
     registerRefetchRows,
     registerOptimisticAddRow,
     registerOptimisticDeleteRow,
+    registerOptimisticInsertRowNear,
     registerOnRowCreated,
     notifyRowIdSwap,
     registerOnColumnCreated,
@@ -404,6 +405,65 @@ export function BaseContent({
     };
   }, []); // No dependencies — reads from refs
 
+  // Inserts an optimistic temp row adjacent to a target row in the display order.
+  // The temp row is placed in the last page (for ID lookup) but displayed via rowOrderOverride.
+  const optimisticInsertRowNearImpl = useCallback(
+    (targetRowId: number, position: "above" | "below"): { tempId: number; revert: () => void } => {
+      const tempId = -(Date.now());
+      const tempRow: GridRow = { id: tempId, cells: {} };
+
+      const prevCount = totalRowCountRef.current;
+      const newCount = prevCount + 1;
+      totalRowCountRef.current = newCount;
+
+      const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
+      const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
+      pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
+      setPageStore(new Map(pageStoreRef.current));
+      setTotalRowCount(newCount);
+
+      // Use functional update to read the latest rowOrderOverride without stale closure
+      setRowOrderOverride((prev) => {
+        let currentOrder: number[];
+        if (prev !== null) {
+          currentOrder = prev;
+        } else {
+          const sortedPageIndices = [...pageStoreRef.current.keys()].sort((a, b) => a - b);
+          const flat: GridRow[] = [];
+          for (const pi of sortedPageIndices) flat.push(...(pageStoreRef.current.get(pi) ?? []));
+          currentOrder = flat.map((r) => r.id);
+        }
+        const targetIdx = currentOrder.indexOf(targetRowId);
+        const insertIdx = position === "above" ? targetIdx : targetIdx + 1;
+        const newOrder = [...currentOrder];
+        if (insertIdx >= 0 && insertIdx <= newOrder.length) {
+          newOrder.splice(insertIdx, 0, tempId);
+        } else {
+          newOrder.push(tempId);
+        }
+        return newOrder;
+      });
+
+      return {
+        tempId,
+        revert: () => {
+          pendingOptimisticEditsRef.current.delete(tempId);
+          totalRowCountRef.current = prevCount;
+          const page = pageStoreRef.current.get(lastPageIndex);
+          if (page) {
+            const filtered = page.filter((r) => r.id !== tempId);
+            if (filtered.length === 0) pageStoreRef.current.delete(lastPageIndex);
+            else pageStoreRef.current.set(lastPageIndex, filtered);
+          }
+          setPageStore(new Map(pageStoreRef.current));
+          setTotalRowCount(prevCount);
+          setRowOrderOverride(null);
+        },
+      };
+    },
+    [], // No dependencies — reads from refs, uses functional state updates
+  );
+
   useEffect(() => {
     registerOptimisticAddRow(optimisticAddRowImpl);
   }, [registerOptimisticAddRow, optimisticAddRowImpl]);
@@ -411,6 +471,10 @@ export function BaseContent({
   useEffect(() => {
     registerOptimisticDeleteRow(optimisticDeleteRowImpl);
   }, [registerOptimisticDeleteRow, optimisticDeleteRowImpl]);
+
+  useEffect(() => {
+    registerOptimisticInsertRowNear(optimisticInsertRowNearImpl);
+  }, [registerOptimisticInsertRowNear, optimisticInsertRowNearImpl]);
 
   // Reset page store and reload page 0 whenever view or table changes
   useEffect(() => {
@@ -572,10 +636,11 @@ export function BaseContent({
     [allColumns, updateCell],
   );
 
-  // Called by createRow.onSuccess: swaps temp ID for real ID in the page store,
+  // Called by createRow/duplicateRow.onSuccess: swaps temp ID for real ID in the page store,
   // then fires updateCell mutations for any edits typed before the server responded.
+  // Pass `cells` to also update the stored cell data (used by row.duplicate).
   const onRowCreatedImpl = useCallback(
-    (tempId: number, realRowId: number) => {
+    (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => {
       const pendingEdits = pendingOptimisticEditsRef.current.get(tempId);
       pendingOptimisticEditsRef.current.delete(tempId);
 
@@ -587,12 +652,22 @@ export function BaseContent({
         const rowIdx = pageRows.findIndex((r) => r.id === tempId);
         if (rowIdx !== -1) {
           const newRows = [...pageRows];
-          newRows[rowIdx] = { ...newRows[rowIdx]!, id: realRowId };
+          newRows[rowIdx] = {
+            ...newRows[rowIdx]!,
+            id: realRowId,
+            ...(cells !== undefined ? { cells } : {}),
+          };
           pageStoreRef.current.set(pageIndex, newRows);
           setPageStore(new Map(pageStoreRef.current));
           break;
         }
       }
+
+      // Swap tempId in rowOrderOverride so the inserted/duplicated row stays in position
+      setRowOrderOverride((prev) => {
+        if (!prev) return prev;
+        return prev.map((id) => (id === tempId ? realRowId : id));
+      });
 
       if (pendingEdits) {
         for (const [colKey, value] of Object.entries(pendingEdits)) {
@@ -918,6 +993,7 @@ export function BaseContent({
           onRename={handleColumnRenameFromMenu}
           onInsertLeft={handleInsertColumnLeft}
           onInsertRight={handleInsertColumnRight}
+          onDuplicate={columnMutations.handleDuplicateColumn}
         />
       )}
 

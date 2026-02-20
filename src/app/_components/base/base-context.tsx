@@ -42,12 +42,15 @@ interface BaseContextType {
   // Optimistic row operations — registered by base-content
   optimisticAddRow: () => { tempId: number; revert: () => void };
   optimisticDeleteRow: (rowId: number) => { revert: () => void };
+  optimisticInsertRowNear: (targetRowId: number, position: "above" | "below") => { tempId: number; revert: () => void };
   registerOptimisticAddRow: (fn: () => { tempId: number; revert: () => void }) => void;
   registerOptimisticDeleteRow: (fn: (rowId: number) => { revert: () => void }) => void;
+  registerOptimisticInsertRowNear: (fn: (targetRowId: number, position: "above" | "below") => { tempId: number; revert: () => void }) => void;
 
-  // Called by createRow.onSuccess to swap temp ID → real ID and flush pending edits
-  onRowCreated: (tempId: number, realRowId: number) => void;
-  registerOnRowCreated: (fn: (tempId: number, realRowId: number) => void) => void;
+  // Called by createRow/duplicateRow.onSuccess to swap temp ID → real ID and flush pending edits.
+  // Pass cells to also update the temp row's cells (used by duplicate).
+  onRowCreated: (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void;
+  registerOnRowCreated: (fn: (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void) => void;
 
   // Notifies grid-table to update its stable key map and selection state on row ID swap
   notifyRowIdSwap: (tempId: number, realId: number) => void;
@@ -106,6 +109,19 @@ export function BaseProvider({
   );
   const optimisticAddRow = useCallback(() => optimisticAddRowFnRef.current(), []);
   const optimisticDeleteRow = useCallback((rowId: number) => optimisticDeleteRowFnRef.current(rowId), []);
+  const optimisticInsertRowNearFnRef = useRef<(targetRowId: number, position: "above" | "below") => { tempId: number; revert: () => void }>(
+    () => ({ tempId: -1, revert: () => undefined }),
+  );
+  const optimisticInsertRowNear = useCallback(
+    (targetRowId: number, position: "above" | "below") => optimisticInsertRowNearFnRef.current(targetRowId, position),
+    [],
+  );
+  const registerOptimisticInsertRowNear = useCallback(
+    (fn: (targetRowId: number, position: "above" | "below") => { tempId: number; revert: () => void }) => {
+      optimisticInsertRowNearFnRef.current = fn;
+    },
+    [],
+  );
   const registerOptimisticAddRow = useCallback(
     (fn: () => { tempId: number; revert: () => void }) => { optimisticAddRowFnRef.current = fn; },
     [],
@@ -115,14 +131,14 @@ export function BaseProvider({
     [],
   );
 
-  // onRowCreated — called when createRow.onSuccess fires, swaps tempId → realId in page store
-  const onRowCreatedFnRef = useRef<(tempId: number, realRowId: number) => void>(() => undefined);
+  // onRowCreated — called when createRow/duplicateRow.onSuccess fires, swaps tempId → realId in page store
+  const onRowCreatedFnRef = useRef<(tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void>(() => undefined);
   const onRowCreated = useCallback(
-    (tempId: number, realRowId: number) => { onRowCreatedFnRef.current(tempId, realRowId); },
+    (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => { onRowCreatedFnRef.current(tempId, realRowId, cells); },
     [],
   );
   const registerOnRowCreated = useCallback(
-    (fn: (tempId: number, realRowId: number) => void) => { onRowCreatedFnRef.current = fn; },
+    (fn: (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void) => { onRowCreatedFnRef.current = fn; },
     [],
   );
 
@@ -190,8 +206,10 @@ export function BaseProvider({
       registerRefetchRows,
       optimisticAddRow,
       optimisticDeleteRow,
+      optimisticInsertRowNear,
       registerOptimisticAddRow,
       registerOptimisticDeleteRow,
+      registerOptimisticInsertRowNear,
       onRowCreated,
       registerOnRowCreated,
       notifyRowIdSwap,

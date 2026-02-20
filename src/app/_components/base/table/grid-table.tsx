@@ -508,6 +508,34 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
+        {/* Bulk-action bar — visible when rows are checked */}
+        {selectedRowIds.size > 0 && (
+          <div className="flex shrink-0 items-center justify-between border-b border-blue-200 bg-blue-50 px-4 py-1.5">
+            <span className="text-xs font-medium text-blue-700">
+              {selectedRowIds.size} {selectedRowIds.size === 1 ? "record" : "records"} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setRowSelection({})}
+                className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-100"
+              >
+                Deselect all
+              </button>
+              <button
+                onClick={() => {
+                  const ids = [...selectedRowIds].map(Number).filter((n) => !isNaN(n) && n > 0);
+                  if (ids.length > 0) {
+                    rowMutations.handleBulkDeleteRow(ids);
+                    setRowSelection({});
+                  }
+                }}
+                className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+              >
+                Delete {selectedRowIds.size} {selectedRowIds.size === 1 ? "record" : "records"}
+              </button>
+            </div>
+          </div>
+        )}
         <div
           ref={parentRef}
           className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"

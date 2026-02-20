@@ -34,14 +34,16 @@ interface ColumnContextMenuProps {
   onRename: (columnId: number) => void;
   onInsertLeft: (columnId: number) => void;
   onInsertRight: (columnId: number) => void;
+  onDuplicate: (columnId: number) => void;
 }
 
 export function ColumnContextMenu({
   column,
   viewConfig,
-  onRename,
+  onRename: _onRename,
   onInsertLeft,
   onInsertRight,
+  onDuplicate,
 }: ColumnContextMenuProps) {
   const {
     openModal,
@@ -162,7 +164,7 @@ export function ColumnContextMenu({
         label="Duplicate field"
         icon={<DuplicateIcon className="h-4 w-4" />}
         onClick={() => {
-          onRename(column.id);
+          onDuplicate(column.id);
           setContextMenu(null);
         }}
       />
