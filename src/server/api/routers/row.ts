@@ -36,38 +36,59 @@ export const rowRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(
-        async (tx) => {
-          // Verify ownership
-          await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
+      // Verify ownership and fetch columns outside the transaction to minimise
+      // lock hold time. Column list is also needed for index management.
+      await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
+      const columns = await ctx.db.column.findMany({
+        where: { tableId: input.tableId },
+        orderBy: { order: "asc" },
+      });
 
-          const sqlStart = Date.now();
-          let count: number;
-
-          if (input.seed) {
-            const columns = await tx.column.findMany({
-              where: { tableId: input.tableId },
-              orderBy: { order: "asc" },
-            });
-
-            // Single generate_series INSERT with DB-side random data
-            count = await bulkCreateRows(tx, input.tableId, input.count, {
-              generateVariedData: true,
-              columnIds: columns.map((c) => c.id),
-              columnTypes: columns.map((c) => c.type),
-            });
-          } else {
-            // Single generate_series INSERT with empty cells
-            count = await bulkCreateRows(tx, input.tableId, input.count);
-          }
-
-          return { count, sqlMs: Date.now() - sqlStart };
-        },
-        {
-          maxWait: 60000,
-          timeout: 120000,
-        },
+      // Drop per-column trgm GIN indexes before bulk insert so PostgreSQL does
+      // not maintain them on every inserted row (~3–5x speedup for seeded data).
+      // Non-CONCURRENTLY is intentional: drops are instant and we want them
+      // done before the long-running insert begins.
+      await Promise.all(
+        columns.map((c) =>
+          ctx.db.$executeRawUnsafe(
+            `DROP INDEX IF EXISTS "idx_row_cells_col${c.id}_trgm"`,
+          ),
+        ),
       );
+
+      try {
+        const result = await ctx.db.$transaction(
+          async (tx) => {
+            const sqlStart = Date.now();
+            const count = input.seed
+              ? await bulkCreateRows(tx, input.tableId, input.count, {
+                  generateVariedData: true,
+                  columnIds: columns.map((c) => c.id),
+                  columnTypes: columns.map((c) => c.type),
+                })
+              : await bulkCreateRows(tx, input.tableId, input.count);
+            return { count, sqlMs: Date.now() - sqlStart };
+          },
+          { maxWait: 60000, timeout: 120000 },
+        );
+        return result;
+      } finally {
+        // Recreate trgm indexes concurrently after insert (non-blocking; fire-and-forget).
+        // CONCURRENTLY avoids taking an AccessExclusiveLock while reading users resume.
+        void Promise.all(
+          columns.map((c) =>
+            ctx.db
+              .$executeRawUnsafe(
+                `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_row_cells_col${c.id}_trgm"` +
+                  ` ON "Row" USING GIN ((cells->>'${c.id}') gin_trgm_ops)` +
+                  ` WHERE "tableId" = ${input.tableId}`,
+              )
+              .catch(() => {
+                /* ignore — another concurrent request may have rebuilt it already */
+              }),
+          ),
+        );
+      }
     }),
 
   // Get rows with cursor-based or offset-based pagination (optimized for 1M rows)
