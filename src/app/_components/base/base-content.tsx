@@ -139,6 +139,7 @@ export function BaseContent({
       filterGroupLogic: cfg.filterGroupLogic ?? "AND",
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
+      columnOrder: cfg.columnOrder,
     };
   }, [viewQuery.data?.config]);
 
@@ -432,17 +433,66 @@ export function BaseContent({
     }));
   }, [tableQuery.data]);
 
-  // Filter out hidden columns
+  // Filter out hidden columns and apply per-view column order when set
   const visibleColumns = useMemo(() => {
     const hiddenSet = new Set(viewConfig.hiddenColumns ?? []);
-    return allColumns.filter((c) => !hiddenSet.has(c.id));
-  }, [allColumns, viewConfig.hiddenColumns]);
+    const filtered = allColumns.filter((c) => !hiddenSet.has(c.id));
+
+    const colOrder = viewConfig.columnOrder;
+    if (!colOrder?.length) return filtered;
+
+    // Sort by the view's column order; columns not in the list go to the end
+    const orderMap = new Map(colOrder.map((id, idx) => [id, idx]));
+    return [...filtered].sort((a, b) => {
+      const ai = orderMap.get(a.id) ?? Infinity;
+      const bi = orderMap.get(b.id) ?? Infinity;
+      return ai - bi;
+    });
+  }, [allColumns, viewConfig.hiddenColumns, viewConfig.columnOrder]);
 
   const columnMutations = useColumnMutations(activeTableId);
 
+  // --- Per-view column ordering ---
+  const updateViewConfigMutation = api.view.update.useMutation({
+    onSuccess: () => {
+      if (activeViewId) void utils.view.getById.invalidate({ id: activeViewId });
+    },
+  });
+
+  const handleReorderColumns = useCallback(
+    (newOrder: number[]) => {
+      if (!activeViewId) return;
+      updateViewConfigMutation.mutate({
+        id: activeViewId,
+        config: { ...viewConfig, columnOrder: newOrder },
+      });
+    },
+    [activeViewId, viewConfig, updateViewConfigMutation],
+  );
+
   // --- Cells ---
+  // Tracks the start time of each in-flight cell update, keyed by "rowId:colId".
+  const cellUpdateStartRef = useRef<Map<string, number>>(new Map());
+
   const updateCell = api.cell.update.useMutation({
-    onSuccess: (_, variables) => {
+    onMutate: (variables) => {
+      cellUpdateStartRef.current.set(
+        `${variables.rowId}:${variables.columnId}`,
+        Date.now(),
+      );
+    },
+    onSuccess: (data, variables) => {
+      // Log to performance panel
+      const key = `${variables.rowId}:${variables.columnId}`;
+      const startTime = cellUpdateStartRef.current.get(key);
+      cellUpdateStartRef.current.delete(key);
+      pushQueryEntry({
+        path: "cell.update",
+        label: `row=${variables.rowId} col=${variables.columnId}`,
+        sqlMs: data.sqlMs,
+        totalMs: startTime !== undefined ? Date.now() - startTime : 0,
+      });
+
       // Update the cell in the page store directly — avoids a full page refetch
       // and keeps the displayed value consistent after the user scrolls away and back.
       const colKey = String(variables.columnId);
@@ -601,9 +651,23 @@ export function BaseContent({
     { enabled: !!activeTableId && searchQuery.length > 0 },
   );
 
+  // Log search queries to the performance panel whenever results arrive
+  useEffect(() => {
+    if (!searchResultsQuery.data) return;
+    pushQueryEntry({
+      path: "cell.search",
+      label: `query="${searchQuery}"`,
+      sqlMs: searchResultsQuery.data.sqlMs,
+      totalMs: 0,
+      rowCount: searchResultsQuery.data.rows.length,
+    });
+    // Intentionally only re-run when data reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchResultsQuery.data]);
+
   const searchGridRows = useMemo<GridRow[] | null>(() => {
     if (!searchQuery || !searchResultsQuery.data) return null;
-    return searchResultsQuery.data.map((row) => ({
+    return searchResultsQuery.data.rows.map((row) => ({
       id: row.id,
       cells: row.cells as Record<string, string | number | null>,
     }));
@@ -815,6 +879,7 @@ export function BaseContent({
               rows={gridRows}
               onCellUpdate={handleCellUpdate}
               onReorderRow={handleReorderRow}
+              onReorderColumns={handleReorderColumns}
               onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}

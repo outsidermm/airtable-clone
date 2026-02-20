@@ -75,13 +75,24 @@ export function SearchDropdown({
     { enabled: debouncedQuery.length > 0 },
   );
 
-  // Use the pre-processed cell locations returned by the server — no client re-filtering needed
-  const matchingCells = useMemo(
-    () =>
-      (searchResults.data as { matchingCells: Array<{ rowId: number; columnId: number }> } | undefined)
-        ?.matchingCells ?? [],
-    [searchResults.data],
-  );
+  // Derive matching cell locations from returned rows: each cell whose extracted
+  // text contains the query (checked client-side since the server returns full rows).
+  const matchingCells = useMemo(() => {
+    const rows = searchResults.data?.rows;
+    if (!rows || !debouncedQuery) return [];
+    const lower = debouncedQuery.toLowerCase();
+    const result: Array<{ rowId: number; columnId: number }> = [];
+    for (const row of rows) {
+      const cells = row.cells as Record<string, unknown>;
+      for (const [colId, val] of Object.entries(cells)) {
+        const strVal = typeof val === "string" ? val : typeof val === "number" ? String(val) : "";
+        if (strVal.toLowerCase().includes(lower)) {
+          result.push({ rowId: row.id, columnId: Number(colId) });
+        }
+      }
+    }
+    return result;
+  }, [searchResults.data, debouncedQuery]);
 
   // Build highlight map from results and sync to context
   useEffect(() => {

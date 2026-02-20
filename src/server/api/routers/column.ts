@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { LexoRank } from "lexorank";
 import { ColumnType } from "generated/prisma/enums";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -23,7 +22,7 @@ export const columnRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
+      const newColumn = await ctx.db.$transaction(async (tx) => {
         // Verify table ownership
         await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
 
@@ -51,6 +50,23 @@ export const columnRouter = createTRPCRouter({
           },
         });
       });
+
+      // Fire-and-forget: create a per-column pg_trgm expression index so that
+      // "contains" ILIKE '%pattern%' filters on this column use the trigram index.
+      // CONCURRENTLY avoids table locks; errors are swallowed (best-effort).
+      const colId = newColumn.id;
+      const tableId = newColumn.tableId;
+      void ctx.db
+        .$executeRawUnsafe(
+          `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_row_cells_col${colId}_trgm"` +
+          ` ON "Row" USING GIN ((cells->>'${colId}') gin_trgm_ops)` +
+          ` WHERE "tableId" = ${tableId}`,
+        )
+        .catch(() => {
+          /* best-effort — query still works without index, just slower */
+        });
+
+      return newColumn;
     }),
 
   // Update column name and/or type
@@ -204,9 +220,10 @@ export const columnRouter = createTRPCRouter({
           where: { id: input.id },
         });
 
+        const colKey = String(input.id);
+
         // Lazy cleanup: strip the orphan key from all rows in the background.
         // This is fire-and-forget — orphan keys are harmless (frontend ignores them).
-        const colKey = String(input.id);
         void ctx.db.$executeRaw`
           UPDATE "Row"
           SET cells = cells - ${colKey}
@@ -214,6 +231,15 @@ export const columnRouter = createTRPCRouter({
         `.catch(() => {
           // Swallow errors — cleanup is best-effort
         });
+
+        // Drop per-column trgm index (fire-and-forget, CONCURRENTLY avoids table locks).
+        void ctx.db
+          .$executeRawUnsafe(
+            `DROP INDEX CONCURRENTLY IF EXISTS "idx_row_cells_col${input.id}_trgm"`,
+          )
+          .catch(() => {
+            /* best-effort */
+          });
 
         return deleted;
       });

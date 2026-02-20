@@ -19,7 +19,6 @@ import {
   NumberIcon,
   PlusIcon,
   QuestionIcon,
-  SearchIcon,
   TextIcon,
   TrashIcon,
 } from "~/app/_components/ui/icons";
@@ -30,7 +29,8 @@ import { SortableItem } from "./sortable-item";
 interface FilterDropdownProps {
   columns: GridColumn[];
   filters: FilterConfig[];
-  onUpdateFilters: (filters: FilterConfig[]) => void;
+  filterGroupLogic?: "AND" | "OR";
+  onUpdateFilters: (filters: FilterConfig[], filterGroupLogic: "AND" | "OR") => void;
   onClose: () => void;
 }
 
@@ -59,11 +59,14 @@ const NO_VALUE_OPERATORS = new Set(["is_empty", "is_not_empty"]);
 export function FilterDropdown({
   columns,
   filters,
+  filterGroupLogic = "AND",
   onUpdateFilters,
   onClose,
 }: FilterDropdownProps) {
   const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
-  const [conjunction, setConjunction] = useState<"and" | "or">("and");
+  const [conjunction, setConjunction] = useState<"and" | "or">(
+    filterGroupLogic === "OR" ? "or" : "and",
+  );
 
   const [openMenu, setOpenMenu] = useState<{
     index: number;
@@ -76,6 +79,9 @@ export function FilterDropdown({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  const conjunctionLogic = (c: "and" | "or"): "AND" | "OR" =>
+    c === "or" ? "OR" : "AND";
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -86,9 +92,9 @@ export function FilterDropdown({
 
       const updated = arrayMove(localFilters, oldIndex, newIndex);
       setLocalFilters(updated);
-      onUpdateFilters(updated);
+      onUpdateFilters(updated, conjunctionLogic(conjunction));
     },
-    [localFilters, onUpdateFilters],
+    [localFilters, onUpdateFilters, conjunction],
   );
 
   const addFilter = useCallback(() => {
@@ -101,11 +107,11 @@ export function FilterDropdown({
     };
     const updated = [...localFilters, newFilter];
     setLocalFilters(updated);
-    onUpdateFilters(updated);
+    onUpdateFilters(updated, conjunctionLogic(conjunction));
 
     // Automatically open the column picker for the new filter
     setOpenMenu({ index: updated.length - 1, type: "column" });
-  }, [columns, localFilters, onUpdateFilters]);
+  }, [columns, localFilters, onUpdateFilters, conjunction]);
 
   const updateFilter = useCallback(
     (index: number, patch: Partial<FilterConfig>) => {
@@ -113,10 +119,10 @@ export function FilterDropdown({
         i === index ? { ...f, ...patch } : f,
       );
       setLocalFilters(updated);
-      onUpdateFilters(updated);
+      onUpdateFilters(updated, conjunctionLogic(conjunction));
       setOpenMenu(null);
     },
-    [localFilters, onUpdateFilters],
+    [localFilters, onUpdateFilters, conjunction],
   );
 
   const updateFilterValue = useCallback(
@@ -127,19 +133,19 @@ export function FilterDropdown({
       setLocalFilters(updated);
       if (valueDebounceRef.current) clearTimeout(valueDebounceRef.current);
       valueDebounceRef.current = setTimeout(() => {
-        onUpdateFilters(updated);
+        onUpdateFilters(updated, conjunctionLogic(conjunction));
       }, 300);
     },
-    [localFilters, onUpdateFilters],
+    [localFilters, onUpdateFilters, conjunction],
   );
 
   const removeFilter = useCallback(
     (index: number) => {
       const updated = localFilters.filter((_, i) => i !== index);
       setLocalFilters(updated);
-      onUpdateFilters(updated);
+      onUpdateFilters(updated, conjunctionLogic(conjunction));
     },
-    [localFilters, onUpdateFilters],
+    [localFilters, onUpdateFilters, conjunction],
   );
 
   const getOperators = (col: GridColumn | undefined) => {
@@ -225,6 +231,7 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("and");
                                         setOpenMenu(null);
+                                        onUpdateFilters(localFilters, "AND");
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >
@@ -234,6 +241,7 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("or");
                                         setOpenMenu(null);
+                                        onUpdateFilters(localFilters, "OR");
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
+import { pushQueryEntry } from "~/lib/query-log";
 
 export function useRowMutations(activeTableId: number) {
   const { refetchRows, optimisticAddRow, optimisticDeleteRow, onRowCreated } = useBase();
@@ -8,7 +9,7 @@ export function useRowMutations(activeTableId: number) {
   const createRow = api.row.create.useMutation({
     onMutate: () => {
       // Show the new row immediately at the bottom of the table
-      return optimisticAddRow();
+      return { ...optimisticAddRow(), startTime: Date.now() };
     },
     onSuccess: (data, _vars, context) => {
       // Swap the temp ID for the real row ID and flush any pending cell edits
@@ -16,6 +17,12 @@ export function useRowMutations(activeTableId: number) {
       if (tempId !== undefined) {
         onRowCreated(tempId, data.id);
       }
+      pushQueryEntry({
+        path: "row.create",
+        label: `rowId=${data.id}`,
+        sqlMs: data.sqlMs,
+        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+      });
     },
     onError: (_err, _vars, context) => {
       // Revert the optimistic row if the server rejected the mutation
@@ -36,7 +43,15 @@ export function useRowMutations(activeTableId: number) {
   const deleteRow = api.row.delete.useMutation({
     onMutate: ({ id }) => {
       // Remove the row immediately so the user sees instant feedback
-      return optimisticDeleteRow(id);
+      return { ...optimisticDeleteRow(id), startTime: Date.now() };
+    },
+    onSuccess: (data, _vars, context) => {
+      pushQueryEntry({
+        path: "row.delete",
+        label: `rowId=${data.id}`,
+        sqlMs: data.sqlMs,
+        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+      });
     },
     onError: (_err, _vars, context) => {
       // Restore the row if the server rejected the deletion

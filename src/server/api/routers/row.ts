@@ -16,13 +16,14 @@ export const rowRouter = createTRPCRouter({
       // Verify ownership
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
-      // Create row with empty cells
-      return ctx.db.row.create({
+      const sqlStart = Date.now();
+      const row = await ctx.db.row.create({
         data: {
           tableId: input.tableId,
           cells: {},
         },
       });
+      return { ...row, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk create rows (optimized for 100k+ rows)
@@ -40,26 +41,27 @@ export const rowRouter = createTRPCRouter({
           // Verify ownership
           await verifyTableOwnership(tx, input.tableId, ctx.session.user.id);
 
-          // Get table columns for seeding
-          let rowIds: number[];
+          const sqlStart = Date.now();
+          let count: number;
+
           if (input.seed) {
             const columns = await tx.column.findMany({
               where: { tableId: input.tableId },
               orderBy: { order: "asc" },
             });
 
-            // Bulk create with varied seeded data
-            rowIds = await bulkCreateRows(tx, input.tableId, input.count, {
+            // Single generate_series INSERT with DB-side random data
+            count = await bulkCreateRows(tx, input.tableId, input.count, {
               generateVariedData: true,
-              columnIds: columns.map(c => c.id),
-              columnTypes: columns.map(c => c.type),
+              columnIds: columns.map((c) => c.id),
+              columnTypes: columns.map((c) => c.type),
             });
           } else {
-            // Bulk create with empty cells
-            rowIds = await bulkCreateRows(tx, input.tableId, input.count);
+            // Single generate_series INSERT with empty cells
+            count = await bulkCreateRows(tx, input.tableId, input.count);
           }
 
-          return { count: rowIds.length, rowIds };
+          return { count, sqlMs: Date.now() - sqlStart };
         },
         {
           maxWait: 60000,
@@ -150,6 +152,8 @@ export const rowRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
+      const sqlStart = Date.now();
+
       // Get row with ownership verification
       const row = await ctx.db.row.findUnique({
         where: { id: input.id },
@@ -168,9 +172,10 @@ export const rowRouter = createTRPCRouter({
         throw new Error("Access denied");
       }
 
-      return ctx.db.row.delete({
+      const deleted = await ctx.db.row.delete({
         where: { id: input.id },
       });
+      return { ...deleted, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk delete rows

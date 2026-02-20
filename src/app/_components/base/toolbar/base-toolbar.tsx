@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { pushQueryEntry } from "~/lib/query-log";
 import type { GridColumn } from "~/types/grid";
 import type {
   ViewConfig,
@@ -81,13 +82,22 @@ export function BaseToolbar({
   );
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const seedStartRef = useRef(0);
 
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
       setIsSeeding(true);
+      seedStartRef.current = Date.now();
     },
     onSuccess: (data) => {
       setIsSeeding(false);
+      pushQueryEntry({
+        path: "row.bulkCreate",
+        label: `count=${data.count.toLocaleString()}`,
+        sqlMs: data.sqlMs,
+        totalMs: Date.now() - seedStartRef.current,
+        rowCount: data.count,
+      });
       refetchRows();
       alert(`Successfully created ${data.count.toLocaleString()} rows!`);
     },
@@ -370,6 +380,7 @@ export function BaseToolbar({
             <FilterDropdown
               columns={columns}
               filters={viewConfig.filters ?? []}
+              filterGroupLogic={viewConfig.filterGroupLogic ?? "AND"}
               onUpdateFilters={handleUpdateFilters}
               onClose={closeDropdown}
             />

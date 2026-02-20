@@ -25,6 +25,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { GridColumn, GridRow } from "~/types/grid";
@@ -47,7 +48,6 @@ import type { CellAddress } from "~/types/cell";
 import type { GridTableHandle } from "~/types/table";
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
-import { useColumnMutations } from "../../hooks/use-column-mutations";
 import { PAGE_SIZE } from "../constants";
 
 interface GridTableProps {
@@ -56,6 +56,9 @@ interface GridTableProps {
   rows: (GridRow | null)[];
   onCellUpdate: (rowId: number, columnId: number, value: string) => void;
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
+  // Called when the user drags a column header to a new position.
+  // Receives the new ordered array of all column IDs (including primary).
+  onReorderColumns?: (newOrder: number[]) => void;
   onRequestPage: (pageIndex: number) => void;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
@@ -68,6 +71,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       rows,
       onCellUpdate,
       onReorderRow,
+      onReorderColumns,
       onRequestPage,
       sorts = [],
       rowHeight = "short",
@@ -76,7 +80,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
   ) {
     const { activeTableId, registerRowIdSwapListener, registerColumnIdSwapListener } = useBase();
     const rowMutations = useRowMutations(activeTableId);
-    const columnMutations = useColumnMutations(activeTableId);
 
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
     const parentRef = useRef<HTMLDivElement>(null);
@@ -435,26 +438,16 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         const overStr = String(over.id);
 
         if (activeStr.startsWith("col-") && overStr.startsWith("col-")) {
-          const activeId = Number(activeStr.replace("col-", ""));
-          const overId = Number(overStr.replace("col-", ""));
-          const all = columns;
-          const oldIdx = all.findIndex((c) => c.id === activeId);
-          const newIdx = all.findIndex((c) => c.id === overId);
-
-          if (newIdx === 0)
-            columnMutations.handleReorderColumn(activeId, null, all[0]!.id);
-          else if (oldIdx < newIdx)
-            columnMutations.handleReorderColumn(
-              activeId,
-              all[newIdx]!.id,
-              null,
-            );
-          else
-            columnMutations.handleReorderColumn(
-              activeId,
-              null,
-              all[newIdx]!.id,
-            );
+          if (onReorderColumns) {
+            const activeId = Number(activeStr.replace("col-", ""));
+            const overId = Number(overStr.replace("col-", ""));
+            const oldIdx = columns.findIndex((c) => c.id === activeId);
+            const newIdx = columns.findIndex((c) => c.id === overId);
+            if (oldIdx !== -1 && newIdx !== -1) {
+              const newOrderIds = arrayMove(columns.map((c) => c.id), oldIdx, newIdx);
+              onReorderColumns(newOrderIds);
+            }
+          }
         } else if (
           activeStr.startsWith("row-") &&
           overStr.startsWith("row-") &&
@@ -478,7 +471,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           }
         }
       },
-      [columns, nonNullRows, columnMutations, onReorderRow, selectedRowIds],
+      [columns, nonNullRows, onReorderColumns, onReorderRow, selectedRowIds],
     );
 
     // --- 9. Deselect when clicking outside ---

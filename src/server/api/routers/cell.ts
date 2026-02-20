@@ -13,6 +13,8 @@ export const cellRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const sqlStart = Date.now();
+
       // Verify ownership via row -> table -> base
       const row = await ctx.db.row.findUnique({
         where: { id: input.rowId },
@@ -67,7 +69,7 @@ export const cellRouter = createTRPCRouter({
         WHERE id = ${input.rowId}
       `;
 
-      return { rowId: input.rowId, columnId: input.columnId };
+      return { rowId: input.rowId, columnId: input.columnId, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk update cells (optimized for paste operations)
@@ -190,6 +192,7 @@ export const cellRouter = createTRPCRouter({
       }
 
       const searchPattern = `%${input.query}%`;
+      const sqlStart = Date.now();
 
       if (input.columnId) {
         // Search within a specific column key in JSONB
@@ -204,7 +207,7 @@ export const cellRouter = createTRPCRouter({
           ORDER BY id ASC
           LIMIT ${input.limit}
         `;
-        return rows;
+        return { rows, sqlMs: Date.now() - sqlStart };
       } else {
         // Search across all JSONB values
         const rows = await ctx.db.$queryRaw<
@@ -219,7 +222,7 @@ export const cellRouter = createTRPCRouter({
           ORDER BY r.id ASC
           LIMIT ${input.limit}
         `;
-        return rows;
+        return { rows, sqlMs: Date.now() - sqlStart };
       }
     }),
 });

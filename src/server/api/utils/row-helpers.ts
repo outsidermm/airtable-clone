@@ -1,4 +1,4 @@
-import { LexoRank } from "lexorank";
+import { faker } from "@faker-js/faker";
 import type { PrismaClient } from "../../../../generated/prisma/client";
 
 type PrismaTransaction = Omit<
@@ -6,149 +6,71 @@ type PrismaTransaction = Omit<
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
-/**
- * Calculate the LexoRank position for a row
- * Supports inserting before or after another row, or at the start/end
- */
-export async function calculateRowPosition(
-  tx: PrismaTransaction,
-  tableId: number,
-  options: {
-    afterRowId?: number | null;
-    beforeRowId?: number | null;
-  },
-): Promise<string> {
-  const { afterRowId, beforeRowId } = options;
-
-  // Can't specify both
-  if (afterRowId !== undefined && beforeRowId !== undefined) {
-    throw new Error("Cannot specify both afterRowId and beforeRowId");
-  }
-
-  // Handle beforeRowId
-  if (beforeRowId !== undefined && beforeRowId !== null) {
-    const beforeRow = await tx.row.findUnique({
-      where: { id: beforeRowId },
-    });
-
-    if (beforeRow?.tableId !== tableId) {
-      throw new Error("Invalid beforeRowId");
-    }
-
-    // Get the row that comes before the beforeRow — use id ordering since order column is removed
-    const prevRows = await tx.$queryRaw<Array<{ id: number }>>`
-      SELECT r2.id FROM "Row" r2
-      WHERE r2."tableId" = ${tableId} AND r2.id < ${beforeRowId}
-      ORDER BY r2.id DESC LIMIT 1
-    `;
-
-    if (prevRows.length > 0) {
-      // We don't have a LexoRank order anymore, so this path won't be used
-      // after migration. Keep for compatibility during transition.
-      return LexoRank.middle().toString();
-    } else {
-      return LexoRank.middle().genPrev().toString();
-    }
-  }
-
-  // Handle afterRowId or default behavior
-  if (afterRowId === null || afterRowId === undefined) {
-    // Insert at last position — no longer used for ordering
-    return LexoRank.middle().toString();
-  } else {
-    return LexoRank.middle().toString();
-  }
-}
+const BATCH_SIZE = 10_000;
 
 /**
- * Batch create multiple rows with empty cells JSON
- * Uses chunking for memory efficiency with large datasets
+ * Bulk-insert N rows using minimal round-trips.
+ *
+ * - Empty rows: single generate_series INSERT (one round-trip, fully DB-side)
+ * - Seeded rows: Faker.js generates data JS-side, passed as a JSONB array
+ *   and expanded with jsonb_array_elements (one round-trip per BATCH_SIZE rows)
+ *
+ * Returns the total number of rows inserted.
  */
 export async function bulkCreateRows(
   tx: PrismaTransaction,
   tableId: number,
   count: number,
   options: {
-    startingOrder?: string;
-    cellsJson?: Record<string, unknown>;
     generateVariedData?: boolean;
     columnIds?: number[];
     columnTypes?: string[];
   } = {},
-): Promise<number[]> {
-  const cellsJson = options.cellsJson ?? {};
-  const cellsJsonStr = JSON.stringify(cellsJson);
+): Promise<number> {
+  if (options.generateVariedData && options.columnIds?.length) {
+    let totalInserted = 0;
 
-  // Batch size for optimal performance with parameterized raw SQL
-  const PARAMS_PER_ROW = 2; // tableId, cells
-  const MAX_PG_PARAMS = 32767;
-  const batchSize = Math.floor(MAX_PG_PARAMS / PARAMS_PER_ROW);
+    for (let offset = 0; offset < count; offset += BATCH_SIZE) {
+      const batchSize = Math.min(BATCH_SIZE, count - offset);
 
-  const createdRowIds: number[] = [];
-
-  // Sample data for varied generation
-  const sampleTexts = [
-    "Sample", "Test", "Demo", "Example", "Data",
-    "Alpha", "Beta", "Gamma", "Delta", "Epsilon",
-    "Project", "Task", "Item", "Record", "Entry",
-    "Phase", "Stage", "Level", "Grade", "Score"
-  ];
-
-  for (let i = 0; i < count; i += batchSize) {
-    const currentBatchSize = Math.min(batchSize, count - i);
-
-    if (options.generateVariedData && options.columnIds && options.columnTypes) {
-      // Generate varied data for each row
-      const placeholders: string[] = [];
-      const params: (number | string)[] = [];
-
-      for (let idx = 0; idx < currentBatchSize; idx++) {
-        const offset = idx * PARAMS_PER_ROW;
-        placeholders.push(`($${offset + 1}, $${offset + 2}::jsonb, NOW())`);
-
-        // Generate unique data for this row
-        const rowData: Record<string, unknown> = {};
-        for (let colIdx = 0; colIdx < options.columnIds.length; colIdx++) {
-          const colId = String(options.columnIds[colIdx]);
-          const colType = options.columnTypes[colIdx];
-
-          if (colType === "NUMBER") {
-            rowData[colId] = Math.floor(Math.random() * 10000);
-          } else {
-            // TEXT type
-            const text = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
-            const number = (i + idx + 1);
-            rowData[colId] = `${text} ${number}`;
+      // Generate batchSize rows of realistic data with Faker.js
+      const rowsJson = JSON.stringify(
+        Array.from({ length: batchSize }, () => {
+          const cells: Record<string, string | number> = {};
+          for (let i = 0; i < options.columnIds!.length; i++) {
+            const colId = String(options.columnIds![i]!);
+            if (options.columnTypes![i] === "NUMBER") {
+              cells[colId] = faker.number.int({ min: 0, max: 9999 });
+            } else {
+              cells[colId] = faker.commerce.productName();
+            }
           }
-        }
-
-        params.push(tableId, JSON.stringify(rowData));
-      }
-
-      const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
-        `INSERT INTO "Row" ("tableId", "cells", "createdAt") VALUES ${placeholders.join(", ")} RETURNING "id"`,
-        ...params,
+          return cells;
+        }),
       );
-      createdRowIds.push(...rows.map((r) => r.id));
-    } else {
-      // Original implementation for non-varied data
-      const placeholders = Array.from({ length: currentBatchSize }, (_, idx) => {
-        const offset = idx * PARAMS_PER_ROW;
-        return `($${offset + 1}, $${offset + 2}::jsonb, NOW())`;
-      }).join(", ");
 
-      const params = Array.from({ length: currentBatchSize }).flatMap(() => [
+      // Pass the JSON array as a single parameter; PostgreSQL expands it with jsonb_array_elements.
+      // $1 = tableId (int), $2 = JSON array string (text cast to jsonb)
+      const affected = await tx.$executeRawUnsafe(
+        `INSERT INTO "Row" ("tableId", "cells", "createdAt")
+         SELECT $1::int, elem, NOW()
+         FROM jsonb_array_elements($2::jsonb) AS elem`,
         tableId,
-        cellsJsonStr,
-      ]);
-
-      const rows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
-        `INSERT INTO "Row" ("tableId", "cells", "createdAt") VALUES ${placeholders} RETURNING "id"`,
-        ...params,
+        rowsJson,
       );
-      createdRowIds.push(...rows.map((r) => r.id));
+      totalInserted += affected;
     }
+
+    return totalInserted;
   }
 
-  return createdRowIds;
+  // No seeding: insert N empty rows in a single generate_series query
+  const affected = await tx.$executeRawUnsafe(
+    `INSERT INTO "Row" ("tableId", "cells", "createdAt")
+     SELECT $1::int, '{}'::jsonb, NOW()
+     FROM generate_series(1, $2::int)`,
+    tableId,
+    count,
+  );
+  return affected;
 }
