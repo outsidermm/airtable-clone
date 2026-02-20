@@ -139,8 +139,6 @@ export function BaseToolbar({
     [viewConfig, viewMutations, activeViewId],
   );
 
-
-
   const handleUpdateRowHeight = useCallback(
     (rowHeight: RowHeightOption) => {
       if (!activeViewId) return;
@@ -161,7 +159,6 @@ export function BaseToolbar({
     },
     [activeTableId, bulkCreateMutation, isSeeding],
   );
-
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -452,7 +449,7 @@ export function BaseToolbar({
         {/* Share and sync */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ShareIcon className="h-3.5 w-3.5" />
-          Share and sync
+          <span className="hidden md:inline">Share and sync</span>
         </button>
 
         {/* Search */}
