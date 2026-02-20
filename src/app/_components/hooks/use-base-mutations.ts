@@ -25,10 +25,11 @@ export function useBaseMutations() {
         utils.base.getAll.setData(undefined, context.previousBases);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, vars) => {
       // Refetch to ensure consistency
       void utils.base.getAll.invalidate();
       void utils.base.getStarred.invalidate();
+      void utils.base.getById.invalidate({ id: vars.id });
     },
   });
 
@@ -40,8 +41,9 @@ export function useBaseMutations() {
   );
 
   const renameBaseMutation = api.base.rename.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       void utils.base.getAll.invalidate();
+      void utils.base.getById.invalidate({ id: vars.id });
     },
   });
 

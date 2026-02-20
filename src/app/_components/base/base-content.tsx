@@ -75,6 +75,13 @@ export function BaseContent({
   const utils = api.useUtils();
   const toast = useToast();
 
+  // --- Base: keep live data for header (name, starred) ---
+  const baseQuery = api.base.getById.useQuery(
+    { id: baseId },
+    { initialData: base as never },
+  );
+  const liveBase = (baseQuery.data ?? base) as Base;
+
   // --- Tables ---
   const tablesQuery = api.table.getAllByBase.useQuery(
     { baseId },
@@ -843,7 +850,7 @@ export function BaseContent({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <BaseHeader base={base} tables={tables} />
+      <BaseHeader base={liveBase} tables={tables} />
 
       {/* Toolbar */}
       <BaseToolbar
