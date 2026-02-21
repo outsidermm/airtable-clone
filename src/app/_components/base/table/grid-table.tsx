@@ -116,10 +116,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       frozenExtraCount,
       Math.max(0, nonPrimaryColumns.length - 1),
     );
-    const frozenNonPrimary = useMemo(
-      () => nonPrimaryColumns.slice(0, clampedFrozenExtraCount),
-      [nonPrimaryColumns, clampedFrozenExtraCount],
-    );
     const scrollableColumns = useMemo(
       () => nonPrimaryColumns.slice(clampedFrozenExtraCount),
       [nonPrimaryColumns, clampedFrozenExtraCount],
