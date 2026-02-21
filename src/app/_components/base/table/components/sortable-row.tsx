@@ -45,6 +45,7 @@ interface SortableRowProps {
   // Stable React keys for temp/swapped columns — prevents GridCell remount on ID swap
   columnKeyMap: Map<number, string>;
   handleFrozenBorderDragStart: (e: React.MouseEvent) => void;
+  onContextMenu: (rowId: number, rowIndex: number, e: React.MouseEvent) => void;
 }
 
 export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
@@ -75,9 +76,10 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     showLastRowTooltip,
     columnKeyMap,
     handleFrozenBorderDragStart,
+    onContextMenu,
   } = props;
 
-  const {highlightedCells, activeSearchCell, searchQuery, setContextMenu} = useBase();
+  const {highlightedCells, activeSearchCell, searchQuery} = useBase();
 
   const {
     attributes,
@@ -147,10 +149,11 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
       style={style}
       onMouseEnter={() => setHoveredRowId(rowId)}
       onMouseLeave={() => setHoveredRowId(null)}
+      onContextMenu={(e) => onContextMenu(rowId, virtualIndex, e)}
     >
       {/* === FROZEN SECTION === */}
       <div
-        className={`relative sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
+        className={`relative left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
           borderRight: "2px solid rgb(209, 213, 219)",
@@ -160,14 +163,6 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         <div
           className="group flex items-center"
           style={{ width: CHECKBOX_WIDTH }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenu?.({
-              type: "record",
-              position: { x: e.clientX, y: e.clientY },
-              data: { rowId, rowIndex: virtualIndex },
-            });
-          }}
         >
           {isRowSelected ? (
             /* Selected State: Drag Handle + Checked Box */

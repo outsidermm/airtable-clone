@@ -79,6 +79,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       activeTableId,
       registerRowIdSwapListener,
       registerColumnIdSwapListener,
+      setContextMenu,
     } = useBase();
     const rowMutations = useRowMutations(activeTableId);
 
@@ -96,6 +97,11 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
     const [frozenExtraCount, setFrozenExtraCount] = useState(0);
     const freezeOverlayRef = useRef<HTMLDivElement>(null);
+
+    const isDraggingFreezeRef = useRef(false);
+    const [freezeLineHoverY, setFreezeLineHoverY] = useState<number | null>(
+      null,
+    );
 
     // --- 2. Derived State ---
     const primaryColumn = useMemo(
@@ -136,6 +142,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       selectedCell,
       setSelectedCell,
       selectedCells,
+      selectedRowIdsFromCells,
       handleMouseDown,
       handleMouseEnter,
       isSelecting,
@@ -152,6 +159,43 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       setEditingCell,
       setShowLastRowTooltip,
     });
+
+    // --- Stable Context Menu Ref ---
+    const selectedRowIdsRef = useRef(selectedRowIds);
+    const selectedRowIdsFromCellsRef = useRef(selectedRowIdsFromCells);
+
+    useEffect(() => {
+      selectedRowIdsRef.current = selectedRowIds;
+      selectedRowIdsFromCellsRef.current = selectedRowIdsFromCells;
+    }, [selectedRowIds, selectedRowIdsFromCells]);
+
+    const handleRowContextMenu = useCallback(
+      (rowId: number, rowIndex: number, e: React.MouseEvent) => {
+        e.preventDefault();
+
+        const currentCheckboxSelected = selectedRowIdsRef.current;
+        const currentCellRowSelected = selectedRowIdsFromCellsRef.current;
+
+        let ids: number[] = [rowId];
+
+        if (currentCheckboxSelected.has(String(rowId))) {
+          // If row is part of a checkbox selection
+          ids = [...currentCheckboxSelected]
+            .map(Number)
+            .filter((n) => !isNaN(n));
+        } else if (currentCellRowSelected.has(rowId)) {
+          // If row is part of a cell multi-selection
+          ids = Array.from(currentCellRowSelected);
+        }
+
+        setContextMenu({
+          type: "record",
+          position: { x: e.clientX, y: e.clientY },
+          data: { rowId, rowIndex, selectedRowIds: ids },
+        });
+      },
+      [setContextMenu],
+    );
 
     // --- 4. Stable key map for optimistic rows ---
     const stableKeyMapRef = useRef<Map<number, string>>(new Map());
@@ -170,7 +214,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
         );
       },
-      [setSelectedCell],
+      [setSelectedCell, setEditingCell],
     );
 
     useEffect(() => {
@@ -194,7 +238,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
         );
       },
-      [setSelectedCell],
+      [setSelectedCell, setEditingCell],
     );
 
     useEffect(() => {
@@ -458,6 +502,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       (e: React.MouseEvent) => {
         e.preventDefault();
 
+        isDraggingFreezeRef.current = true;
+        setFreezeLineHoverY(null);
+
         const overlay = freezeOverlayRef.current;
         if (overlay && parentRef.current) {
           const containerRect = parentRef.current.getBoundingClientRect();
@@ -494,6 +541,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         };
 
         const handleMouseUp = () => {
+          isDraggingFreezeRef.current = false;
           if (freezeOverlayRef.current) {
             freezeOverlayRef.current.style.display = "none";
           }
@@ -591,237 +639,243 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        {selectedRowIds.size > 0 && (
-          <div className="flex shrink-0 items-center justify-between border-b border-blue-200 bg-blue-50 px-4 py-1.5">
-            <span className="text-xs font-medium text-blue-700">
-              {selectedRowIds.size}{" "}
-              {selectedRowIds.size === 1 ? "record" : "records"} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setRowSelection({})}
-                className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-100"
-              >
-                Deselect all
-              </button>
-              <button
-                onClick={() => {
-                  const ids = [...selectedRowIds]
-                    .map(Number)
-                    .filter((n) => !isNaN(n) && n > 0);
-                  if (ids.length > 0) {
-                    rowMutations.handleBulkDeleteRow(ids);
-                    setRowSelection({});
-                  }
-                }}
-                className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-              >
-                Delete {selectedRowIds.size}{" "}
-                {selectedRowIds.size === 1 ? "record" : "records"}
-              </button>
-            </div>
-          </div>
-        )}
-        <div
-          ref={parentRef}
-          className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
-        >
+        {/* Added wrapper for the overlay */}
+        <div className="relative flex flex-1 overflow-hidden">
           <div
-            className="flex min-h-full flex-col"
-            style={{ minWidth: "fit-content" }}
+            ref={parentRef}
+            className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
           >
-            <GridHeader
-              frozenWidth={frozenWidth}
-              totalScrollableWidth={totalScrollableWidth}
-              primaryColumn={primaryColumn}
-              nonPrimaryColumns={nonPrimaryColumns}
-              frozenNonPrimaryCount={clampedFrozenExtraCount}
-              primaryColumnWidth={primaryColumnWidth}
-              handlePrimaryResizeStart={handlePrimaryResizeStart}
-              handleFrozenBorderDragStart={handleFrozenBorderDragStart}
-              isAllSelected={table.getIsAllRowsSelected()}
-              onToggleAllSelected={table.getToggleAllRowsSelectedHandler()}
-              sorts={sorts}
-              columnOrder={columnOrder}
-              sensors={sensors}
-              handleDragEnd={handleDragEnd}
-              headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
-            />
-
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={rowOrder}
-                strategy={verticalListSortingStrategy}
-              >
-                <div
-                  style={{
-                    height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
-                    position: "relative",
-                    minWidth: "fit-content",
-                  }}
-                >
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const rowData = rows[virtualRow.index];
-
-                    if (!rowData) {
-                      return (
-                        <div
-                          key={`placeholder-${virtualRow.index}`}
-                          className="absolute flex w-full border-b border-gray-200 bg-white"
-                          style={{
-                            top: virtualRow.start * scrollScaleRef.current,
-                            height: currentRowHeight,
-                            minWidth: "fit-content",
-                          }}
-                        >
-                          <div
-                            className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
-                            style={{ width: frozenWidth }}
-                          >
-                            <div className="flex h-full w-8.5 items-center justify-center">
-                              <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
-                            </div>
-                            <div className="flex-1 px-2">
-                              <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
-                            </div>
-                          </div>
-                          <div
-                            className="flex"
-                            style={{ width: totalScrollableWidth }}
-                          >
-                            {nonPrimaryColumns.map((col) => (
-                              <div
-                                key={col.id}
-                                className="flex items-center border-r border-gray-200 px-2"
-                                style={{
-                                  width:
-                                    columnSizing[String(col.id)] ?? col.width,
-                                }}
-                              >
-                                <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    const tableRow = tableRowById.get(rowData.id);
-                    if (!tableRow) return null;
-
-                    const selectedColumnId =
-                      selectedCell?.rowId === rowData.id
-                        ? selectedCell.columnId
-                        : null;
-                    const editingColumnId =
-                      editingCell?.rowId === rowData.id
-                        ? editingCell.columnId
-                        : null;
-                    const multiSelectColumnIds = isMultiSelect
-                      ? (rowToSelectedColumns.get(rowData.id) ?? null)
-                      : null;
-
-                    if (rowData.id < 0) {
-                      if (!stableKeyMapRef.current.has(rowData.id)) {
-                        stableKeyMapRef.current.set(
-                          rowData.id,
-                          `temp-${rowData.id}`,
-                        );
-                      }
-                    }
-                    const rowKey =
-                      rowData.id < 0
-                        ? stableKeyMapRef.current.get(rowData.id)!
-                        : (stableKeyMapRef.current.get(rowData.id) ??
-                          tableRow.id);
-
-                    return (
-                      <SortableRow
-                        key={rowKey}
-                        rowId={rowData.id}
-                        virtualStart={virtualRow.start * scrollScaleRef.current}
-                        virtualIndex={virtualRow.index}
-                        currentRowHeight={currentRowHeight}
-                        isRowSelected={selectedRowIds.has(String(rowData.id))}
-                        rowBg={
-                          selectedRowIds.has(String(rowData.id))
-                            ? "bg-blue-50"
-                            : rowData.id === activeRowId ||
-                                rowData.id === hoveredRowId
-                              ? "bg-gray-50"
-                              : "bg-white"
-                        }
-                        rowData={rowData}
-                        row={tableRow}
-                        frozenWidth={frozenWidth}
-                        primaryColumn={primaryColumn}
-                        primaryColumnWidth={primaryColumnWidth}
-                        nonPrimaryColumns={nonPrimaryColumns}
-                        frozenNonPrimaryCount={clampedFrozenExtraCount}
-                        columnSizing={columnSizing}
-                        selectedColumnId={selectedColumnId}
-                        editingColumnId={editingColumnId}
-                        multiSelectColumnIds={multiSelectColumnIds}
-                        handleMouseDown={handleMouseDown}
-                        handleMouseEnter={handleMouseEnter}
-                        handleCellChange={handleCellChange}
-                        setEditingCell={setEditingCell}
-                        setHoveredRowId={setHoveredRowId}
-                        totalScrollableWidth={totalScrollableWidth}
-                        showLastRowTooltip={showLastRowTooltip}
-                        columnKeyMap={columnKeyMap}
-                        handleFrozenBorderDragStart={
-                          handleFrozenBorderDragStart
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </SortableContext>
-            </DndContext>
-
             <div
-              className="flex shrink-0 bg-gray-100"
+              className="flex min-h-full flex-col"
               style={{ minWidth: "fit-content" }}
             >
-              <div
-                className="sticky left-0 z-10 flex border-b border-gray-200 bg-white"
-                style={{
-                  width: frozenWidth,
-                  height: HEADER_HEIGHT,
-                  borderRight: "2px solid rgb(209, 213, 219)",
-                }}
-              >
-                <button
-                  onClick={rowMutations.handleAddRow}
-                  className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                </button>
-              </div>
-              <div
-                className="flex border-r border-b border-gray-200 bg-white"
-                style={{ width: totalScrollableWidth }}
+              <GridHeader
+                frozenWidth={frozenWidth}
+                totalScrollableWidth={totalScrollableWidth}
+                primaryColumn={primaryColumn}
+                nonPrimaryColumns={nonPrimaryColumns}
+                frozenNonPrimaryCount={clampedFrozenExtraCount}
+                primaryColumnWidth={primaryColumnWidth}
+                handlePrimaryResizeStart={handlePrimaryResizeStart}
+                isAllSelected={table.getIsAllRowsSelected()}
+                onToggleAllSelected={table.getToggleAllRowsSelectedHandler()}
+                sorts={sorts}
+                columnOrder={columnOrder}
+                sensors={sensors}
+                handleDragEnd={handleDragEnd}
+                headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
               />
-            </div>
 
-            <div
-              className="flex flex-1 bg-gray-100"
-              style={{ minWidth: "fit-content", minHeight: 0 }}
-            >
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={rowOrder}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div
+                    style={{
+                      height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
+                      position: "relative",
+                      minWidth: "fit-content",
+                    }}
+                  >
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const rowData = rows[virtualRow.index];
+
+                      if (!rowData) {
+                        return (
+                          <div
+                            key={`placeholder-${virtualRow.index}`}
+                            className="absolute flex w-full border-b border-gray-200 bg-white"
+                            style={{
+                              top: virtualRow.start * scrollScaleRef.current,
+                              height: currentRowHeight,
+                              minWidth: "fit-content",
+                            }}
+                          >
+                            <div
+                              className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
+                              style={{ width: frozenWidth }}
+                            >
+                              <div className="flex h-full w-8.5 items-center justify-center">
+                                <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
+                              </div>
+                              <div className="flex-1 px-2">
+                                <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
+                              </div>
+                            </div>
+                            <div
+                              className="flex"
+                              style={{ width: totalScrollableWidth }}
+                            >
+                              {nonPrimaryColumns.map((col) => (
+                                <div
+                                  key={col.id}
+                                  className="flex items-center border-r border-gray-200 px-2"
+                                  style={{
+                                    width:
+                                      columnSizing[String(col.id)] ?? col.width,
+                                  }}
+                                >
+                                  <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const tableRow = tableRowById.get(rowData.id);
+                      if (!tableRow) return null;
+
+                      const selectedColumnId =
+                        selectedCell?.rowId === rowData.id
+                          ? selectedCell.columnId
+                          : null;
+                      const editingColumnId =
+                        editingCell?.rowId === rowData.id
+                          ? editingCell.columnId
+                          : null;
+                      const multiSelectColumnIds = isMultiSelect
+                        ? (rowToSelectedColumns.get(rowData.id) ?? null)
+                        : null;
+
+                      if (rowData.id < 0) {
+                        if (!stableKeyMapRef.current.has(rowData.id)) {
+                          stableKeyMapRef.current.set(
+                            rowData.id,
+                            `temp-${rowData.id}`,
+                          );
+                        }
+                      }
+                      const rowKey =
+                        rowData.id < 0
+                          ? stableKeyMapRef.current.get(rowData.id)!
+                          : (stableKeyMapRef.current.get(rowData.id) ??
+                            tableRow.id);
+
+                      return (
+                        <SortableRow
+                          key={rowKey}
+                          rowId={rowData.id}
+                          virtualStart={
+                            virtualRow.start * scrollScaleRef.current
+                          }
+                          virtualIndex={virtualRow.index}
+                          currentRowHeight={currentRowHeight}
+                          isRowSelected={selectedRowIds.has(String(rowData.id))}
+                          rowBg={
+                            selectedRowIds.has(String(rowData.id))
+                              ? "bg-blue-50"
+                              : rowData.id === activeRowId ||
+                                  rowData.id === hoveredRowId
+                                ? "bg-gray-50"
+                                : "bg-white"
+                          }
+                          rowData={rowData}
+                          row={tableRow}
+                          frozenWidth={frozenWidth}
+                          primaryColumn={primaryColumn}
+                          primaryColumnWidth={primaryColumnWidth}
+                          nonPrimaryColumns={nonPrimaryColumns}
+                          frozenNonPrimaryCount={clampedFrozenExtraCount}
+                          columnSizing={columnSizing}
+                          selectedColumnId={selectedColumnId}
+                          editingColumnId={editingColumnId}
+                          multiSelectColumnIds={multiSelectColumnIds}
+                          handleMouseDown={handleMouseDown}
+                          handleMouseEnter={handleMouseEnter}
+                          handleCellChange={handleCellChange}
+                          setEditingCell={setEditingCell}
+                          setHoveredRowId={setHoveredRowId}
+                          totalScrollableWidth={totalScrollableWidth}
+                          showLastRowTooltip={showLastRowTooltip}
+                          columnKeyMap={columnKeyMap}
+                          handleFrozenBorderDragStart={
+                            handleFrozenBorderDragStart
+                          }
+                          onContextMenu={handleRowContextMenu}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
+
               <div
-                className="sticky left-0"
-                style={{
-                  width: frozenWidth,
-                  borderRight: "2px solid rgb(209, 213, 219)",
-                }}
-              />
-              <div className="flex-1" />
+                className="flex shrink-0 bg-gray-100"
+                style={{ minWidth: "fit-content" }}
+              >
+                <div
+                  className="sticky left-0 z-10 flex border-b border-gray-200 bg-white"
+                  style={{
+                    width: frozenWidth,
+                    height: HEADER_HEIGHT,
+                    borderRight: "2px solid rgb(209, 213, 219)",
+                  }}
+                >
+                  <button
+                    onClick={rowMutations.handleAddRow}
+                    className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                <div
+                  className="flex border-r border-b border-gray-200 bg-white"
+                  style={{ width: totalScrollableWidth }}
+                />
+              </div>
+
+              <div
+                className="flex flex-1 bg-gray-100"
+                style={{ minWidth: "fit-content", minHeight: 0 }}
+              >
+                <div
+                  className="sticky left-0"
+                  style={{
+                    width: frozenWidth,
+                    borderRight: "2px solid rgb(209, 213, 219)",
+                  }}
+                />
+                <div className="flex-1" />
+              </div>
             </div>
+          </div>
+
+          {/* Global full-height overlay freeze drag handler, starting below the header row */}
+          <div
+            className="group absolute bottom-4 z-60 flex w-4 cursor-col-resize justify-center"
+            style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
+            onMouseDown={handleFrozenBorderDragStart}
+            onMouseMove={(e) => {
+              if (isDraggingFreezeRef.current) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              setFreezeLineHoverY(e.clientY - rect.top);
+            }}
+            onMouseLeave={() => setFreezeLineHoverY(null)}
+          >
+            {/* The visible hover line */}
+            <div className="h-full w-0.5 bg-transparent transition-colors group-hover:bg-gray-400" />
+
+            {/* The dot tracking cursor's Y-position */}
+            {freezeLineHoverY !== null && !isDraggingFreezeRef.current && (
+              <>
+                <div
+                  className="pointer-events-none absolute left-1/2 h-8 w-2 -translate-x-1/2 rounded-full bg-blue-500 shadow-sm"
+                  style={{ top: freezeLineHoverY - 6 }}
+                />
+                <div
+                  className="pointer-events-none absolute left-4 rounded border border-gray-600 bg-white px-2 py-1 text-xs whitespace-nowrap text-gray-600 shadow transition-opacity"
+                  style={{ top: freezeLineHoverY - 12 }}
+                >
+                  Drag to adjust the number of frozen columns
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -831,7 +885,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             position: "fixed",
             display: "none",
             width: 2,
-            backgroundColor: "#3b82f6",
+            backgroundColor: "#99a1af",
             zIndex: 1000,
             pointerEvents: "none",
           }}

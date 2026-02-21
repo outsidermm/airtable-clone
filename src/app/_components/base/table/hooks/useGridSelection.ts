@@ -51,9 +51,33 @@ export function useGridSelection(
     return result;
   }, [selectionStart, selectionEnd, selectedCell, rows, columns]);
 
+  // Extract unique row IDs from the current cell selection to use in Record actions
+  const selectedRowIdsFromCells = useMemo((): Set<number> => {
+    const result = new Set<number>();
+    if (!selectionStart || !selectionEnd) {
+      if (selectedCell) result.add(selectedCell.rowId);
+      return result;
+    }
+
+    const rowIds = rows.map((r) => r.id);
+    const r1 = rowIds.indexOf(selectionStart.rowId);
+    const r2 = rowIds.indexOf(selectionEnd.rowId);
+
+    if (r1 !== -1 && r2 !== -1) {
+      const rMin = Math.min(r1, r2);
+      const rMax = Math.max(r1, r2);
+      for (let r = rMin; r <= rMax; r++) {
+        if (rowIds[r] !== undefined) {
+          result.add(rowIds[r]!);
+        }
+      }
+    }
+    return result;
+  }, [selectionStart, selectionEnd, selectedCell, rows]);
+
   const handleMouseDown = useCallback(
     (rowId: number, columnId: number, e: React.MouseEvent) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0) return; // Ignore right-clicks to preserve selection
       setSelectedCell({ rowId, columnId });
       setSelectionStart({ rowId, columnId });
       setSelectionEnd({ rowId, columnId });
@@ -93,6 +117,7 @@ export function useGridSelection(
     setSelectionEnd,
     isSelecting,
     selectedCells, // Pass this memoized set to rows
+    selectedRowIdsFromCells, // Pass this out so the context menu can use it
     handleMouseDown,
     handleMouseEnter,
     // Helper to determine if we are in multi-select mode

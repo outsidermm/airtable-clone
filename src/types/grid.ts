@@ -27,5 +27,6 @@ export interface ContextMenuState {
     rowId?: number;
     columnId?: number;
     rowIndex?: number;
+    selectedRowIds?: number[]
   };
 }

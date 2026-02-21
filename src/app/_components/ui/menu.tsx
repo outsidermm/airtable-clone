@@ -74,7 +74,6 @@ export function MenuItem({
     e.stopPropagation();
     if (disabled) return;
     if (onClick) onClick();
-    else setContextMenu(null); // Default behavior: close menu on click
     setContextMenu(null); // Close context menus on click
   };
 

@@ -16,6 +16,7 @@ import { AddTableModal } from "./modals/add-table-modal";
 import { AddColumnModal } from "./modals/add-column-modal";
 import { useTableMutations } from "../hooks/use-table-mutations";
 import { useColumnMutations } from "../hooks/use-column-mutations";
+import { useRowMutations } from "../hooks/use-row-mutations";
 import type { ViewConfig } from "~/server/api/routers/view";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { Base } from "~/types/base";
@@ -535,6 +536,7 @@ export function BaseContent({
   }, [allColumns, viewConfig.hiddenColumns, viewConfig.columnOrder]);
 
   const columnMutations = useColumnMutations(activeTableId);
+  const rowMutations = useRowMutations(activeTableId);
 
   const updateViewConfigMutation = api.view.update.useMutation({
     onSuccess: () => {
@@ -977,7 +979,9 @@ export function BaseContent({
           </div>
         </div>
       </div>
-      {contextMenu?.type === "record" && <RecordContextMenu />}
+      {contextMenu?.type === "record" && (
+        <RecordContextMenu rowMutations={rowMutations} />
+      )}
       {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
         <ColumnContextMenu
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}

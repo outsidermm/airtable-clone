@@ -2,7 +2,6 @@
 
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import type { CellAddress } from "~/types/cell";
-import { useBase } from "../../base-context";
 
 interface GridCellProps {
   rowId: number;
@@ -45,7 +44,6 @@ export const GridCell = memo(function GridCell({
   onChange,
   onBlur,
 }: GridCellProps) {
-  const { setContextMenu } = useBase();
   const [, startTransition] = useTransition();
 
   const displayValue = useMemo(() => {
@@ -94,14 +92,6 @@ export const GridCell = memo(function GridCell({
       style={{ width, minWidth: 80 }}
       onMouseDown={(e) => onMouseDown(rowId, columnId, e)}
       onMouseEnter={() => onMouseEnter(rowId, columnId)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setContextMenu({
-          type: "record",
-          position: { x: e.clientX, y: e.clientY },
-          data: { rowId, columnId, rowIndex },
-        });
-      }}
     >
       {cellBg === "bg-yellow-100" && searchQuery ? (
         <div className="w-full text-xs text-gray-900">
