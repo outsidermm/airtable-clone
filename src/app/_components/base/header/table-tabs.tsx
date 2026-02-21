@@ -26,10 +26,9 @@ import {
   PlusIcon,
   SearchIcon,
   CheckIcon,
-  SalesforceIcon,
 } from "../../ui/icons";
 import type { Table } from "~/types/table";
-import { MenuItem } from "../../ui/menu";
+import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
 
 interface TableTabsProps {
   base: Base;
@@ -301,112 +300,74 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                       className="text-sm!"
                     />
                     <MenuItem
-                      label="Salesforce"
-                      icon={<SalesforceIcon className="h-4 w-4" />}
+                      label="Manage fields"
+                      icon={<TextIcon className="h-4 w-4 text-gray-400" />}
+                      onClick={closeMenu}
                       rightElement={
-                        <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
+                        <MenuBadge variant="blue">
                           <TeamIcon className="h-2.5 w-2.5" />
-                          Business
-                        </span>
+                          Team
+                        </MenuBadge>
                       }
+                      className="text-sm!"
                     />
-                    <button
+                    <MenuItem
+                      label="Duplicate table"
+                      icon={<DuplicateIcon className="h-4 w-4 text-gray-400" />}
                       onClick={closeMenu}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <HideIcon className="h-4 w-4 text-gray-400" />
-                      Hide table
-                    </button>
-                    <button
+                      className="text-sm!"
+                    />
+                    <MenuDivider />
+                    <MenuItem
+                      label="Configure date dependencies"
+                      icon={<CalendarIcon className="h-4 w-4 text-gray-400" />}
                       onClick={closeMenu}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <TextIcon className="h-4 w-4 text-gray-400" />
-                        Manage fields
-                      </span>
-                      <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                        <TeamIcon className="h-2.5 w-2.5" />
-                        Team
-                      </span>
-                    </button>
-                    <button
+                      rightElement={
+                        <MenuBadge variant="blue">
+                          <TeamIcon className="h-2.5 w-2.5" />
+                          Team
+                        </MenuBadge>
+                      }
+                      className="text-sm!"
+                    />
+                    <MenuDivider />
+                    <MenuItem
+                      label="Edit table description"
+                      icon={<PencilIcon className="h-4 w-4 text-gray-400" />}
                       onClick={closeMenu}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <DuplicateIcon className="h-4 w-4 text-gray-400" />
-                      Duplicate table
-                    </button>
-                    <div className="my-1 border-t border-gray-100" />
-                    <button
+                      className="text-sm!"
+                    />
+                    <MenuItem
+                      label="Edit table permissions"
+                      icon={<LockIcon className="h-4 w-4 text-gray-400" />}
                       onClick={closeMenu}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <span className="flex flex-row items-center gap-2">
-                        <CalendarIcon className="h-4 w-4 text-gray-400" />
-                        Configure date dependencies
-                      </span>
-                      <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                        <TeamIcon className="h-2.5 w-2.5" />
-                        Team
-                      </span>
-                    </button>
-
-                    <div className="my-1 border-t border-gray-100" />
-
-                    <button
+                      rightElement={
+                        <MenuBadge variant="blue">
+                          <TeamIcon className="h-2.5 w-2.5" />
+                          Team
+                        </MenuBadge>
+                      }
+                      className="text-sm!"
+                    />
+                    <MenuDivider />
+                    <MenuItem
+                      label="Clear data"
+                      icon={<XIcon className="h-4 w-4 text-gray-400" />}
                       onClick={closeMenu}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <PencilIcon className="h-4 w-4 text-gray-400" />
-                      Edit table description
-                    </button>
-
-                    <button
-                      onClick={closeMenu}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <LockIcon className="h-4 w-4 text-gray-400" />
-                        Edit table permissions
-                      </span>
-                      <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                        <TeamIcon className="h-2.5 w-2.5" />
-                        Team
-                      </span>
-                    </button>
-
-                    <div className="my-1 border-t border-gray-100" />
-
-                    <button
-                      onClick={closeMenu}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <XIcon className="h-4 w-4 text-gray-400" />
-                      Clear data
-                    </button>
-
-                    <button
+                      className="text-sm!"
+                    />
+                    <MenuItem
+                      label="Delete table"
+                      icon={<TrashIcon className="h-4 w-4 text-gray-400" />}
                       onClick={() => {
                         setDeleteConfirmTableId(table.id);
                         closeMenu();
                       }}
                       disabled={tables.length === 1}
-                      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm ${
-                        tables.length === 1
-                          ? "text-gray-400"
-                          : "text-gray-700 hover:bg-gray-50"
+                      className={`text-sm! ${
+                        tables.length === 1 ? "text-gray-400" : "text-gray-200"
                       }`}
-                    >
-                      <TrashIcon
-                        className={`h-4 w-4 ${
-                          tables.length === 1
-                            ? "text-gray-400"
-                            : "text-gray-200"
-                        }`}
-                      />
-                      Delete table
-                    </button>
+                    />
                   </div>
                 </>
               )}
