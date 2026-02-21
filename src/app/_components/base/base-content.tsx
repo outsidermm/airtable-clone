@@ -416,23 +416,26 @@ export function BaseContent({
       const newCount = prevCount + 1;
       totalRowCountRef.current = newCount;
 
+      // Capture flat row order BEFORE adding tempRow to the page store.
+      // Without this, the functional update below would see tempId already at the end
+      // of the built order and then splice it again → tempId appears twice in the array.
+      const preInsertFlatOrder: number[] = (() => {
+        const sortedPageIndices = [...pageStoreRef.current.keys()].sort((a, b) => a - b);
+        const flat: GridRow[] = [];
+        for (const pi of sortedPageIndices) flat.push(...(pageStoreRef.current.get(pi) ?? []));
+        return flat.map((r) => r.id);
+      })();
+
       const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
       const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
       pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
       setPageStore(new Map(pageStoreRef.current));
       setTotalRowCount(newCount);
 
-      // Use functional update to read the latest rowOrderOverride without stale closure
+      // Use functional update to read the latest rowOrderOverride without stale closure.
+      // Fall back to preInsertFlatOrder (not pageStoreRef) so tempId only appears once.
       setRowOrderOverride((prev) => {
-        let currentOrder: number[];
-        if (prev !== null) {
-          currentOrder = prev;
-        } else {
-          const sortedPageIndices = [...pageStoreRef.current.keys()].sort((a, b) => a - b);
-          const flat: GridRow[] = [];
-          for (const pi of sortedPageIndices) flat.push(...(pageStoreRef.current.get(pi) ?? []));
-          currentOrder = flat.map((r) => r.id);
-        }
+        const currentOrder = prev !== null ? prev : preInsertFlatOrder;
         const targetIdx = currentOrder.indexOf(targetRowId);
         const insertIdx = position === "above" ? targetIdx : targetIdx + 1;
         const newOrder = [...currentOrder];

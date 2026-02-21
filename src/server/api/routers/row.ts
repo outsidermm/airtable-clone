@@ -27,7 +27,6 @@ export const rowRouter = createTRPCRouter({
     }),
 
   // Bulk create rows (optimized for 100k+ rows)
-// Bulk create rows (optimized for 100k+ rows)
   bulkCreate: protectedProcedure
     .input(
       z.object({
