@@ -178,6 +178,8 @@ export function BaseContent({
   // the page-store's natural server order.  Avoids touching the page store so
   // no skeleton flash occurs.  Reset whenever the page store is refetched.
   const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(null);
+  // Ref that always tracks the latest rowOrderOverride (avoids stale closure in handleReorderRow)
+  const rowOrderOverrideRef = useRef<number[] | null>(null);
 
   const fetchPage = useCallback(
     async (pageIndex: number) => {
@@ -241,6 +243,11 @@ export function BaseContent({
     },
     [activeViewId, activeTableId, utils],
   );
+
+  // Keep rowOrderOverrideRef in sync with state (avoids stale closure in handleReorderRow)
+  useEffect(() => {
+    rowOrderOverrideRef.current = rowOrderOverride;
+  }, [rowOrderOverride]);
 
   // Force-refetch a page in the background without clearing the page store.
   // Unlike fetchPage, this bypasses the dedup check so already-loaded pages
@@ -435,7 +442,7 @@ export function BaseContent({
       // Use functional update to read the latest rowOrderOverride without stale closure.
       // Fall back to preInsertFlatOrder (not pageStoreRef) so tempId only appears once.
       setRowOrderOverride((prev) => {
-        const currentOrder = prev !== null ? prev : preInsertFlatOrder;
+        const currentOrder = prev ?? preInsertFlatOrder;
         const targetIdx = currentOrder.indexOf(targetRowId);
         const insertIdx = position === "above" ? targetIdx : targetIdx + 1;
         const newOrder = [...currentOrder];
@@ -803,36 +810,48 @@ export function BaseContent({
     return sparse;
   }, [searchQuery, searchGridRows, pageStore, rowById, totalRowCount, rowOrderOverride]);
 
-  // --- Row reorder (local only — no DB order column) ---
+  // Persist row reorder to the DB after the optimistic update
+  const reorderRowMutation = api.row.reorder.useMutation({
+    onSettled: () => refetchLoadedPages(),
+  });
+
+  // --- Row reorder: optimistic override + DB persistence ---
   // Uses a rowOrderOverride rather than rebuilding the page store, so no page
   // refetch is triggered and the grid never flashes blank.
   const handleReorderRow = useCallback(
     (draggedRowIds: number[], targetRowId: number) => {
       const draggedId = draggedRowIds[0]!;
-      setRowOrderOverride((prev) => {
-        // Build the base order from the current override or from the page store
-        let currentOrder: number[];
-        if (prev !== null) {
-          currentOrder = prev;
-        } else {
-          const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
-            (a, b) => a - b,
-          );
-          const flat: GridRow[] = [];
-          for (const pi of sortedPageIndices) {
-            flat.push(...(pageStoreRef.current.get(pi) ?? []));
-          }
-          currentOrder = flat.map((r) => r.id);
+
+      // Use the ref to get the latest override without stale closure issues
+      const prev = rowOrderOverrideRef.current;
+      let currentOrder: number[];
+      if (prev !== null) {
+        currentOrder = prev;
+      } else {
+        const sortedPageIndices = [...pageStoreRef.current.keys()].sort((a, b) => a - b);
+        const flat: GridRow[] = [];
+        for (const pi of sortedPageIndices) {
+          flat.push(...(pageStoreRef.current.get(pi) ?? []));
         }
+        currentOrder = flat.map((r) => r.id);
+      }
 
-        const oldIdx = currentOrder.indexOf(draggedId);
-        const newIdx = currentOrder.indexOf(targetRowId);
-        if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev;
+      const oldIdx = currentOrder.indexOf(draggedId);
+      const newIdx = currentOrder.indexOf(targetRowId);
+      if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return;
 
-        return arrayMove(currentOrder, oldIdx, newIdx);
-      });
+      const newOrder = arrayMove(currentOrder, oldIdx, newIdx);
+      setRowOrderOverride(newOrder);
+      rowOrderOverrideRef.current = newOrder; // Update ref immediately
+
+      // Compute neighbors in the new order for DB persistence
+      const draggedNewIdx = newOrder.indexOf(draggedId);
+      const prevId = draggedNewIdx > 0 ? (newOrder[draggedNewIdx - 1] ?? null) : null;
+      const nextId =
+        draggedNewIdx < newOrder.length - 1 ? (newOrder[draggedNewIdx + 1] ?? null) : null;
+      reorderRowMutation.mutate({ id: draggedId, prevId, nextId });
     },
-    [],
+    [reorderRowMutation],
   );
 
   // --- Context menu handlers ---

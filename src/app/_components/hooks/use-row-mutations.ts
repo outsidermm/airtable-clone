@@ -1,13 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
 import { pushQueryEntry } from "~/lib/query-log";
 
 export function useRowMutations(activeTableId: number) {
   const { refetchRows, optimisticAddRow, optimisticDeleteRow, optimisticInsertRowNear, onRowCreated } = useBase();
-
-  // Holds params for the next insertRowNear/duplicateRow optimistic call
-  const insertNearParamsRef = useRef<{ targetRowId: number; position: "above" | "below" } | null>(null);
 
   const createRow = api.row.create.useMutation({
     onMutate: () => {
@@ -43,20 +40,16 @@ export function useRowMutations(activeTableId: number) {
     onSuccess: () => refetchRows(),
   });
 
-  // Mutation for insert-above / insert-below — same backend as create,
-  // but optimistically positions the new row via rowOrderOverride
-  const insertRowNearMutation = api.row.create.useMutation({
-    onMutate: () => {
-      const params = insertNearParamsRef.current;
-      insertNearParamsRef.current = null;
-      if (!params) return { ...optimisticAddRow(), startTime: Date.now() };
-      return { ...optimisticInsertRowNear(params.targetRowId, params.position), startTime: Date.now() };
+  // Mutation for insert-above / insert-below with persistent ordering
+  const insertRowNearMutation = api.row.insertNear.useMutation({
+    onMutate: (vars) => {
+      return { ...optimisticInsertRowNear(vars.targetRowId, vars.position), startTime: Date.now() };
     },
     onSuccess: (data, _vars, context) => {
       if (context?.tempId !== undefined) onRowCreated(context.tempId, data.id);
     },
     onError: (_err, _vars, context) => { context?.revert?.(); },
-    // No refetchRows — rowOrderOverride must be preserved to keep the position
+    onSettled: () => refetchRows(),
   });
 
   // Duplicate a row (copies cell data from the server)
@@ -71,7 +64,11 @@ export function useRowMutations(activeTableId: number) {
       }
     },
     onError: (_err, _vars, context) => { context?.revert?.(); },
-    // No refetchRows — rowOrderOverride must be preserved to keep the position
+    onSettled: () => refetchRows(), // Safe now that server persists the correct order
+  });
+
+  const reorderRowMutation = api.row.reorder.useMutation({
+    onSettled: () => refetchRows(),
   });
 
   const deleteRow = api.row.delete.useMutation({
@@ -121,16 +118,14 @@ export function useRowMutations(activeTableId: number) {
 
   const handleInsertRowAbove = useCallback(
     (rowId: number) => {
-      insertNearParamsRef.current = { targetRowId: rowId, position: "above" };
-      insertRowNearMutation.mutate({ tableId: activeTableId });
+      insertRowNearMutation.mutate({ tableId: activeTableId, targetRowId: rowId, position: "above" });
     },
     [activeTableId, insertRowNearMutation],
   );
 
   const handleInsertRowBelow = useCallback(
     (rowId: number) => {
-      insertNearParamsRef.current = { targetRowId: rowId, position: "below" };
-      insertRowNearMutation.mutate({ tableId: activeTableId });
+      insertRowNearMutation.mutate({ tableId: activeTableId, targetRowId: rowId, position: "below" });
     },
     [activeTableId, insertRowNearMutation],
   );
@@ -142,6 +137,13 @@ export function useRowMutations(activeTableId: number) {
     [duplicateRowMutation],
   );
 
+  const handleReorderRowPersisted = useCallback(
+    (id: number, prevId: number | null, nextId: number | null) => {
+      reorderRowMutation.mutate({ id, prevId, nextId });
+    },
+    [reorderRowMutation],
+  );
+
   return {
     handleAddRow,
     handleBulkAddRow,
@@ -150,5 +152,6 @@ export function useRowMutations(activeTableId: number) {
     handleInsertRowAbove,
     handleInsertRowBelow,
     handleDuplicateRow,
+    handleReorderRowPersisted,
   };
 }

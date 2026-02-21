@@ -15,6 +15,9 @@ const BATCH_SIZE = 10_000;
  * - Seeded rows: Faker.js generates data JS-side, passed as a JSONB array
  *   and expanded with jsonb_array_elements (one round-trip per BATCH_SIZE rows)
  *
+ * Rows are assigned sequential `order` values starting from MAX(order)+1
+ * so new rows always sort after existing ones and preserve insertion order.
+ *
  * Returns the total number of rows inserted.
  */
 export async function bulkCreateRows(
@@ -27,6 +30,12 @@ export async function bulkCreateRows(
     columnTypes?: string[];
   } = {},
 ): Promise<number> {
+  // Get the current maximum order so new rows sort after existing ones
+  const baseOrderResult = await tx.$queryRaw<[{ max: number | null }]>`
+    SELECT MAX("order") as max FROM "Row" WHERE "tableId" = ${tableId}
+  `;
+  const baseOrder = baseOrderResult[0]?.max ?? 0;
+
   if (options.generateVariedData && options.columnIds?.length) {
     let totalInserted = 0;
 
@@ -49,14 +58,15 @@ export async function bulkCreateRows(
         }),
       );
 
-      // Pass the JSON array as a single parameter; PostgreSQL expands it with jsonb_array_elements.
-      // $1 = tableId (int), $2 = JSON array string (text cast to jsonb)
+      // Each batch offset gives sequential order values: baseOrder+offset+1 … baseOrder+offset+batchSize
+      const batchBaseOrder = baseOrder + offset;
       const affected = await tx.$executeRawUnsafe(
-        `INSERT INTO "Row" ("tableId", "cells", "createdAt")
-         SELECT $1::int, elem, NOW()
+        `INSERT INTO "Row" ("tableId", "cells", "order", "createdAt")
+         SELECT $1::int, elem, $3::float + ROW_NUMBER() OVER (), NOW()
          FROM jsonb_array_elements($2::jsonb) AS elem`,
         tableId,
         rowsJson,
+        batchBaseOrder,
       );
       totalInserted += affected;
     }
@@ -65,12 +75,14 @@ export async function bulkCreateRows(
   }
 
   // No seeding: insert N empty rows in a single generate_series query
+  // Order values: baseOrder+1 … baseOrder+count
   const affected = await tx.$executeRawUnsafe(
-    `INSERT INTO "Row" ("tableId", "cells", "createdAt")
-     SELECT $1::int, '{}'::jsonb, NOW()
-     FROM generate_series(1, $2::int)`,
+    `INSERT INTO "Row" ("tableId", "cells", "order", "createdAt")
+     SELECT $1::int, '{}'::jsonb, $3::float + gs, NOW()
+     FROM generate_series(1, $2::int) AS gs`,
     tableId,
     count,
+    baseOrder,
   );
   return affected;
 }

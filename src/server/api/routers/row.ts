@@ -5,7 +5,7 @@ import { verifyTableOwnership } from "../utils/column-helpers";
 import { bulkCreateRows } from "../utils/row-helpers";
 
 export const rowRouter = createTRPCRouter({
-  // Create a single row with empty cells JSON
+  // Create a single row with empty cells JSON, appended at the end
   create: protectedProcedure
     .input(
       z.object({
@@ -17,13 +17,111 @@ export const rowRouter = createTRPCRouter({
       await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
 
       const sqlStart = Date.now();
+      const result = await ctx.db.$queryRaw<[{ max: number | null }]>`
+        SELECT MAX("order") as max FROM "Row" WHERE "tableId" = ${input.tableId}
+      `;
+      const order = (result[0]?.max ?? 0) + 1;
       const row = await ctx.db.row.create({
-        data: {
-          tableId: input.tableId,
-          cells: {},
-        },
+        data: { tableId: input.tableId, cells: {}, order },
       });
       return { ...row, sqlMs: Date.now() - sqlStart };
+    }),
+
+  // Insert a new empty row above or below a target row, preserving sort order
+  insertNear: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.number().int(),
+        targetRowId: z.number().int(),
+        position: z.enum(["above", "below"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await verifyTableOwnership(ctx.db, input.tableId, ctx.session.user.id);
+
+      const sqlStart = Date.now();
+      const targetRow = await ctx.db.row.findUnique({
+        where: { id: input.targetRowId, tableId: input.tableId },
+        select: { order: true },
+      });
+      if (!targetRow) throw new Error("Target row not found");
+
+      let newOrder: number;
+      if (input.position === "above") {
+        // Place between the row just before target and target itself
+        const prevRow = await ctx.db.row.findFirst({
+          where: { tableId: input.tableId, order: { lt: targetRow.order } },
+          orderBy: [{ order: "desc" }, { id: "desc" }],
+          select: { order: true },
+        });
+        newOrder = prevRow
+          ? (prevRow.order + targetRow.order) / 2
+          : targetRow.order - 1;
+      } else {
+        // Place between target and the row just after target
+        const nextRow = await ctx.db.row.findFirst({
+          where: { tableId: input.tableId, order: { gt: targetRow.order } },
+          orderBy: [{ order: "asc" }, { id: "asc" }],
+          select: { order: true },
+        });
+        newOrder = nextRow
+          ? (targetRow.order + nextRow.order) / 2
+          : targetRow.order + 1;
+      }
+
+      const row = await ctx.db.row.create({
+        data: { tableId: input.tableId, cells: {}, order: newOrder },
+      });
+      return { ...row, sqlMs: Date.now() - sqlStart };
+    }),
+
+  // Update a row's order field so drag-reorder persists across refreshes
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        prevId: z.number().int().nullable(),
+        nextId: z.number().int().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.row.findUnique({
+        where: { id: input.id },
+        include: { table: { include: { base: true } } },
+      });
+      if (!row) throw new Error("Row not found");
+      if (row.table.base.userId !== ctx.session.user.id) throw new Error("Access denied");
+
+      const sqlStart = Date.now();
+      let newOrder: number;
+
+      if (input.prevId === null && input.nextId === null) {
+        newOrder = row.order;
+      } else if (input.prevId === null) {
+        const nextRow = await ctx.db.row.findUnique({
+          where: { id: input.nextId! },
+          select: { order: true },
+        });
+        newOrder = (nextRow?.order ?? 1) - 1;
+      } else if (input.nextId === null) {
+        const prevRow = await ctx.db.row.findUnique({
+          where: { id: input.prevId },
+          select: { order: true },
+        });
+        newOrder = (prevRow?.order ?? 0) + 1;
+      } else {
+        const [prevRow, nextRow] = await Promise.all([
+          ctx.db.row.findUnique({ where: { id: input.prevId }, select: { order: true } }),
+          ctx.db.row.findUnique({ where: { id: input.nextId }, select: { order: true } }),
+        ]);
+        newOrder = ((prevRow?.order ?? 0) + (nextRow?.order ?? 0)) / 2;
+      }
+
+      const updated = await ctx.db.row.update({
+        where: { id: input.id },
+        data: { order: newOrder },
+      });
+      return { ...updated, sqlMs: Date.now() - sqlStart };
     }),
 
   // Bulk create rows (optimized for 100k+ rows)
@@ -106,33 +204,42 @@ export const rowRouter = createTRPCRouter({
 
       const isFirstPage = !input.cursor && (!input.offset || input.offset === 0);
 
-      // Offset-based path: subquery seek to find cursor at position N, then range scan
+      // Offset-based path: seek to row at position N in (order, id) ordering, then range scan
       if (input.offset !== undefined && input.offset > 0 && !input.cursor) {
         const sqlStart = Date.now();
         const [totalCount, seekResult] = await Promise.all([
           isFirstPage
             ? ctx.db.row.count({ where: { tableId: input.tableId } })
             : Promise.resolve(undefined),
-          ctx.db.$queryRaw<Array<{ id: number }>>`
-            SELECT id FROM "Row"
+          ctx.db.$queryRaw<Array<{ id: number; ord: number }>>`
+            SELECT id, "order" as ord FROM "Row"
             WHERE "tableId" = ${input.tableId}
-            ORDER BY id ASC
+            ORDER BY "order" ASC, id ASC
             LIMIT 1 OFFSET ${input.offset}
           `,
         ]);
 
-        const seekId = seekResult[0]?.id;
-        if (seekId === undefined) {
+        const seek = seekResult[0];
+        if (!seek) {
           return { rows: [], nextCursor: undefined, totalCount, sqlMs: Date.now() - sqlStart };
         }
 
-        const rows = await ctx.db.row.findMany({
-          where: { tableId: input.tableId, id: { gte: seekId } },
-          take: input.limit + 1,
-          orderBy: { id: "asc" },
-        });
+        type RawRow = { id: number; tableId: number; cells: unknown; createdAt: Date; order: number };
+        const rawRows = await ctx.db.$queryRawUnsafe<RawRow[]>(
+          `SELECT id, "tableId", cells, "createdAt", "order"
+           FROM "Row"
+           WHERE "tableId" = $1
+             AND ("order" > $2 OR ("order" = $2 AND id >= $3))
+           ORDER BY "order" ASC, id ASC
+           LIMIT $4`,
+          input.tableId,
+          seek.ord,
+          seek.id,
+          input.limit + 1,
+        );
         const sqlMs = Date.now() - sqlStart;
 
+        const rows = [...rawRows];
         let nextCursor: number | undefined;
         if (rows.length > input.limit) {
           const nextItem = rows.pop();
@@ -153,7 +260,7 @@ export const rowRouter = createTRPCRouter({
           take: input.limit + 1,
           skip: input.cursor ? 1 : 0,
           cursor: input.cursor ? { id: input.cursor } : undefined,
-          orderBy: { id: "asc" },
+          orderBy: [{ order: "asc" }, { id: "asc" }],
         }),
       ]);
       const sqlMs = Date.now() - sqlStart;
@@ -167,7 +274,7 @@ export const rowRouter = createTRPCRouter({
       return { rows, nextCursor, totalCount, sqlMs };
     }),
 
-  // Duplicate a row (copies all cell data)
+  // Duplicate a row (copies all cell data), placing it directly below the source
   duplicate: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
@@ -180,8 +287,17 @@ export const rowRouter = createTRPCRouter({
       if (row.table.base.userId !== ctx.session.user.id) throw new Error("Access denied");
 
       const sqlStart = Date.now();
+      const nextRow = await ctx.db.row.findFirst({
+        where: { tableId: row.tableId, order: { gt: row.order } },
+        orderBy: [{ order: "asc" }, { id: "asc" }],
+        select: { order: true },
+      });
+      const newOrder = nextRow
+        ? (row.order + nextRow.order) / 2
+        : row.order + 1;
+
       const newRow = await ctx.db.row.create({
-        data: { tableId: row.tableId, cells: row.cells ?? {} },
+        data: { tableId: row.tableId, cells: row.cells ?? {}, order: newOrder },
       });
       return { ...newRow, sqlMs: Date.now() - sqlStart };
     }),
