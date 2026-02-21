@@ -23,12 +23,8 @@ import {
 } from "~/app/_components/ui/icons";
 import type { Base } from "~/types/base";
 import { TableTabs } from "./table-tabs";
+import type { Table } from "~/types/table";
 
-interface Table {
-  id: number;
-  name: string;
-  baseId: string;
-}
 
 interface BaseHeaderProps {
   base: Base;
