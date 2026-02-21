@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
+import { useBase } from "../base/base-context";
 
 interface Table {
   id: number;
@@ -7,18 +8,15 @@ interface Table {
   baseId: string;
 }
 
-export function useTableMutations(
-  baseId: string,
-  tables: Table[],
-  activeTableId: number,
-  setActiveTableId: (id: number) => void,
-) {
+export function useTableMutations(baseId: string, tables: Table[]) {
   const utils = api.useUtils();
+  const { setRenamingTableId, setActiveTableId, activeTableId } = useBase();
 
   const createTable = api.table.create.useMutation({
     onSuccess: (newTable) => {
       void utils.table.getAllByBase.invalidate({ baseId });
       setActiveTableId(newTable.id);
+      setRenamingTableId(newTable.id);
     },
   });
 

@@ -38,6 +38,10 @@ interface BaseContextType {
   insertBeforeColumnId: number | null;
   setInsertBeforeColumnId: (id: number | null) => void;
 
+  // Table Rename State
+  renamingTableId: number | null;
+  setRenamingTableId: (id: number | null) => void;
+
   // Search & Highlight State
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -149,6 +153,7 @@ export function BaseProvider({
   const [insertBeforeColumnId, setInsertBeforeColumnId] = useState<
     number | null
   >(null);
+  const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -336,6 +341,8 @@ export function BaseProvider({
         setInsertAfterColumnId,
         insertBeforeColumnId,
         setInsertBeforeColumnId,
+        renamingTableId,
+        setRenamingTableId,
         searchQuery,
         setSearchQuery,
         highlightedCells,

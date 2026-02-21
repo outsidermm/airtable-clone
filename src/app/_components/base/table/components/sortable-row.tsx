@@ -4,7 +4,7 @@ import type { GridColumn, GridRow } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle } from "../../grid-table/drag-handle";
+import { DragHandle } from "../../../ui/drag-handle";
 import { CHECKBOX_WIDTH } from "../../constants";
 import type { CSSProperties } from "react";
 import { GridCell } from "./grid-cell"; // Import the new component

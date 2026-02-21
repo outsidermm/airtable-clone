@@ -52,13 +52,14 @@ interface BaseHeaderProps {
 }
 
 export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
-  const { openModal, activeTableId, setActiveTableId } = useBase();
-  const tableMutations = useTableMutations(
-    base.id,
-    tables,
+  const {
+    openModal,
     activeTableId,
     setActiveTableId,
-  );
+    renamingTableId,
+    setRenamingTableId,
+  } = useBase();
+  const tableMutations = useTableMutations(base.id, tables);
   const baseMutations = useBaseMutations();
   const [activeTab, setActiveTab] = useState("data");
   const [tableMenuId, setTableMenuId] = useState<number | null>(null);
@@ -71,7 +72,6 @@ export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
   const [showBaseMenu, setShowBaseMenu] = useState(false);
   const [isRenamingBase, setIsRenamingBase] = useState(false);
   const [baseNameValue, setBaseNameValue] = useState(base.name);
-  const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
   const [renamingTableValue, setRenamingTableValue] = useState("");
   const [showBaseSubMenu, setShowBaseSubMenu] = useState(false);
   const [appearanceTab, setAppearanceTab] = useState<"color" | "icon">("color");
@@ -145,6 +145,23 @@ Teammates will see this guide when they first open the base and can find it anyt
   const filteredTables = tables.filter((t) =>
     t.name.toLowerCase().includes(tableSearchQuery.toLowerCase()),
   );
+
+  const getLightColorClass = (colorClass: string) => {
+    const colorName = colorClass.split("-")[1] ?? "gray";
+    const colorMap: Record<string, string> = {
+      red: "bg-red-100",
+      orange: "bg-orange-100",
+      yellow: "bg-yellow-100",
+      green: "bg-green-100",
+      cyan: "bg-cyan-100",
+      blue: "bg-blue-100",
+      indigo: "bg-indigo-100",
+      purple: "bg-purple-100",
+      pink: "bg-pink-100",
+      gray: "bg-gray-100",
+    };
+    return colorMap[colorName] ?? "bg-gray-100";
+  };
 
   return (
     <>
@@ -453,9 +470,7 @@ Teammates will see this guide when they first open the base and can find it anyt
         </div>
 
         {/* Table Tabs Row */}
-        <div
-          className={`flex items-end ${"bg-" + iconColor.split("-")[1] + "-100"}`}
-        >
+        <div className={`flex items-end ${getLightColorClass(iconColor)}`}>
           {/* Table Tabs */}
           <div className="flex flex-1 items-end gap-0">
             {tables.map((table, index) => {
@@ -472,10 +487,10 @@ Teammates will see this guide when they first open the base and can find it anyt
                     )}
 
                   <div
-                    className={`group relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`group relative flex items-center gap-1 px-3 py-2 text-sm transition-colors ${
                       isActive
-                        ? `rounded-t-md bg-white text-gray-900 ${iconColor}/5`
-                        : "text-gray-600 hover:rounded-t-md hover:bg-gray-200/70"
+                        ? `rounded-t-md bg-white text-gray-900`
+                        : `text-gray-600 hover:rounded-t-md ${getLightColorClass(iconColor)} hover:bg-gray-200/70`
                     }`}
                   >
                     <button
@@ -891,10 +906,9 @@ Teammates will see this guide when they first open the base and can find it anyt
               onClick={(e) => {
                 openModal("add-table", e.currentTarget);
               }}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+              className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700"
             >
-              <PlusIcon className="h-3.5 w-3.5" />
-              Add or import
+              <PlusIcon className="h-4 w-4" />
             </button>
           </div>
 

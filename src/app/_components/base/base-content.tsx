@@ -51,7 +51,6 @@ export function BaseContent({
 }: BaseContentProps) {
   const {
     activeTableId,
-    setActiveTableId,
     activeViewId,
     setActiveViewId,
     setIsSidebarOpen,
@@ -109,8 +108,6 @@ export function BaseContent({
   const tableMutations = useTableMutations(
     baseId,
     tables,
-    activeTableId,
-    setActiveTableId,
   );
 
   // --- Views ---

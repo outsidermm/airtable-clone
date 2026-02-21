@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle } from "../grid-table/drag-handle";
+import { DragHandle } from "../../ui/drag-handle";
 import type { CSSProperties, ReactNode } from "react";
 
 interface SortableItemProps {

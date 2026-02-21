@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { NumberIcon, QuestionIcon, TextIcon } from "~/app/_components/ui/icons";
-import { DragHandle } from "../grid-table/drag-handle";
+import { DragHandle } from "../../ui/drag-handle";
 import type { GridColumn } from "~/types/grid";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
