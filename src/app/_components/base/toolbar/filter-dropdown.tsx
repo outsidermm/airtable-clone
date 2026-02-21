@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -26,6 +26,7 @@ import {
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 import { SortableItem } from "./sortable-item";
+import { SearchableSelect } from "../../ui/searchable-select";
 
 interface FilterDropdownProps {
   columns: GridColumn[];
@@ -168,10 +169,12 @@ export function FilterDropdown({
         className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg transition-all ${containerWidthClass}`}
       >
         <div className="pb-2">
-          <h3 className="text-sm font-medium text-gray-900 pb-2">Filter</h3>
-          <div className="flex items-center gap-2 border-gray-100 border rounded p-2">
+          <h3 className="pb-2 text-sm font-medium text-gray-900">Filter</h3>
+          <div className="flex items-center gap-2 rounded border border-gray-100 p-2">
             <AIIcon className="h-4 w-4 text-green-800" />
-            <span className="text-xs text-gray-400">Describe what you want to see</span>
+            <span className="text-xs text-gray-400">
+              Describe what you want to see
+            </span>
           </div>
         </div>
 
@@ -285,14 +288,26 @@ export function FilterDropdown({
 
                           {openMenu?.index === index &&
                             openMenu.type === "column" && (
-                              <FilterColumnPickerMenu
-                                columns={columns}
-                                onSelect={(colId) => {
+                              <SearchableSelect
+                                widthClass="w-56"
+                                searchPlaceholder="Find a field"
+                                options={columns.map((c) => ({
+                                  id: c.id,
+                                  label: c.name,
+                                  icon:
+                                    c.type === "NUMBER" ? (
+                                      <NumberIcon className="h-3.5 w-3.5 text-gray-400" />
+                                    ) : (
+                                      <TextIcon className="h-3.5 w-3.5 text-gray-400" />
+                                    ),
+                                }))}
+                                onSelect={(opt) => {
+                                  const selectedId = Number(opt.id);
                                   const newCol = columns.find(
-                                    (c) => c.id === colId,
+                                    (c) => c.id === selectedId,
                                   );
                                   updateFilter(index, {
-                                    columnId: colId,
+                                    columnId: selectedId,
                                     operator:
                                       newCol?.type === "NUMBER"
                                         ? "equals"
@@ -325,15 +340,21 @@ export function FilterDropdown({
 
                           {openMenu?.index === index &&
                             openMenu.type === "operator" && (
-                              <FilterOperatorPickerMenu
-                                operators={operators}
-                                onSelect={(opValue) => {
+                              <SearchableSelect
+                                widthClass="w-48"
+                                searchPlaceholder="Find an operator"
+                                // Use showSearch={false} if you want it to feel more like a standard dropdown
+                                options={operators.map((op) => ({
+                                  id: op.value,
+                                  label: op.label,
+                                }))}
+                                onSelect={(opt) => {
                                   updateFilter(index, {
                                     operator:
-                                      opValue as FilterConfig["operator"],
-                                    ...(NO_VALUE_OPERATORS.has(opValue) && {
-                                      value: "",
-                                    }),
+                                      opt.id as FilterConfig["operator"],
+                                    ...(NO_VALUE_OPERATORS.has(
+                                      opt.id as string,
+                                    ) && { value: "" }),
                                   });
                                 }}
                                 onClose={() => setOpenMenu(null)}
@@ -402,123 +423,6 @@ export function FilterDropdown({
             Add condition group
             <QuestionIcon className="ml-1 h-3.5 w-3.5" />
           </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// --- Sub-component for the searchable column menu ---
-interface FilterColumnPickerMenuProps {
-  columns: GridColumn[];
-  onSelect: (id: number) => void;
-  onClose: () => void;
-}
-
-function FilterColumnPickerMenu({
-  columns,
-  onSelect,
-  onClose,
-}: FilterColumnPickerMenuProps) {
-  const [search, setSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const filtered = columns.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <>
-      <div className="fixed inset-0 z-60" onClick={onClose} />
-      <div className="absolute top-full left-0 z-70 mt-1 w-56 rounded-md border border-gray-200 bg-white p-1 shadow-xl">
-        <div className="mb-1 flex items-center gap-2 px-2 pt-1 pb-1.5">
-          <input
-            ref={inputRef}
-            type="text"
-            className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
-            placeholder="Find a field"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="max-h-48 overflow-y-auto">
-          {filtered.map((col) => (
-            <button
-              key={col.id}
-              onClick={() => onSelect(col.id)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
-            >
-              {col.type === "NUMBER" ? (
-                <NumberIcon className="h-3.5 w-3.5 text-gray-400" />
-              ) : (
-                <TextIcon className="h-3.5 w-3.5 text-gray-400" />
-              )}
-              <span className="truncate">{col.name}</span>
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <div className="px-2 py-2 text-xs text-gray-400">No results</div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-// --- Sub-component for the searchable operator menu ---
-interface FilterOperatorPickerMenuProps {
-  operators: readonly { value: string; label: string }[];
-  onSelect: (value: string) => void;
-  onClose: () => void;
-}
-
-function FilterOperatorPickerMenu({
-  operators,
-  onSelect,
-  onClose,
-}: FilterOperatorPickerMenuProps) {
-  const [search, setSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const filtered = operators.filter((op) =>
-    op.label.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <>
-      <div className="fixed inset-0 z-60" onClick={onClose} />
-      <div className="absolute top-full left-0 z-70 mt-1 w-48 rounded-md border border-gray-200 bg-white p-1 shadow-xl">
-        <div className="mb-1 flex items-center gap-2 px-2 pt-1 pb-1.5">
-          <input
-            ref={inputRef}
-            type="text"
-            className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
-            placeholder="Find an operator"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="max-h-48 overflow-y-auto">
-          {filtered.map((op) => (
-            <button
-              key={op.value}
-              onClick={() => onSelect(op.value)}
-              className="flex w-full items-center px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
-            >
-              <span className="truncate">{op.label}</span>
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <div className="px-2 py-2 text-xs text-gray-400">No results</div>
-          )}
         </div>
       </div>
     </>

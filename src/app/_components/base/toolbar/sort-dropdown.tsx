@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   DndContext,
   closestCenter,
@@ -26,19 +26,13 @@ import {
 import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 import { SortableItem } from "./sortable-item";
+import { SearchableSelect } from "../../ui/searchable-select";
 
 interface SortDropdownProps {
   columns: GridColumn[];
   sorts: SortConfig[];
   onUpdateSorts: (sorts: SortConfig[]) => void;
   onClose: () => void;
-}
-
-interface ColumnPickerMenuProps {
-  columns: GridColumn[];
-  onSelect: (id: number) => void;
-  onClose: () => void;
-  localSorts: LocalSortConfig[]; // To filter out already selected columns
 }
 
 // Internal type to handle the "unselected" state locally
@@ -247,13 +241,30 @@ export function SortDropdown({
 
                               {openMenu?.index === index &&
                                 openMenu.type === "column" && (
-                                  <ColumnPickerMenu
-                                    columns={columns}
-                                    onSelect={(colId) =>
-                                      updateSort(index, { columnId: colId })
+                                  <SearchableSelect
+                                    widthClass="w-56"
+                                    options={columns
+                                      .filter((c) =>
+                                        localSorts.every(
+                                          (s) => s.columnId !== c.id,
+                                        ),
+                                      ) // Filter out already sorted
+                                      .map((col) => ({
+                                        id: col.id,
+                                        label: col.name,
+                                        icon:
+                                          col.type === "NUMBER" ? (
+                                            <NumberIcon className="h-3 w-3" />
+                                          ) : (
+                                            <TextIcon className="h-3 w-3" />
+                                          ),
+                                      }))}
+                                    onSelect={(opt) =>
+                                      updateSort(index, {
+                                        columnId: Number(opt.id),
+                                      })
                                     }
                                     onClose={() => setOpenMenu(null)}
-                                    localSorts={localSorts}
                                   />
                                 )}
                             </div>
@@ -346,69 +357,6 @@ export function SortDropdown({
             </SortableContext>
           </DndContext>
         )}
-      </div>
-    </>
-  );
-}
-
-// --- Sub-component for the searchable column menu ---
-function ColumnPickerMenu({
-  columns,
-  onSelect,
-  onClose,
-  localSorts,
-}: ColumnPickerMenuProps) {
-  const [search, setSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-focus input on open
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const filtered = columns.filter((c) => {
-    return (
-      c.name.toLowerCase().includes(search.toLowerCase()) &&
-      localSorts.every((s) => s.columnId !== c.id)
-    );
-  });
-
-  return (
-    <>
-      {/* Click outside listener specifically for this menu level */}
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-
-      <div className="absolute top-full left-0 z-80 mt-1 w-48 rounded-md border border-gray-200 bg-white p-1 shadow-xl">
-        <div className="mb-1 flex items-center gap-2 border-b border-gray-100 px-2 pb-1">
-          <SearchIcon className="h-3 w-3 text-gray-400" />
-          <input
-            ref={inputRef}
-            type="text"
-            className="w-full bg-transparent text-xs outline-none placeholder:text-gray-400"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="max-h-40 overflow-y-auto">
-          {filtered.map((col) => (
-            <button
-              key={col.id}
-              onClick={() => onSelect(col.id)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
-            >
-              {col.type === "NUMBER" ? (
-                <NumberIcon className="h-3 w-3 text-gray-400" />
-              ) : (
-                <TextIcon className="h-3 w-3 text-gray-400" />
-              )}
-              <span className="truncate">{col.name}</span>
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <div className="px-2 py-1.5 text-xs text-gray-400">No fields</div>
-          )}
-        </div>
       </div>
     </>
   );
