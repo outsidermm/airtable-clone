@@ -44,6 +44,7 @@ interface SortableRowProps {
   showLastRowTooltip: boolean;
   // Stable React keys for temp/swapped columns — prevents GridCell remount on ID swap
   columnKeyMap: Map<number, string>;
+  handleFrozenBorderDragStart: (e: React.MouseEvent) => void;
 }
 
 export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
@@ -73,6 +74,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     totalScrollableWidth,
     showLastRowTooltip,
     columnKeyMap,
+    handleFrozenBorderDragStart,
   } = props;
 
   const {highlightedCells, activeSearchCell, searchQuery, setContextMenu} = useBase();
@@ -148,7 +150,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     >
       {/* === FROZEN SECTION === */}
       <div
-        className={`sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
+        className={`relative sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
           borderRight: "2px solid rgb(209, 213, 219)",
@@ -209,6 +211,15 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         {nonPrimaryColumns.slice(0, frozenNonPrimaryCount).map((col) =>
           renderCell(col, columnSizing[String(col.id)] ?? col.width, false),
         )}
+
+        {/* Drag handle for adjusting the frozen border — spans full row height */}
+        <div
+          className="group/freezerow absolute top-0 right-0 z-10 cursor-col-resize"
+          style={{ width: 4, height: "100%" }}
+          onMouseDown={handleFrozenBorderDragStart}
+        >
+          <div className="h-full w-0.5 translate-x-[1.5px] bg-transparent group-hover/freezerow:bg-blue-400" />
+        </div>
       </div>
 
       {/* === SCROLLABLE SECTION === */}
