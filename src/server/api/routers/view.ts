@@ -422,7 +422,8 @@ export const viewRouter = createTRPCRouter({
         }
       });
 
-      // Always add r.id as final sort for deterministic pagination
+      // Always add r."order" and r.id as final sorts for deterministic pagination and manual LexoRank fallback
+      orderByParts.push('r."order" ASC');
       orderByParts.push("r.id ASC");
 
       const isFirstPage = !input.cursor && (!input.offset || input.offset === 0);

@@ -4,7 +4,13 @@ import { useBase } from "../base/base-context";
 import { pushQueryEntry } from "~/lib/query-log";
 
 export function useRowMutations(activeTableId: number) {
-  const { refetchRows, optimisticAddRow, optimisticDeleteRow, optimisticInsertRowNear, onRowCreated } = useBase();
+  const {
+    refetchRows,
+    optimisticAddRow,
+    optimisticDeleteRow,
+    optimisticInsertRowNear,
+    onRowCreated,
+  } = useBase();
 
   const createRow = api.row.create.useMutation({
     onMutate: () => {
@@ -21,7 +27,8 @@ export function useRowMutations(activeTableId: number) {
         path: "row.create",
         label: `rowId=${data.id}`,
         sqlMs: data.sqlMs,
-        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+        totalMs:
+          context?.startTime !== undefined ? Date.now() - context.startTime : 0,
       });
     },
     onError: (_err, _vars, context) => {
@@ -41,29 +48,47 @@ export function useRowMutations(activeTableId: number) {
   });
 
   // Mutation for insert-above / insert-below with persistent ordering
-  const insertRowNearMutation = api.row.insertNear.useMutation({
+  const insertRowNearMutation = api.row.create.useMutation({
     onMutate: (vars) => {
-      return { ...optimisticInsertRowNear(vars.targetRowId, vars.position), startTime: Date.now() };
+      return {
+        ...optimisticInsertRowNear(
+          vars.tableId,
+          vars.beforeRowId,
+          vars.afterRowId,
+        ),
+        startTime: Date.now(),
+      };
     },
     onSuccess: (data, _vars, context) => {
       if (context?.tempId !== undefined) onRowCreated(context.tempId, data.id);
     },
-    onError: (_err, _vars, context) => { context?.revert?.(); },
+    onError: (_err, _vars, context) => {
+      context?.revert?.();
+    },
     onSettled: () => refetchRows(),
   });
 
   // Duplicate a row (copies cell data from the server)
   const duplicateRowMutation = api.row.duplicate.useMutation({
     onMutate: (vars) => {
-      return { ...optimisticInsertRowNear(vars.id, "below"), startTime: Date.now() };
+      return {
+        ...optimisticInsertRowNear(activeTableId, undefined, vars.id),
+        startTime: Date.now(),
+      };
     },
     onSuccess: (data, _vars, context) => {
       if (context?.tempId !== undefined) {
         // Pass cells so the temp row shows the duplicated data without a refetch
-        onRowCreated(context.tempId, data.id, data.cells as Record<string, string | number | null>);
+        onRowCreated(
+          context.tempId,
+          data.id,
+          data.cells as Record<string, string | number | null>,
+        );
       }
     },
-    onError: (_err, _vars, context) => { context?.revert?.(); },
+    onError: (_err, _vars, context) => {
+      context?.revert?.();
+    },
     onSettled: () => refetchRows(), // Safe now that server persists the correct order
   });
 
@@ -81,7 +106,8 @@ export function useRowMutations(activeTableId: number) {
         path: "row.delete",
         label: `rowId=${data.id}`,
         sqlMs: data.sqlMs,
-        totalMs: context?.startTime !== undefined ? Date.now() - context.startTime : 0,
+        totalMs:
+          context?.startTime !== undefined ? Date.now() - context.startTime : 0,
       });
     },
     onError: (_err, _vars, context) => {
@@ -118,14 +144,20 @@ export function useRowMutations(activeTableId: number) {
 
   const handleInsertRowAbove = useCallback(
     (rowId: number) => {
-      insertRowNearMutation.mutate({ tableId: activeTableId, targetRowId: rowId, position: "above" });
+      insertRowNearMutation.mutate({
+        tableId: activeTableId,
+        beforeRowId: rowId,
+      });
     },
     [activeTableId, insertRowNearMutation],
   );
 
   const handleInsertRowBelow = useCallback(
     (rowId: number) => {
-      insertRowNearMutation.mutate({ tableId: activeTableId, targetRowId: rowId, position: "below" });
+      insertRowNearMutation.mutate({
+        tableId: activeTableId,
+        afterRowId: rowId,
+      });
     },
     [activeTableId, insertRowNearMutation],
   );

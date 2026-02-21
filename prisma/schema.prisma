@@ -109,7 +109,7 @@ model Row {
     table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
     cells      Json          @default("{}")
-    order      Float         @default(0)
+    order      String        @default("0|hzzzzz:")
     createdAt  DateTime      @default(now())
 
     @@index([tableId, order, id])
