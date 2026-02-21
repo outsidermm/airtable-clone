@@ -212,13 +212,13 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
           renderCell(col, columnSizing[String(col.id)] ?? col.width, false),
         )}
 
-        {/* Drag handle for adjusting the frozen border — spans full row height */}
+        {/* Drag handle for adjusting the frozen border — dot appears on hover */}
         <div
-          className="group/freezerow absolute top-0 right-0 z-10 cursor-col-resize"
-          style={{ width: 4, height: "100%" }}
+          className="group/freezerow absolute top-0 right-0 z-10 flex cursor-col-resize items-center justify-center"
+          style={{ width: 8, height: "100%", transform: "translateX(50%)" }}
           onMouseDown={handleFrozenBorderDragStart}
         >
-          <div className="h-full w-0.5 translate-x-[1.5px] bg-transparent group-hover/freezerow:bg-blue-400" />
+          <div className="h-2.5 w-2.5 rounded-full bg-blue-400 opacity-0 shadow group-hover/freezerow:opacity-100" />
         </div>
       </div>
 

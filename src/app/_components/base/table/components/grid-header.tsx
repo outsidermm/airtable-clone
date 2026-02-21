@@ -225,13 +225,12 @@ export function GridHeader({
           );
         })}
 
-        {/* Freeze-line drag handle — sits on the right border of the frozen section */}
+        {/* Freeze-line drag handle — dot appears on hover */}
         <div
           onMouseDown={handleFrozenBorderDragStart}
           className="group/freezeline absolute top-0 right-0 z-20 flex h-full w-4 cursor-col-resize items-center justify-center"
         >
-          {/* Visible bar */}
-          <div className="h-full w-0.5 bg-transparent group-hover/freezeline:bg-blue-500" />
+          <div className="h-3 w-3 rounded-full bg-transparent ring-2 ring-transparent group-hover/freezeline:bg-blue-400 group-hover/freezeline:ring-blue-400" />
           {/* Tooltip */}
           <div className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 whitespace-nowrap rounded bg-blue-600 px-2 py-1 text-xs text-white opacity-0 shadow group-hover/freezeline:opacity-100">
             Drag to freeze columns

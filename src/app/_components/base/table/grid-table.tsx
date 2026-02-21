@@ -95,10 +95,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
     // Number of non-primary columns added to the frozen panel by dragging the freeze line
     const [frozenExtraCount, setFrozenExtraCount] = useState(0);
-    // Tracks whether the freeze line is being actively dragged (for the blue overlay)
-    const [isFreezeDragging, setIsFreezeDragging] = useState(false);
-    // Container rect captured at drag-start (stable during drag, used for overlay positioning)
-    const dragStartContainerRectRef = useRef<DOMRect | null>(null);
+    // Ref to the always-mounted freeze overlay div (shown/hidden via style.display)
+    const freezeOverlayRef = useRef<HTMLDivElement>(null);
 
     // --- 2. Derived State ---
     const primaryColumn = useMemo(
@@ -490,9 +488,17 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const handleFrozenBorderDragStart = useCallback(
       (e: React.MouseEvent) => {
         e.preventDefault();
-        // Capture container rect at drag start for the blue overlay positioning
-        dragStartContainerRectRef.current = parentRef.current?.getBoundingClientRect() ?? null;
-        setIsFreezeDragging(true);
+
+        // Show the overlay at the cursor position via direct DOM manipulation
+        // (avoids React re-renders on every mousemove)
+        const overlay = freezeOverlayRef.current;
+        if (overlay && parentRef.current) {
+          const containerRect = parentRef.current.getBoundingClientRect();
+          overlay.style.display = "block";
+          overlay.style.top = `${containerRect.top}px`;
+          overlay.style.height = `${containerRect.height}px`;
+          overlay.style.left = `${e.clientX}px`;
+        }
 
         const startX = e.clientX;
         const colWidths = nonPrimaryColumns.map(
@@ -514,10 +520,17 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             accum += w;
           }
           setFrozenExtraCount(newCount);
+
+          // Move overlay to follow cursor
+          if (freezeOverlayRef.current) {
+            freezeOverlayRef.current.style.left = `${moveEvent.clientX}px`;
+          }
         };
 
         const handleMouseUp = () => {
-          setIsFreezeDragging(false);
+          if (freezeOverlayRef.current) {
+            freezeOverlayRef.current.style.display = "none";
+          }
           document.removeEventListener("mousemove", handleMouseMove);
           document.removeEventListener("mouseup", handleMouseUp);
         };
@@ -841,21 +854,18 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           </div>
         </div>
 
-        {/* Blue freeze-line overlay shown while dragging the frozen border */}
-        {isFreezeDragging && dragStartContainerRectRef.current && (
-          <div
-            style={{
-              position: "fixed",
-              left: dragStartContainerRectRef.current.left + frozenWidth,
-              top: dragStartContainerRectRef.current.top,
-              width: 2,
-              height: dragStartContainerRectRef.current.height,
-              backgroundColor: "#3b82f6",
-              zIndex: 1000,
-              pointerEvents: "none",
-            }}
-          />
-        )}
+        {/* Blue freeze-line overlay — always mounted, shown via style.display during drag */}
+        <div
+          ref={freezeOverlayRef}
+          style={{
+            position: "fixed",
+            display: "none",
+            width: 2,
+            backgroundColor: "#3b82f6",
+            zIndex: 1000,
+            pointerEvents: "none",
+          }}
+        />
       </div>
     );
   },
