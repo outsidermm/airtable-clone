@@ -15,6 +15,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import {
+  AIIcon,
   ChevronDownIcon,
   NumberIcon,
   PlusIcon,
@@ -30,7 +31,10 @@ interface FilterDropdownProps {
   columns: GridColumn[];
   filters: FilterConfig[];
   filterGroupLogic?: "AND" | "OR";
-  onUpdateFilters: (filters: FilterConfig[], filterGroupLogic: "AND" | "OR") => void;
+  onUpdateFilters: (
+    filters: FilterConfig[],
+    filterGroupLogic: "AND" | "OR",
+  ) => void;
   onClose: () => void;
 }
 
@@ -164,7 +168,11 @@ export function FilterDropdown({
         className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg transition-all ${containerWidthClass}`}
       >
         <div className="pb-2">
-          <h3 className="text-sm font-medium text-gray-900">Filter</h3>
+          <h3 className="text-sm font-medium text-gray-900 pb-2">Filter</h3>
+          <div className="flex items-center gap-2 border-gray-100 border rounded p-2">
+            <AIIcon className="h-4 w-4 text-green-800" />
+            <span className="text-xs text-gray-400">Describe what you want to see</span>
+          </div>
         </div>
 
         {localFilters.length === 0 ? (
