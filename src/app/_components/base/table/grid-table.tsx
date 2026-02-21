@@ -14,7 +14,7 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import {
   DndContext,
   closestCenter,
@@ -95,6 +95,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
     // Number of non-primary columns added to the frozen panel by dragging the freeze line
     const [frozenExtraCount, setFrozenExtraCount] = useState(0);
+    // Tracks whether the freeze line is being actively dragged (for the blue overlay)
+    const [isFreezeDragging, setIsFreezeDragging] = useState(false);
+    // Container rect captured at drag-start (stable during drag, used for overlay positioning)
+    const dragStartContainerRectRef = useRef<DOMRect | null>(null);
 
     // --- 2. Derived State ---
     const primaryColumn = useMemo(
@@ -341,12 +345,51 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       }
       return map;
     }, [selectedCells, isMultiSelect]);
+    // --- Scroll position scaling for very large tables ---
+    // Browsers cap CSS element height at ~16.7M px (2^24). At 36px/row that's ~466k rows.
+    // We scale the virtual container down and map the DOM scroll position back to the real
+    // virtual offset so TanStack Virtual always operates in "real" pixel coordinates.
+    const MAX_SAFE_HEIGHT = 10_000_000; // 10M px — safely under all browser limits
+    const totalVirtualHeight = rows.length * currentRowHeight;
+    const scrollScaleRef = useRef(1);
+    scrollScaleRef.current = totalVirtualHeight > MAX_SAFE_HEIGHT
+      ? MAX_SAFE_HEIGHT / totalVirtualHeight
+      : 1;
+
     // rows.length === totalRowCount — the sparse array already has the right size
     const rowVirtualizer = useVirtualizer({
       count: rows.length,
       getScrollElement: () => parentRef.current,
       estimateSize: () => currentRowHeight,
       overscan: 5,
+      // Intercept scroll offset reads: divide DOM scrollTop by scale → real virtual offset
+      observeElementOffset: useCallback(
+        (instance: Virtualizer<HTMLDivElement, Element>, cb: (offset: number, isScrolling: boolean) => void) => {
+          const el = instance.scrollElement as HTMLElement | null;
+          if (!el) return;
+          const onScroll = () => cb(el.scrollTop / scrollScaleRef.current, false);
+          onScroll();
+          el.addEventListener("scroll", onScroll, { passive: true });
+          return () => el.removeEventListener("scroll", onScroll);
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+      ),
+      // Intercept scroll-to calls: multiply real offset by scale → DOM scrollTop
+      scrollToFn: useCallback(
+        (
+          offset: number,
+          options: { adjustments?: number; behavior?: ScrollBehavior },
+          instance: Virtualizer<HTMLDivElement, Element>,
+        ) => {
+          (instance.scrollElement as HTMLElement | null)?.scrollTo({
+            top: offset * scrollScaleRef.current,
+            behavior: options.behavior,
+          });
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+      ),
     });
 
     useImperativeHandle(
@@ -447,6 +490,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const handleFrozenBorderDragStart = useCallback(
       (e: React.MouseEvent) => {
         e.preventDefault();
+        // Capture container rect at drag start for the blue overlay positioning
+        dragStartContainerRectRef.current = parentRef.current?.getBoundingClientRect() ?? null;
+        setIsFreezeDragging(true);
+
         const startX = e.clientX;
         const colWidths = nonPrimaryColumns.map(
           (col) => columnSizing[String(col.id)] ?? col.width,
@@ -470,6 +517,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         };
 
         const handleMouseUp = () => {
+          setIsFreezeDragging(false);
           document.removeEventListener("mousemove", handleMouseMove);
           document.removeEventListener("mouseup", handleMouseUp);
         };
@@ -627,7 +675,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               >
                 <div
                   style={{
-                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
                     position: "relative",
                     minWidth: "fit-content",
                   }}
@@ -642,7 +690,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           key={`placeholder-${virtualRow.index}`}
                           className="absolute flex w-full border-b border-gray-200 bg-white"
                           style={{
-                            top: virtualRow.start,
+                            top: virtualRow.start * scrollScaleRef.current,
                             height: currentRowHeight,
                             minWidth: "fit-content",
                           }}
@@ -711,7 +759,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                       <SortableRow
                         key={rowKey}
                         rowId={rowData.id}
-                        virtualStart={virtualRow.start}
+                        virtualStart={virtualRow.start * scrollScaleRef.current}
                         virtualIndex={virtualRow.index}
                         currentRowHeight={currentRowHeight}
                         isRowSelected={selectedRowIds.has(String(rowData.id))}
@@ -742,6 +790,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         totalScrollableWidth={totalScrollableWidth}
                         showLastRowTooltip={showLastRowTooltip}
                         columnKeyMap={columnKeyMap}
+                        handleFrozenBorderDragStart={handleFrozenBorderDragStart}
                       />
                     );
                   })}
@@ -791,6 +840,22 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             </div>
           </div>
         </div>
+
+        {/* Blue freeze-line overlay shown while dragging the frozen border */}
+        {isFreezeDragging && dragStartContainerRectRef.current && (
+          <div
+            style={{
+              position: "fixed",
+              left: dragStartContainerRectRef.current.left + frozenWidth,
+              top: dragStartContainerRectRef.current.top,
+              width: 2,
+              height: dragStartContainerRectRef.current.height,
+              backgroundColor: "#3b82f6",
+              zIndex: 1000,
+              pointerEvents: "none",
+            }}
+          />
+        )}
       </div>
     );
   },
