@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { ContextMenuState } from "~/types/grid";
 
 // Define the types of modals that can be opened globally
@@ -67,16 +68,25 @@ interface BaseContextType {
 
 const BaseContext = createContext<BaseContextType | undefined>(undefined);
 
-export function BaseProvider({ 
-  children, 
-  initialTableId 
-}: { 
-  children: ReactNode; 
+export function BaseProvider({
+  children,
+  initialTableId,
+  baseId,
+}: {
+  children: ReactNode;
   initialTableId: number;
+  baseId: string;
 }) {
+  const router = useRouter();
+
   // Navigation
-  const [activeTableId, setActiveTableId] = useState(initialTableId);
+  const [activeTableId, setActiveTableIdState] = useState(initialTableId);
   const [activeViewId, setActiveViewId] = useState<number | null>(null);
+
+  const setActiveTableId = useCallback((id: number) => {
+    setActiveTableIdState(id);
+    router.replace(`/base/${baseId}?tableId=${id}`, { scroll: false });
+  }, [baseId, router]);
 
   // Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

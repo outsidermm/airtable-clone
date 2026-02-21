@@ -8,11 +8,13 @@ import { BaseProvider } from "~/app/_components/base/base-context";
 
 interface BasePageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tableId?: string }>;
 }
 
-export default async function BasePage({ params }: BasePageProps) {
+export default async function BasePage({ params, searchParams }: BasePageProps) {
   const session = await auth();
   const { id } = await params;
+  const { tableId: tableIdParam } = await searchParams;
 
   if (!session?.user) {
     redirect("/login");
@@ -26,14 +28,16 @@ export default async function BasePage({ params }: BasePageProps) {
   }
 
   const tables = base.airtableTables;
-  const firstTable = tables[0];
+  const initialTable =
+    (tableIdParam ? tables.find((t) => t.id === Number(tableIdParam)) : null) ??
+    tables[0];
 
-  if (!firstTable) {
+  if (!initialTable) {
     redirect("/dashboard");
   }
 
   return (
-    <BaseProvider initialTableId={firstTable.id}>
+    <BaseProvider initialTableId={initialTable.id} baseId={id}>
       <div className="flex h-screen bg-white">
         <RecentBaseTracker baseId={base.id} baseName={base.name} />
         <BaseIconSidebar user={session.user} />
