@@ -117,6 +117,7 @@ export function GridHeader({
               setContextMenu({
                 type: "column",
                 position: { x: e.clientX, y: e.clientY },
+                anchorEl: e.currentTarget as HTMLElement,
                 data: { columnId: primaryColumn.id },
               });
             }}
@@ -174,6 +175,7 @@ export function GridHeader({
                 setContextMenu({
                   type: "column",
                   position: { x: e.clientX, y: e.clientY },
+                  anchorEl: e.currentTarget as HTMLElement,
                   data: { columnId: col.id },
                 });
               }}
@@ -213,6 +215,7 @@ export function GridHeader({
                         setContextMenu({
                           type: "column",
                           position: { x: e.clientX, y: e.clientY },
+                          anchorEl: e.currentTarget as HTMLElement,
                           data: { columnId: col.id },
                         });
                       }}
@@ -262,6 +265,7 @@ export function GridHeader({
                     setContextMenu({
                       type: "column",
                       position: { x: e.clientX, y: e.clientY },
+                      anchorEl: e.currentTarget as HTMLElement,
                       data: { columnId: col.id },
                     });
                   }}
@@ -294,15 +298,15 @@ export function GridHeader({
                       >
                         <button
                           className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setContextMenu({
-                              type: "column",
-                              position: { x: e.clientX, y: e.clientY },
-                              data: { columnId: col.id },
-                            });
-                          }}
-                        >
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setContextMenu({
+                                                      type: "column",
+                                                      position: { x: e.clientX, y: e.clientY },
+                                                      anchorEl: e.currentTarget as HTMLElement,
+                                                      data: { columnId: col.id },
+                                                    });
+                                                  }}                        >
                           <ChevronDownIcon className="h-3 w-3" />
                         </button>
                       </SortableHeaderCell>

@@ -505,7 +505,7 @@ export function BaseContent({
     if (activeViewId ?? activeTableId) {
       void fetchPage(0);
     }
-  }, [activeViewId, activeTableId]);
+  }, [activeViewId, activeTableId, fetchPage]);
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -752,7 +752,7 @@ export function BaseContent({
       totalMs: 0,
       rowCount: searchResultsQuery.data.rows.length,
     });
-  }, [searchResultsQuery.data]);
+  }, [searchResultsQuery.data, searchQuery]);
 
   const searchGridRows = useMemo<GridRow[] | null>(() => {
     if (!searchQuery || !searchResultsQuery.data) return null;
@@ -859,33 +859,6 @@ export function BaseContent({
     [setContextMenu],
   );
 
-  const handleInsertColumnLeft = useCallback(
-    (columnId: number) => {
-      const colIdx = allColumns.findIndex((c) => c.id === columnId);
-      const beforeId = columnId;
-      const afterId = colIdx > 0 ? allColumns[colIdx - 1]!.id : null;
-      columnMutations.handleAddColumn({
-        afterColumnId: afterId ?? undefined,
-        beforeColumnId: beforeId,
-      });
-    },
-    [allColumns, columnMutations],
-  );
-
-  const handleInsertColumnRight = useCallback(
-    (columnId: number) => {
-      const colIdx = allColumns.findIndex((c) => c.id === columnId);
-      const afterId = columnId;
-      const beforeId =
-        colIdx < allColumns.length - 1 ? allColumns[colIdx + 1]!.id : null;
-      columnMutations.handleAddColumn({
-        afterColumnId: afterId,
-        beforeColumnId: beforeId ?? undefined,
-      });
-    },
-    [allColumns, columnMutations],
-  );
-
   const handleScrollToRow = useCallback((rowId: number) => {
     gridTableRef.current?.scrollToRow(rowId);
   }, []);
@@ -987,8 +960,6 @@ export function BaseContent({
           column={allColumns.find((c) => c.id === contextMenu.data.columnId)!}
           viewConfig={viewConfig}
           onRename={handleColumnRenameFromMenu}
-          onInsertLeft={handleInsertColumnLeft}
-          onInsertRight={handleInsertColumnRight}
           onDuplicate={columnMutations.handleDuplicateColumn}
         />
       )}

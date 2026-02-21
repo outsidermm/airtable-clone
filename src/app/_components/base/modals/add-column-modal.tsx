@@ -16,7 +16,12 @@ interface AddColumnModalProps {
 }
 
 export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
-  const { activeTableId, openModal } = useBase();
+  const {
+    activeTableId,
+    openModal,
+    insertAfterColumnId,
+    insertBeforeColumnId,
+  } = useBase();
   const columnMutations = useColumnMutations(activeTableId);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,14 +83,17 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
   const handleConfirm = () => {
     if (selectedFieldType) {
+      const commonPayload = {
+        type: selectedFieldType.type,
+        afterColumnId: insertAfterColumnId ?? undefined,
+        beforeColumnId: insertBeforeColumnId ?? undefined,
+      };
       if (columnName.trim() === "") {
-        columnMutations.handleAddColumn({
-          type: selectedFieldType.type,
-        });
+        columnMutations.handleAddColumn(commonPayload);
       } else {
         columnMutations.handleAddColumn({
+          ...commonPayload,
           name: columnName.trim(),
-          type: selectedFieldType.type,
         });
       }
       openModal(null);
@@ -105,11 +113,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
       <div
         ref={modalRef}
-        className={`z-50 w-120 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl transition-all ${
-          isDropdown
-            ? "fixed"
-            : "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-        }`}
+        className="z-50 w-120 overflow-hidden rounded-xl border bg-white border-gray-200 shadow-2xl fixed"
         style={
           isDropdown ? { top: position.top, left: position.left } : undefined
         }

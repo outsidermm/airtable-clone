@@ -117,7 +117,6 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         key={columnKeyMap.get(col.id) ?? String(col.id)}
         rowId={rowId}
         columnId={col.id}
-        rowIndex={virtualIndex}
         width={width}
         value={rowData.cells[String(col.id)]}
         // State flags

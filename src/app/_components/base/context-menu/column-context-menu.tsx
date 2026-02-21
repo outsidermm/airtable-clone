@@ -32,8 +32,6 @@ interface ColumnContextMenuProps {
   column: GridColumn;
   viewConfig: ViewConfig;
   onRename: (columnId: number) => void;
-  onInsertLeft: (columnId: number) => void;
-  onInsertRight: (columnId: number) => void;
   onDuplicate: (columnId: number) => void;
 }
 
@@ -41,8 +39,6 @@ export function ColumnContextMenu({
   column,
   viewConfig,
   onRename: _onRename,
-  onInsertLeft,
-  onInsertRight,
   onDuplicate,
 }: ColumnContextMenuProps) {
   const {
@@ -52,6 +48,8 @@ export function ColumnContextMenu({
     activeTableId,
     setContextMenu,
     contextMenu,
+    setInsertAfterColumnId,
+    setInsertBeforeColumnId,
   } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
@@ -172,7 +170,9 @@ export function ColumnContextMenu({
         label="Insert field to the left"
         icon={<ArrowLeftIcon className="h-4 w-4" />}
         onClick={() => {
-          onInsertLeft(column.id);
+          setInsertBeforeColumnId(column.id);
+          setInsertAfterColumnId(null);
+          openModal("add-column", contextMenu?.anchorEl);
           setContextMenu(null);
         }}
       />
@@ -180,7 +180,9 @@ export function ColumnContextMenu({
         label="Insert field to the right"
         icon={<ArrowRightIcon className="h-4 w-4" />}
         onClick={() => {
-          onInsertRight(column.id);
+          setInsertAfterColumnId(column.id);
+          setInsertBeforeColumnId(null);
+          openModal("add-column", contextMenu?.anchorEl);
           setContextMenu(null);
         }}
       />

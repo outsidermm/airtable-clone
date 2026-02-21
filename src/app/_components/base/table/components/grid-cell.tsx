@@ -6,7 +6,6 @@ import type { CellAddress } from "~/types/cell";
 interface GridCellProps {
   rowId: number;
   columnId: number;
-  rowIndex: number;
   width: number;
   value: string | number | null | undefined;
   // State
@@ -28,7 +27,6 @@ interface GridCellProps {
 export const GridCell = memo(function GridCell({
   rowId,
   columnId,
-  rowIndex,
   width,
   value,
   isSelectedCell,

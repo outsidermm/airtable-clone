@@ -23,6 +23,7 @@ export interface SearchResult {
 export interface ContextMenuState {
   type: "column" | "record";
   position: { x: number; y: number };
+  anchorEl?: HTMLElement | null;
   data: {
     rowId?: number;
     columnId?: number;

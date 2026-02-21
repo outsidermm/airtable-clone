@@ -32,6 +32,12 @@ interface BaseContextType {
   openModal: (type: BaseModalType, anchor?: HTMLElement | null) => void;
   modalAnchor: HTMLElement | null;
 
+  // Column Insertion State
+  insertAfterColumnId: number | null;
+  setInsertAfterColumnId: (id: number | null) => void;
+  insertBeforeColumnId: number | null;
+  setInsertBeforeColumnId: (id: number | null) => void;
+
   // Search & Highlight State
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -137,6 +143,12 @@ export function BaseProvider({
   // Modals
   const [activeModal, setActiveModal] = useState<BaseModalType>(null);
   const [modalAnchor, setModalAnchor] = useState<HTMLElement | null>(null);
+  const [insertAfterColumnId, setInsertAfterColumnId] = useState<number | null>(
+    null,
+  );
+  const [insertBeforeColumnId, setInsertBeforeColumnId] = useState<
+    number | null
+  >(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -298,6 +310,10 @@ export function BaseProvider({
     type: BaseModalType,
     anchor: HTMLElement | null = null,
   ) => {
+    if (type !== "add-column") {
+      setInsertAfterColumnId(null);
+      setInsertBeforeColumnId(null);
+    }
     setActiveModal(type);
     setModalAnchor(anchor);
   };
@@ -316,6 +332,10 @@ export function BaseProvider({
         activeModal,
         openModal,
         modalAnchor,
+        insertAfterColumnId,
+        setInsertAfterColumnId,
+        insertBeforeColumnId,
+        setInsertBeforeColumnId,
         searchQuery,
         setSearchQuery,
         highlightedCells,
