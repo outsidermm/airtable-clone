@@ -17,7 +17,12 @@ import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
 import type { GridColumn, GridRow } from "~/types/grid";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
-import { ChevronDownIcon, NumberIcon, PlusIcon, TextIcon } from "~/app/_components/ui/icons";
+import {
+  ChevronDownIcon,
+  NumberIcon,
+  PlusIcon,
+  TextIcon,
+} from "~/app/_components/ui/icons";
 import { useBase } from "../../base-context";
 import { useColumnMutations } from "~/app/_components/hooks/use-column-mutations";
 
@@ -55,7 +60,7 @@ export function GridHeader({
   headerGroups,
   frozenNonPrimaryCount,
 }: GridHeaderProps) {
-  const {openModal, activeTableId, setContextMenu} = useBase();
+  const { openModal, activeTableId, setContextMenu } = useBase();
   const columnMutations = useColumnMutations(activeTableId);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [editingHeaderValue, setEditingHeaderValue] = useState("");
@@ -181,7 +186,8 @@ export function GridHeader({
                     onChange={(e) => setEditingHeaderValue(e.target.value)}
                     onBlur={() => handleHeaderRename(col.id, col.name)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleHeaderRename(col.id, col.name);
+                      if (e.key === "Enter")
+                        handleHeaderRename(col.id, col.name);
                       if (e.key === "Escape") setEditingHeader(null);
                     }}
                     className="w-full bg-transparent text-xs text-gray-900 outline-none"
@@ -196,7 +202,9 @@ export function GridHeader({
                   <div className="group flex h-full items-center justify-between bg-white px-2 py-1.5">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                      <span className="truncate text-xs text-gray-900">{col.name}</span>
+                      <span className="truncate text-xs text-gray-900">
+                        {col.name}
+                      </span>
                     </div>
                     <button
                       className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
@@ -313,18 +321,16 @@ export function GridHeader({
         </SortableContext>
       </DndContext>
 
-      <div
+      <button
         key="_add"
-        className="flex items-center justify-center border border-gray-200 bg-white px-12"
-        style={{ width: 48, height: HEADER_HEIGHT }}
+        onClick={(e) => {
+          openModal("add-column", e.currentTarget);
+        }}
+        className="group flex cursor-pointer items-center justify-center border-r border-b border-gray-200 bg-white transition-colors hover:bg-gray-100"
+        style={{ width: 80, height: HEADER_HEIGHT }}
       >
-        <button
-          onClick={(e) => {openModal("add-column",e.currentTarget)}}
-          className="text-gray-400 hover:text-gray-600"
-        >
-          <PlusIcon className="h-4 w-4" />
-        </button>
-      </div>
+        <PlusIcon className="h-4 w-4 text-gray-400 transition-colors group-hover:text-gray-600" />
+      </button>
     </div>
   );
 }
