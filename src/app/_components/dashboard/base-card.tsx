@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useRef } from "react";
+import { api } from "~/trpc/react";
 import { BaseContextMenu } from "./base-context-menu";
 import { getStoredBaseColor } from "~/lib/base-color-storage";
 import {
@@ -19,6 +20,7 @@ interface BaseCardProps {
 }
 
 export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
+  const utils = api.useUtils();
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(base.name);
@@ -80,7 +82,10 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
 
   if (viewMode === "grid") {
     return (
-      <div className="group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md">
+      <div
+        className="group relative rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md"
+        onMouseEnter={() => void utils.base.getById.prefetch({ id: base.id })}
+      >
         <Link
           href={`/base/${base.id}`}
           className={`block p-4 ${isRenaming ? "pointer-events-none" : ""}`}
@@ -165,7 +170,10 @@ export function BaseCard({ base, viewMode = "grid" }: BaseCardProps) {
     );
   } else {
     return (
-      <div className="group flex items-center justify-between gap-4 rounded-lg transition-all hover:bg-gray-200">
+      <div
+        className="group flex items-center justify-between gap-4 rounded-lg transition-all hover:bg-gray-200"
+        onMouseEnter={() => void utils.base.getById.prefetch({ id: base.id })}
+      >
         <div className="flex flex-1 items-center justify-between">
           <Link href={`/base/${base.id}`} className="flex flex-3 p-4">
             {/* Icon & Name */}

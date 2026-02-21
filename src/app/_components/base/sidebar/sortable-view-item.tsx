@@ -19,6 +19,7 @@ import {
 import { useBase } from "../base-context";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { View } from "~/types/view";
+import { api } from "~/trpc/react";
 
 
 // --- Sortable View Item ---
@@ -59,6 +60,7 @@ export function SortableViewItem({
   } = useSortable({
     id: view.id,
   });
+  const utils = api.useUtils();
   const { activeTableId, setActiveViewId, activeViewId } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
@@ -101,7 +103,10 @@ export function SortableViewItem({
           />
         </div>
       ) : (
-        <div className="relative flex items-center gap-1 hover:bg-gray-100">
+        <div
+          className="relative flex items-center gap-1 hover:bg-gray-100"
+          onMouseEnter={() => void utils.view.getById.prefetch({ id: view.id })}
+        >
           <button
             onClick={() => setActiveViewId(view.id)}
             onDoubleClick={() => onDoubleClick(view)}

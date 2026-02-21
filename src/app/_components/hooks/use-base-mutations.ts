@@ -68,7 +68,9 @@ export function useBaseMutations() {
   );
 
   const createBaseMutation = api.base.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // Start fetching the new base's detail page data immediately, before router.push
+      void utils.base.getById.prefetch({ id: data.id });
       await utils.base.getAll.invalidate();
     },
   });

@@ -4,6 +4,7 @@ import { useBase } from "../base-context";
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Base } from "~/types/base";
 import { useTableMutations } from "../../hooks/use-table-mutations";
+import { api } from "~/trpc/react";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -25,13 +26,10 @@ import {
   PlusIcon,
   SearchIcon,
   CheckIcon,
+  SalesforceIcon,
 } from "../../ui/icons";
-
-interface Table {
-  id: number;
-  name: string;
-  baseId: string;
-}
+import type { Table } from "~/types/table";
+import { MenuItem } from "../../ui/menu";
 
 interface TableTabsProps {
   base: Base;
@@ -40,6 +38,7 @@ interface TableTabsProps {
 }
 
 export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
+  const utils = api.useUtils();
   const {
     activeTableId,
     setActiveTableId,
@@ -130,6 +129,9 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                         iconColor,
                       )} hover:bg-gray-200/70`
                 }`}
+                onMouseEnter={() =>
+                  void utils.table.getById.prefetch({ id: table.id })
+                }
               >
                 <button
                   onClick={() => setActiveTableId(table.id)}
@@ -292,6 +294,22 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                       <RenameIcon className="h-4 w-4 text-gray-400" />
                       Rename table
                     </button>
+                    <MenuItem
+                      label="Hide table"
+                      icon={<HideIcon className="h-4 w-4 text-gray-400" />}
+                      onClick={closeMenu}
+                      className="text-sm!"
+                    />
+                    <MenuItem
+                      label="Salesforce"
+                      icon={<SalesforceIcon className="h-4 w-4" />}
+                      rightElement={
+                        <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
+                          <TeamIcon className="h-2.5 w-2.5" />
+                          Business
+                        </span>
+                      }
+                    />
                     <button
                       onClick={closeMenu}
                       className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
@@ -27,6 +27,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const baseMutations = useBaseMutations();
+  const utils = api.useUtils();
 
   const { data: allBases = [] } = api.base.getAll.useQuery(undefined, {
     enabled: isOpen,
@@ -75,6 +76,18 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const uniqueResults = allResults.filter(
     (base, index, self) => self.findIndex((b) => b.id === base.id) === index,
   );
+
+  const prefetchBase = useCallback(
+    (id: string) => void utils.base.getById.prefetch({ id }),
+    [utils],
+  );
+
+  // Prefetch whichever result the keyboard cursor lands on
+  useEffect(() => {
+    const base = uniqueResults[selectedIndex];
+    if (base) prefetchBase(base.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndex, uniqueResults]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -174,7 +187,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             ? "bg-blue-50"
                             : "hover:bg-gray-100"
                         }`}
-                        onMouseEnter={() => setHoveredBaseId(base.id)}
+                        onMouseEnter={() => { setHoveredBaseId(base.id); prefetchBase(base.id); }}
                         onMouseLeave={() => setHoveredBaseId(null)}
                       >
                         <button
@@ -243,7 +256,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             ? "bg-blue-50"
                             : "hover:bg-gray-100"
                         }`}
-                        onMouseEnter={() => setHoveredBaseId(base.id)}
+                        onMouseEnter={() => { setHoveredBaseId(base.id); prefetchBase(base.id); }}
                         onMouseLeave={() => setHoveredBaseId(null)}
                       >
                         <button

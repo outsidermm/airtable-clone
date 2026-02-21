@@ -35,6 +35,7 @@ export function Sidebar({
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
 
+  const utils = api.useUtils();
   const { data: starredBases = [] } = api.base.getStarred.useQuery();
 
   return (
@@ -95,6 +96,7 @@ export function Sidebar({
                     href={`/base/${base.id}`}
                     className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                     title={base.name}
+                    onMouseEnter={() => void utils.base.getById.prefetch({ id: base.id })}
                   >
                     <div
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[8px] text-white ${getStoredBaseColor(base.id)}`}
