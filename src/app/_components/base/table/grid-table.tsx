@@ -51,6 +51,7 @@ import { useBase } from "../base-context";
 import { PAGE_SIZE } from "../constants";
 import { PlaceholderRow } from "./components/placeholder-row";
 import { FrozenColumnOverlay } from "./components/frozen-column-overlay";
+import { useOptimisticIds } from "./hooks/useOptimisticIds";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -81,12 +82,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     },
     ref,
   ) {
-    const {
-      activeTableId,
-      registerRowIdSwapListener,
-      registerColumnIdSwapListener,
-      setContextMenu,
-    } = useBase();
+    const { activeTableId, setContextMenu } = useBase();
     const rowMutations = useRowMutations(activeTableId);
 
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
@@ -199,68 +195,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       [setContextMenu],
     );
 
-    // --- 4. Stable key map for optimistic rows ---
-    const stableKeyMapRef = useRef<Map<number, string>>(new Map());
-
-    const handleRowIdSwap = useCallback(
-      (tempId: number, realRowId: number) => {
-        const stableKey = stableKeyMapRef.current.get(tempId);
-        if (stableKey) {
-          stableKeyMapRef.current.delete(tempId);
-          stableKeyMapRef.current.set(realRowId, stableKey);
-        }
-        setEditingCell((prev) =>
-          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
-        );
-        setSelectedCell((prev) =>
-          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
-        );
+    const { columnKeyMap, stableKeyMapRef: stableKeyMapRef } = useOptimisticIds(
+      {
+        setSelectedCell,
+        setEditingCell,
+        nonPrimaryColumns,
       },
-      [setSelectedCell, setEditingCell],
     );
-
-    useEffect(() => {
-      registerRowIdSwapListener(handleRowIdSwap);
-    }, [registerRowIdSwapListener, handleRowIdSwap]);
-
-    // --- 4b. Stable key map for optimistic columns ---
-    const stableColumnKeyMapRef = useRef<Map<number, string>>(new Map());
-
-    const handleColumnIdSwap = useCallback(
-      (tempId: number, realColId: number) => {
-        const stableKey = stableColumnKeyMapRef.current.get(tempId);
-        if (stableKey) {
-          stableColumnKeyMapRef.current.delete(tempId);
-          stableColumnKeyMapRef.current.set(realColId, stableKey);
-        }
-        setEditingCell((prev) =>
-          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
-        );
-        setSelectedCell((prev) =>
-          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
-        );
-      },
-      [setSelectedCell, setEditingCell],
-    );
-
-    useEffect(() => {
-      registerColumnIdSwapListener(handleColumnIdSwap);
-    }, [registerColumnIdSwapListener, handleColumnIdSwap]);
-
-    const columnKeyMap = useMemo(() => {
-      const map = new Map<number, string>();
-      nonPrimaryColumns.forEach((col, idx) => {
-        if (col.id < 0) {
-          const key = `temp-col-${idx}`;
-          stableColumnKeyMapRef.current.set(col.id, key);
-          map.set(col.id, key);
-        } else {
-          const stableKey = stableColumnKeyMapRef.current.get(col.id);
-          if (stableKey) map.set(col.id, stableKey);
-        }
-      });
-      return map;
-    }, [nonPrimaryColumns]);
 
     // --- 5. Helpers ---
     const handleCellChange = useCallback(
