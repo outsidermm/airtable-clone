@@ -26,6 +26,7 @@ import {
 import type { Table } from "~/types/table";
 import { ImportTableModal } from "../modals/import-table-modal";
 import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
+import { getLightColorClass } from "~/lib/base-icon-utils";
 
 interface TableTabsProps {
   base: Base;
@@ -84,23 +85,6 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
     setTableMenuId(null);
     setIsImportSubOpen(false);
   }, []);
-
-  const getLightColorClass = (colorClass: string) => {
-    const colorName = colorClass.split("-")[1] ?? "gray";
-    const colorMap: Record<string, string> = {
-      red: "bg-red-100",
-      orange: "bg-orange-100",
-      yellow: "bg-yellow-100",
-      green: "bg-green-100",
-      cyan: "bg-cyan-100",
-      blue: "bg-blue-100",
-      indigo: "bg-indigo-100",
-      purple: "bg-purple-100",
-      pink: "bg-pink-100",
-      gray: "bg-gray-100",
-    };
-    return colorMap[colorName] ?? "bg-gray-100";
-  };
 
   return (
     <div className={`flex items-end ${getLightColorClass(iconColor)}`}>

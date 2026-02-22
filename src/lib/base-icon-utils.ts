@@ -40,3 +40,20 @@ export function getBaseColor(baseId: string): string {
   const index = Math.abs(hash) % BASE_COLORS.length;
   return BASE_COLORS[index] ?? BASE_COLORS[0]!;
 }
+
+export function getLightColorClass(colorClass: string): string {
+  const colorName = colorClass.split("-")[1] ?? "gray";
+  const colorMap: Record<string, string> = {
+    red: "bg-red-100",
+    orange: "bg-orange-100",
+    yellow: "bg-yellow-100",
+    green: "bg-green-100",
+    cyan: "bg-cyan-100",
+    blue: "bg-blue-100",
+    indigo: "bg-indigo-100",
+    purple: "bg-purple-100",
+    pink: "bg-pink-100",
+    gray: "bg-gray-100",
+  };
+  return colorMap[colorName] ?? "bg-gray-100";
+}
