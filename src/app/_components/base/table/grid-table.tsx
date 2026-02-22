@@ -31,8 +31,8 @@ import { SortableRow } from "./components/sortable-row";
 import { GridHeader } from "./components/grid-header";
 
 // Custom Hooks
-import { useGridSelection } from "./hooks/useGridSelection";
-import { useGridNavigation } from "./hooks/useGridNavigation";
+import { useGridSelection } from "../hooks/useGridSelection";
+import { useGridNavigation } from "../hooks/useGridNavigation";
 import type { SortConfig } from "~/server/api/routers/view";
 import { PlusIcon } from "~/app/_components/ui/icons";
 import type { CellAddress } from "~/types/cell";
@@ -41,10 +41,10 @@ import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
 import { PlaceholderRow } from "./components/placeholder-row";
 import { FrozenColumnOverlay } from "./components/frozen-column-overlay";
-import { useOptimisticIds } from "./hooks/useOptimisticIds";
-import { useGridDnd } from "./hooks/useGridDnd";
-import { useTableVirtualizer } from "./hooks/useTableVirtualizer";
-import { useGridResizing } from "./hooks/useGridResizing";
+import { useOptimisticIds } from "../hooks/useOptimisticIds";
+import { useGridDnd } from "../hooks/useGridDnd";
+import { useTableVirtualizer } from "../hooks/useTableVirtualizer";
+import { useGridResizing } from "../hooks/useGridResizing";
 
 interface GridTableProps {
   columns: GridColumn[];

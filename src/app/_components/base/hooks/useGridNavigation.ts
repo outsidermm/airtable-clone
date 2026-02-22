@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 import { useRowMutations } from "~/app/_components/hooks/use-row-mutations";
-import { useBase } from "../../base-context";
+import { useBase } from "../base-context";
 
 interface UseGridNavigationProps {
   rows: GridRow[];

@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { PAGE_SIZE, MAX_SAFE_HEIGHT } from "../../constants";
+import { PAGE_SIZE, MAX_SAFE_HEIGHT } from "../constants";
 import type { GridRow } from "~/types/grid";
 import type { Table } from "@tanstack/react-table";
 

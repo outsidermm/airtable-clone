@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { CellAddress } from "~/types/cell";
 import type { GridColumn } from "~/types/grid";
-import { useBase } from "../../base-context";
+import { useBase } from "../base-context";
 
 interface UseOptimisticIdsProps {
   setSelectedCell: Dispatch<SetStateAction<CellAddress | null>>;
