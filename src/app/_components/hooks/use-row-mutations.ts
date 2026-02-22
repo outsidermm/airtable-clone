@@ -65,7 +65,6 @@ export function useRowMutations(activeTableId: number) {
     onError: (_err, _vars, context) => {
       context?.revert?.();
     },
-    onSettled: () => refetchRows(),
   });
 
   // Duplicate a row (copies cell data from the server)
@@ -89,12 +88,9 @@ export function useRowMutations(activeTableId: number) {
     onError: (_err, _vars, context) => {
       context?.revert?.();
     },
-    onSettled: () => refetchRows(), // Safe now that server persists the correct order
   });
 
-  const reorderRowMutation = api.row.reorder.useMutation({
-    onSettled: () => refetchRows(),
-  });
+  const reorderRowMutation = api.row.reorder.useMutation({});
 
   const deleteRow = api.row.delete.useMutation({
     onMutate: ({ id }) => {
@@ -114,7 +110,7 @@ export function useRowMutations(activeTableId: number) {
       // Restore the row if the server rejected the deletion
       context?.revert();
     },
-    onSettled: () => refetchRows(),
+    // Removed onSettled refetch to preserve rowOrderOverride and prevent visual layout shifts
   });
 
   const handleAddRow = useCallback(() => {
