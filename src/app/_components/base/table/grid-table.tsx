@@ -583,9 +583,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           totalScrollableWidth={totalScrollableWidth}
                           showLastRowTooltip={showLastRowTooltip}
                           columnKeyMap={columnKeyMap}
-                          handleFrozenBorderDragStart={
-                            handleFrozenBorderDragStart
-                          }
                           onContextMenu={handleRowContextMenu}
                           filteredColumnIds={filteredColumnIds}
                           sortedColumnIds={sortedColumnIds}

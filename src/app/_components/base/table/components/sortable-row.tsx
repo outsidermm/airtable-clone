@@ -43,7 +43,6 @@ interface SortableRowProps {
   showLastRowTooltip: boolean;
   // Stable React keys for temp/swapped columns — prevents GridCell remount on ID swap
   columnKeyMap: Map<number, string>;
-  handleFrozenBorderDragStart: (e: React.MouseEvent) => void;
   onContextMenu: (rowId: number, rowIndex: number, e: React.MouseEvent) => void;
   filteredColumnIds: Set<number>;
   sortedColumnIds: Set<number>;
@@ -76,7 +75,6 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
     totalScrollableWidth,
     showLastRowTooltip,
     columnKeyMap,
-    handleFrozenBorderDragStart,
     onContextMenu,
     filteredColumnIds,
     sortedColumnIds,
@@ -204,18 +202,12 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         {/* Primary Cell */}
         {primaryColumn && renderCell(primaryColumn, primaryColumnWidth)}
         {/* Frozen non-primary cells */}
-        {nonPrimaryColumns.slice(0, frozenNonPrimaryCount).map((col) =>
-          renderCell(col, columnSizing[String(col.id)] ?? col.width),
-        )}
+        {nonPrimaryColumns
+          .slice(0, frozenNonPrimaryCount)
+          .map((col) =>
+            renderCell(col, columnSizing[String(col.id)] ?? col.width),
+          )}
 
-        {/* Drag handle for adjusting the frozen border — dot appears on hover */}
-        <div
-          className="group/freezerow absolute top-0 right-0 z-10 flex cursor-col-resize items-center justify-center"
-          style={{ width: 8, height: "100%", transform: "translateX(50%)" }}
-          onMouseDown={handleFrozenBorderDragStart}
-        >
-          <div className="h-2.5 w-2.5 rounded-full bg-blue-400 opacity-0 shadow group-hover/freezerow:opacity-100" />
-        </div>
       </div>
 
       {/* === SCROLLABLE SECTION === */}
@@ -223,9 +215,11 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >
-        {nonPrimaryColumns.slice(frozenNonPrimaryCount).map((col) =>
-          renderCell(col, columnSizing[String(col.id)] ?? col.width),
-        )}
+        {nonPrimaryColumns
+          .slice(frozenNonPrimaryCount)
+          .map((col) =>
+            renderCell(col, columnSizing[String(col.id)] ?? col.width),
+          )}
       </div>
     </div>
   );
