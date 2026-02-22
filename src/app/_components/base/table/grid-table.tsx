@@ -149,6 +149,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       editingCell,
       setEditingCell,
       setShowLastRowTooltip,
+      onCellUpdate,
     });
 
     // --- Stable Context Menu Ref ---
