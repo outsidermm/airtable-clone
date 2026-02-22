@@ -22,7 +22,6 @@ import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
 import { PAGE_SIZE } from "./constants";
 import { useRowStore } from "./hooks/useRowStore";
-import { useOptimisticGrid } from "./hooks/useOptimisticGrid";
 import { useSidebarHover } from "./hooks/useSidebarHover";
 import { useCellMutations } from "../hooks/use-cell-mutations";
 
@@ -60,6 +59,9 @@ export function BaseContent({
     contextMenu,
     setContextMenu,
     registerRefetchRows,
+    registerOptimisticAddRow,
+    registerOptimisticDeleteRow,
+    registerOptimisticInsertRowNear,
     registerOnRowCreated,
     notifyRowIdSwap,
     registerOnColumnCreated,
@@ -151,16 +153,6 @@ export function BaseContent({
     return new Set(viewConfig.sorts.map((s) => s.columnId));
   }, [viewConfig.sorts]);
 
-  // --- Row ordering override (shared between useRowStore and useOptimisticGrid) ---
-  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
-    null,
-  );
-  const rowOrderOverrideRef = useRef<number[] | null>(null);
-
-  useEffect(() => {
-    rowOrderOverrideRef.current = rowOrderOverride;
-  }, [rowOrderOverride]);
-
   // --- Rows: random-access page store ---
   const pendingOptimisticEditsRef = useRef<
     Map<number, Record<string, string | number | null>>
@@ -168,6 +160,9 @@ export function BaseContent({
   const pendingColumnEditsRef = useRef<
     Map<number, Map<number, string | number | null>>
   >(new Map());
+  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
+    null,
+  );
 
   const {
     pageStore,
@@ -183,15 +178,187 @@ export function BaseContent({
     registerRefetchRows,
   });
 
+  const rowOrderOverrideRef = useRef<number[] | null>(null);
+
+  useEffect(() => {
+    rowOrderOverrideRef.current = rowOrderOverride;
+  }, [rowOrderOverride]);
+
   // --- Optimistic row mutations ---
-  useOptimisticGrid({
-    pageStoreRef,
-    setPageStore,
-    totalRowCountRef,
-    setTotalRowCount,
-    pendingOptimisticEditsRef,
-    setRowOrderOverride,
-  });
+  const optimisticAddRowImpl = useCallback((): {
+    tempId: number;
+    revert: () => void;
+  } => {
+    const tempId = -Date.now();
+    const tempRow: GridRow = { id: tempId, cells: {} };
+
+    const prevCount = totalRowCountRef.current;
+    const newCount = prevCount + 1;
+    const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
+
+    totalRowCountRef.current = newCount;
+
+    const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
+    pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
+    setPageStore(new Map(pageStoreRef.current));
+    setTotalRowCount(newCount);
+
+    return {
+      tempId,
+      revert: () => {
+        pendingOptimisticEditsRef.current.delete(tempId);
+        totalRowCountRef.current = prevCount;
+        const page = pageStoreRef.current.get(lastPageIndex);
+        if (page) {
+          const filtered = page.filter((r) => r.id !== tempId);
+          if (filtered.length === 0) {
+            pageStoreRef.current.delete(lastPageIndex);
+          } else {
+            pageStoreRef.current.set(lastPageIndex, filtered);
+          }
+        }
+        setPageStore(new Map(pageStoreRef.current));
+        setTotalRowCount(prevCount);
+      },
+    };
+  }, [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef]);
+
+  const optimisticDeleteRowImpl = useCallback(
+    (rowId: number): { revert: () => void } => {
+      let foundPageIndex = -1;
+      let foundPosition = -1;
+      let foundRow: GridRow | undefined;
+
+      for (const [pageIndex, pageRows] of pageStoreRef.current) {
+        const pos = pageRows.findIndex((r) => r.id === rowId);
+        if (pos !== -1) {
+          foundPageIndex = pageIndex;
+          foundPosition = pos;
+          foundRow = pageRows[pos];
+          break;
+        }
+      }
+
+      const prevCount = totalRowCountRef.current;
+      const newCount = Math.max(0, prevCount - 1);
+      totalRowCountRef.current = newCount;
+      setTotalRowCount(newCount);
+
+      if (foundPageIndex === -1 || !foundRow) {
+        return {
+          revert: () => {
+            totalRowCountRef.current = prevCount;
+            setTotalRowCount(prevCount);
+          },
+        };
+      }
+
+      const page = [...(pageStoreRef.current.get(foundPageIndex) ?? [])];
+      page.splice(foundPosition, 1);
+      pageStoreRef.current.set(foundPageIndex, page);
+      setPageStore(new Map(pageStoreRef.current));
+
+      const capturedRow = foundRow;
+      const capturedPageIndex = foundPageIndex;
+      const capturedPosition = foundPosition;
+      return {
+        revert: () => {
+          totalRowCountRef.current = prevCount;
+          setTotalRowCount(prevCount);
+          const currentPage = [
+            ...(pageStoreRef.current.get(capturedPageIndex) ?? []),
+          ];
+          currentPage.splice(capturedPosition, 0, capturedRow);
+          pageStoreRef.current.set(capturedPageIndex, currentPage);
+          setPageStore(new Map(pageStoreRef.current));
+        },
+      };
+    },
+    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
+  );
+
+  const optimisticInsertRowNearImpl = useCallback(
+    (
+      tableId: number,
+      beforeRowId?: number | null,
+      afterRowId?: number | null,
+    ): { tempId: number; revert: () => void } => {
+      const tempId = -Date.now();
+      const tempRow: GridRow = { id: tempId, cells: {} };
+
+      const prevCount = totalRowCountRef.current;
+      const newCount = prevCount + 1;
+      totalRowCountRef.current = newCount;
+
+      const preInsertFlatOrder: number[] = (() => {
+        const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
+          (a, b) => a - b,
+        );
+        const flat: GridRow[] = [];
+        for (const pi of sortedPageIndices)
+          flat.push(...(pageStoreRef.current.get(pi) ?? []));
+        return flat.map((r) => r.id);
+      })();
+
+      const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
+      const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
+      pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
+      setPageStore(new Map(pageStoreRef.current));
+      setTotalRowCount(newCount);
+
+      setRowOrderOverride((prev) => {
+        const currentOrder = prev ?? preInsertFlatOrder;
+        let insertIdx = -1;
+
+        if (beforeRowId != null) {
+          const targetIdx = currentOrder.indexOf(beforeRowId);
+          if (targetIdx !== -1) insertIdx = targetIdx;
+        } else if (afterRowId != null) {
+          const targetIdx = currentOrder.indexOf(afterRowId);
+          if (targetIdx !== -1) insertIdx = targetIdx + 1;
+        }
+
+        const newOrder = [...currentOrder];
+        if (insertIdx >= 0 && insertIdx <= newOrder.length) {
+          newOrder.splice(insertIdx, 0, tempId);
+        } else {
+          newOrder.push(tempId);
+        }
+        return newOrder;
+      });
+
+      return {
+        tempId,
+        revert: () => {
+          pendingOptimisticEditsRef.current.delete(tempId);
+          totalRowCountRef.current = prevCount;
+          const page = pageStoreRef.current.get(lastPageIndex);
+          if (page) {
+            const filtered = page.filter((r) => r.id !== tempId);
+            if (filtered.length === 0)
+              pageStoreRef.current.delete(lastPageIndex);
+            else pageStoreRef.current.set(lastPageIndex, filtered);
+          }
+          setPageStore(new Map(pageStoreRef.current));
+          setTotalRowCount(prevCount);
+          setRowOrderOverride(null);
+        },
+      };
+    },
+    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
+  );
+
+  useEffect(() => {
+    registerOptimisticAddRow(optimisticAddRowImpl);
+  }, [registerOptimisticAddRow, optimisticAddRowImpl]);
+
+  useEffect(() => {
+    registerOptimisticDeleteRow(optimisticDeleteRowImpl);
+  }, [registerOptimisticDeleteRow, optimisticDeleteRowImpl]);
+
+  useEffect(() => {
+    registerOptimisticInsertRowNear(optimisticInsertRowNearImpl);
+  }, [registerOptimisticInsertRowNear, optimisticInsertRowNearImpl]);
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
