@@ -217,7 +217,7 @@ export function GridHeader({
                   className="h-full"
                   onDoubleClick={() => handleHeaderDoubleClick(col)}
                 >
-                  <div className="group flex h-full items-center justify-between bg-white px-2 py-1.5">
+                  <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate text-xs text-gray-900">
