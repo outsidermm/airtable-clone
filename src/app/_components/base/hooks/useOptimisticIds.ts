@@ -69,11 +69,14 @@ export function useOptimisticIds({
 
   const columnKeyMap = useMemo(() => {
     const map = new Map<number, string>();
-    nonPrimaryColumns.forEach((col, idx) => {
+    nonPrimaryColumns.forEach((col) => {
       if (col.id < 0) {
-        const key = `temp-col-${idx}`;
-        stableColumnKeyMapRef.current.set(col.id, key);
-        map.set(col.id, key);
+        // Only set the stable key once — keyed by col.id (not position) so it
+        // survives column reorders and concurrent additions.
+        if (!stableColumnKeyMapRef.current.has(col.id)) {
+          stableColumnKeyMapRef.current.set(col.id, `temp-col-${col.id}`);
+        }
+        map.set(col.id, stableColumnKeyMapRef.current.get(col.id)!);
       } else {
         const stableKey = stableColumnKeyMapRef.current.get(col.id);
         if (stableKey) map.set(col.id, stableKey);
