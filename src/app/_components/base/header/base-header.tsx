@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BASE_COLORS } from "~/lib/base-icon-utils";
 import {
@@ -24,7 +23,7 @@ import {
 import type { Base } from "~/types/base";
 import { TableTabs } from "./table-tabs";
 import type { Table } from "~/types/table";
-
+import { DeleteBaseConfirmModal } from "../modals/delete-base-confirm-modal";
 
 interface BaseHeaderProps {
   base: Base;
@@ -55,7 +54,6 @@ Teammates will see this guide when they first open the base and can find it anyt
   );
   const [iconColor, setIconColor] = useState(getStoredBaseColor(base.id));
   const [showDeleteBaseConfirm, setShowDeleteBaseConfirm] = useState(false);
-  const router = useRouter();
 
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -78,6 +76,7 @@ Teammates will see this guide when they first open the base and can find it anyt
   const handleDeleteBase = () => {
     setShowBaseSubMenu(false);
     setShowDeleteBaseConfirm(true);
+    setShowBaseMenu(false);
   };
 
   useEffect(() => {
@@ -337,6 +336,12 @@ Teammates will see this guide when they first open the base and can find it anyt
                 </div>
               </>
             )}
+            {showDeleteBaseConfirm && (
+              <DeleteBaseConfirmModal
+                base={base}
+                setShowDeleteBaseConfirm={setShowDeleteBaseConfirm}
+              />
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -384,40 +389,6 @@ Teammates will see this guide when they first open the base and can find it anyt
         </div>
         <TableTabs base={base} tables={tables} iconColor={iconColor} />
       </header>
-
-      {showDeleteBaseConfirm && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="mb-2 text-lg font-semibold text-gray-900">
-              Delete base?
-            </h2>
-            <p className="mb-4 text-sm text-gray-600">
-              This will permanently delete &quot;{base.name}&quot; and all its
-              tables, columns, rows, and views. This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowDeleteBaseConfirm(false)}
-                className="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  baseMutations.handleDeleteConfirm(base.id);
-                  router.push("/dashboard");
-                }}
-                disabled={baseMutations.deleteBaseMutation.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {baseMutations.deleteBaseMutation.isPending
-                  ? "Deleting..."
-                  : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
