@@ -921,7 +921,10 @@ export function BaseContent({
         </div>
       </div>
       {contextMenu?.type === "record" && (
-        <RecordContextMenu rowMutations={rowMutations} />
+        <RecordContextMenu
+          rowMutations={rowMutations}
+          onClearSelection={() => gridTableRef.current?.clearSelection()}
+        />
       )}
       {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
         <ColumnContextMenu

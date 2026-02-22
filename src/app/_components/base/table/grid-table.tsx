@@ -422,6 +422,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           if (index !== -1)
             rowVirtualizer.scrollToIndex(index, { align: "center" });
         },
+        clearSelection: () => setRowSelection({}),
       }),
       [tableRows, rowVirtualizer],
     );
