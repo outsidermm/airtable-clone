@@ -7,6 +7,7 @@ import {
   QuestionIcon,
   SearchIcon,
   ChevronDownIcon,
+  PlusIcon,
 } from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
@@ -113,7 +114,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
       <div
         ref={modalRef}
-        className="z-50 w-120 overflow-hidden rounded-xl border bg-white border-gray-200 shadow-2xl fixed"
+        className="fixed z-50 w-120 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
         style={
           isDropdown ? { top: position.top, left: position.left } : undefined
         }
@@ -205,7 +206,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
         ) : (
           /* PAGE 2: CONFIGURATION VIEW */
           <div className="flex flex-col p-5">
-            <div className="space-y-5">
+            <div className="space-y-3">
               <div>
                 <input
                   autoFocus
@@ -254,21 +255,29 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                 />
               </div>
             </div>
-
-            <div className="mt-4 flex items-center justify-end gap-3 border-t border-gray-100 pt-5">
+            <div className="flex items-center justify-between pt-4">
               <button
                 onClick={() => openModal(null)}
                 className="rounded-md px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
               >
-                Cancel
+                <PlusIcon className="mr-2 inline h-4 w-4" />
+                Add description
               </button>
-              <button
-                onClick={handleConfirm}
-                disabled={!selectedFieldType}
-                className="rounded-md bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Create field
-              </button>
+              <div className="flex items-center justify-end gap-3 border-t border-gray-100">
+                <button
+                  onClick={() => openModal(null)}
+                  className="rounded-md px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={!selectedFieldType}
+                  className="rounded-md bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Create field
+                </button>
+              </div>
             </div>
           </div>
         )}
