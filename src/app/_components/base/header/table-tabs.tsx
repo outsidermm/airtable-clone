@@ -8,26 +8,14 @@ import { api } from "~/trpc/react";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  ImportIcon,
-  TeamIcon,
-  RenameIcon,
-  HideIcon,
-  TextIcon,
-  DuplicateIcon,
-  CalendarIcon,
-  LockIcon,
-  PencilIcon,
-  XIcon,
-  TrashIcon,
   PlusIcon,
   SearchIcon,
   CheckIcon,
 } from "../../ui/icons";
 import type { Table } from "~/types/table";
-import { ImportTableModal } from "../modals/import-table-modal";
-import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
 import { getLightColorClass } from "~/lib/base-icon-utils";
 import { RenameTableModal } from "../modals/rename-table-modal";
+import { EditTableModal } from "../modals/edit-table-modal";
 
 interface TableTabsProps {
   base: Base;
@@ -154,117 +142,15 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                 )}
 
               {isMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={closeMenu} />
-                  <div className="absolute top-full left-0 z-100 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
-                    <div className="relative">
-                      <MenuItem
-                        label="Import data"
-                        icon={<ImportIcon className="h-4 w-4 text-gray-400" />}
-                        onMouseEnter={() => setIsImportSubOpen(true)}
-                        onMouseLeave={() => setIsImportSubOpen(false)}
-                        rightElement={
-                          <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
-                        }
-                        className="text-sm!"
-                      />
-
-                      {isImportSubOpen && (
-                        <ImportTableModal
-                          setIsImportSubOpen={setIsImportSubOpen}
-                          closeMenu={closeMenu}
-                        />
-                      )}
-                    </div>
-
-                    <MenuDivider />
-
-                    <MenuItem
-                      label="Rename table"
-                      icon={<RenameIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={() => {
-                        closeMenu();
-                        setRenamingTableId(table.id);
-                      }}
-                      className="text-sm!"
-                    />
-                    <MenuItem
-                      label="Hide table"
-                      icon={<HideIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      className="text-sm!"
-                    />
-                    <MenuItem
-                      label="Manage fields"
-                      icon={<TextIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      rightElement={
-                        <MenuBadge variant="blue">
-                          <TeamIcon className="h-2.5 w-2.5" />
-                          Team
-                        </MenuBadge>
-                      }
-                      className="text-sm!"
-                    />
-                    <MenuItem
-                      label="Duplicate table"
-                      icon={<DuplicateIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      className="text-sm!"
-                    />
-                    <MenuDivider />
-                    <MenuItem
-                      label="Configure date dependencies"
-                      icon={<CalendarIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      rightElement={
-                        <MenuBadge variant="blue">
-                          <TeamIcon className="h-2.5 w-2.5" />
-                          Team
-                        </MenuBadge>
-                      }
-                      className="text-sm!"
-                    />
-                    <MenuDivider />
-                    <MenuItem
-                      label="Edit table description"
-                      icon={<PencilIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      className="text-sm!"
-                    />
-                    <MenuItem
-                      label="Edit table permissions"
-                      icon={<LockIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      rightElement={
-                        <MenuBadge variant="blue">
-                          <TeamIcon className="h-2.5 w-2.5" />
-                          Team
-                        </MenuBadge>
-                      }
-                      className="text-sm!"
-                    />
-                    <MenuDivider />
-                    <MenuItem
-                      label="Clear data"
-                      icon={<XIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={closeMenu}
-                      className="text-sm!"
-                    />
-                    <MenuItem
-                      label="Delete table"
-                      icon={<TrashIcon className="h-4 w-4 text-gray-400" />}
-                      onClick={() => {
-                        setDeleteConfirmTableId(table.id);
-                        closeMenu();
-                      }}
-                      disabled={tables.length === 1}
-                      className={`text-sm! ${
-                        tables.length === 1 ? "text-gray-400" : ""
-                      }`}
-                    />
-                  </div>
-                </>
+                <EditTableModal
+                  table={table}
+                  tables={tables}
+                  setRenamingTableId={setRenamingTableId}
+                  setDeleteConfirmTableId={setDeleteConfirmTableId}
+                  isImportSubOpen={isImportSubOpen}
+                  setIsImportSubOpen={setIsImportSubOpen}
+                  closeMenu={closeMenu}
+                />
               )}
 
               {deleteConfirmTableId === table.id && (
