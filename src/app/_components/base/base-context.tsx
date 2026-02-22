@@ -45,12 +45,6 @@ interface BaseContextType {
   // Search & Highlight State
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  highlightedCells: Map<number, Set<number>>;
-  setHighlightedCells: (cells: Map<number, Set<number>>) => void;
-  activeSearchCell: { rowId: number; columnId: number } | undefined;
-  setActiveSearchCell: (
-    cell: { rowId: number; columnId: number } | undefined,
-  ) => void;
 
   contextMenu: ContextMenuState | null;
   setContextMenu: (menu: ContextMenuState | null) => void;
@@ -157,12 +151,6 @@ export function BaseProvider({
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
-  const [highlightedCells, setHighlightedCells] = useState<
-    Map<number, Set<number>>
-  >(new Map());
-  const [activeSearchCell, setActiveSearchCell] = useState<
-    { rowId: number; columnId: number } | undefined
-  >(undefined);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -345,10 +333,6 @@ export function BaseProvider({
         setRenamingTableId,
         searchQuery,
         setSearchQuery,
-        highlightedCells,
-        setHighlightedCells,
-        activeSearchCell,
-        setActiveSearchCell,
         contextMenu,
         setContextMenu,
         refetchRows,

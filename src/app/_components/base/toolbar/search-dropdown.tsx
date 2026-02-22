@@ -22,7 +22,7 @@ export function SearchDropdown({
   onScrollToRow,
   onClose,
 }: SearchDropdownProps) {
-  const { activeTableId, setSearchQuery, setHighlightedCells, setActiveSearchCell} = useBase();
+  const { activeTableId } = useBase();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -94,29 +94,6 @@ export function SearchDropdown({
     return result;
   }, [searchResults.data, debouncedQuery]);
 
-  // Build highlight map from results and sync to context
-  useEffect(() => {
-    if (!searchResults.data || debouncedQuery.length === 0 || matchingCells.length === 0) {
-      setHighlightedCells(new Map());
-      setActiveSearchCell(undefined);
-      setSearchQuery("");
-      return;
-    }
-
-    const highlights = new Map<number, Set<number>>();
-    for (const cell of matchingCells) {
-      if (!highlights.has(cell.rowId)) {
-        highlights.set(cell.rowId, new Set());
-      }
-      highlights.get(cell.rowId)!.add(cell.columnId);
-    }
-
-    setHighlightedCells(highlights);
-    setActiveSearchCell(matchingCells[activeIndex]);
-    setSearchQuery(debouncedQuery);
-  }, [searchResults.data, debouncedQuery, matchingCells, activeIndex,
-      setHighlightedCells, setActiveSearchCell, setSearchQuery]);
-
   const goToResult = useCallback(
     (index: number) => {
       const cell = matchingCells[index];
@@ -151,15 +128,6 @@ export function SearchDropdown({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
-
-  // Clear highlights on unmount
-  useEffect(() => {
-    return () => {
-      setHighlightedCells(new Map());
-      setActiveSearchCell(undefined);
-      setSearchQuery("");
-    }
-  }, [setHighlightedCells, setActiveSearchCell, setSearchQuery]);
 
   return (
     <>
@@ -213,7 +181,6 @@ export function SearchDropdown({
             onClick={() => {
               setQuery("");
               setDebouncedQuery("");
-              setHighlightedCells(new Map());
             }}
             className="text-gray-400 hover:text-gray-600"
           >

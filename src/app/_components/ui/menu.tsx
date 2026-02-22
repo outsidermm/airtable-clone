@@ -54,6 +54,8 @@ interface MenuItemProps {
   icon?: React.ReactNode;
   rightElement?: React.ReactNode; // For "Beta" tags, "Team" badges, or Chevron
   onClick?: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   danger?: boolean;
   disabled?: boolean;
   className?: string;
@@ -64,6 +66,8 @@ export function MenuItem({
   icon,
   rightElement,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
   danger,
   disabled,
   className = "",
@@ -81,6 +85,8 @@ export function MenuItem({
     <button
       onClick={handleClick}
       disabled={disabled}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={`group flex w-full items-center justify-between text-xs px-3 py-1.5 transition-all hover:bg-gray-100 ${
         disabled
           ? "cursor-not-allowed text-gray-300"

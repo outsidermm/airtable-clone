@@ -60,7 +60,6 @@ export function BaseContent({
     modalAnchor,
     contextMenu,
     setContextMenu,
-    searchQuery,
     registerRefetchRows,
     registerOptimisticAddRow,
     registerOptimisticDeleteRow,
@@ -152,6 +151,14 @@ export function BaseContent({
   const activeViewName = useMemo(() => {
     return views.find((v) => v.id === activeViewId)?.name ?? "Grid view";
   }, [views, activeViewId]);
+
+  const filteredColumnIds = useMemo(() => {
+    return new Set(viewConfig.filters.map((f) => f.columnId));
+  }, [viewConfig.filters]);
+
+  const sortedColumnIds = useMemo(() => {
+    return new Set(viewConfig.sorts.map((s) => s.columnId));
+  }, [viewConfig.sorts]);
 
   // --- Rows: random-access page store ---
   const pageStoreRef = useRef<Map<number, GridRow[]>>(new Map());
@@ -735,30 +742,6 @@ export function BaseContent({
     registerOnColumnCreated(onColumnCreatedImpl);
   }, [registerOnColumnCreated, onColumnCreatedImpl]);
 
-  const searchResultsQuery = api.cell.search.useQuery(
-    { tableId: activeTableId, query: searchQuery, limit: 500 },
-    { enabled: !!activeTableId && searchQuery.length > 0 },
-  );
-
-  useEffect(() => {
-    if (!searchResultsQuery.data) return;
-    pushQueryEntry({
-      path: "cell.search",
-      label: `query="${searchQuery}"`,
-      sqlMs: searchResultsQuery.data.sqlMs,
-      totalMs: 0,
-      rowCount: searchResultsQuery.data.rows.length,
-    });
-  }, [searchResultsQuery.data, searchQuery]);
-
-  const searchGridRows = useMemo<GridRow[] | null>(() => {
-    if (!searchQuery || !searchResultsQuery.data) return null;
-    return searchResultsQuery.data.rows.map((row) => ({
-      id: row.id,
-      cells: row.cells as Record<string, string | number | null>,
-    }));
-  }, [searchQuery, searchResultsQuery.data]);
-
   const rowById = useMemo(() => {
     const map = new Map<number, GridRow>();
     for (const pageRows of pageStore.values()) {
@@ -768,9 +751,6 @@ export function BaseContent({
   }, [pageStore]);
 
   const gridRows = useMemo<(GridRow | null)[]>(() => {
-    if (searchQuery && searchGridRows !== null) {
-      return searchGridRows;
-    }
     if (!totalRowCount) return [];
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
 
@@ -797,14 +777,7 @@ export function BaseContent({
       }
     }
     return sparse;
-  }, [
-    searchQuery,
-    searchGridRows,
-    pageStore,
-    rowById,
-    totalRowCount,
-    rowOrderOverride,
-  ]);
+  }, [pageStore, rowById, totalRowCount, rowOrderOverride]);
 
   const reorderRowMutation = api.row.reorder.useMutation({
     onSettled: () => refetchLoadedPages(),
@@ -934,15 +907,13 @@ export function BaseContent({
               onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
+              filteredColumnIds={filteredColumnIds}
+              sortedColumnIds={sortedColumnIds}
             />
           )}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="text-xs text-gray-500">
-              {searchQuery
-                ? searchGridRows !== null
-                  ? `${searchGridRows.length} matching ${searchGridRows.length === 1 ? "record" : "records"}`
-                  : "Searching..."
-                : totalRowCount != null
+              {totalRowCount != null
                   ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
                   : "Loading..."}
             </span>

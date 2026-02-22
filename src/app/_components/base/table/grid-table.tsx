@@ -59,6 +59,8 @@ interface GridTableProps {
   onRequestPage: (pageIndex: number) => void;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
+  filteredColumnIds: Set<number>;
+  sortedColumnIds: Set<number>;
 }
 
 export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
@@ -72,6 +74,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       onRequestPage,
       sorts = [],
       rowHeight = "short",
+      filteredColumnIds,
+      sortedColumnIds,
     },
     ref,
   ) {
@@ -80,6 +84,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       registerRowIdSwapListener,
       registerColumnIdSwapListener,
       setContextMenu,
+      activeModal,
+      contextMenu,
     } = useBase();
     const rowMutations = useRowMutations(activeTableId);
 
@@ -660,6 +666,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 sensors={sensors}
                 handleDragEnd={handleDragEnd}
                 headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
+                filteredColumnIds={filteredColumnIds}
+                sortedColumnIds={sortedColumnIds}
               />
 
               <DndContext
@@ -794,6 +802,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                             handleFrozenBorderDragStart
                           }
                           onContextMenu={handleRowContextMenu}
+                          filteredColumnIds={filteredColumnIds}
+                          sortedColumnIds={sortedColumnIds}
                         />
                       );
                     })}
@@ -848,7 +858,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
             onMouseDown={handleFrozenBorderDragStart}
             onMouseMove={(e) => {
-              if (isDraggingFreezeRef.current) return;
+              if (isDraggingFreezeRef.current || activeModal || contextMenu)
+                return;
               const rect = e.currentTarget.getBoundingClientRect();
               setFreezeLineHoverY(e.clientY - rect.top);
             }}
