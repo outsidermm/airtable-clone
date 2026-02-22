@@ -24,6 +24,7 @@ import { useBase } from "./base-context";
 import { PAGE_SIZE } from "./constants";
 import { pushQueryEntry } from "~/lib/query-log";
 import { useRowStore } from "./hooks/useRowStore";
+import { useSidebarHover } from "./hooks/useSidebarHover";
 
 interface Table {
   id: number;
@@ -54,9 +55,6 @@ export function BaseContent({
     activeTableId,
     activeViewId,
     setActiveViewId,
-    setIsSidebarOpen,
-    isSidebarPersistent,
-    setIsSidebarPersistent,
     activeModal,
     modalAnchor,
     contextMenu,
@@ -71,7 +69,6 @@ export function BaseContent({
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
-  const sidebarHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
   const toast = useToast();
@@ -687,38 +684,11 @@ export function BaseContent({
     gridTableRef.current?.scrollToRow(rowId);
   }, []);
 
-  const handleSidebarHoverEnter = useCallback(() => {
-    if (sidebarHoverTimeoutRef.current) {
-      clearTimeout(sidebarHoverTimeoutRef.current);
-      sidebarHoverTimeoutRef.current = null;
-    }
-    if (!isSidebarPersistent) {
-      setIsSidebarOpen(true);
-    }
-  }, [isSidebarPersistent, setIsSidebarOpen]);
-
-  const handleSidebarHoverLeave = useCallback(() => {
-    if (!isSidebarPersistent) {
-      sidebarHoverTimeoutRef.current = setTimeout(() => {
-        setIsSidebarOpen(false);
-      }, 300);
-    }
-  }, [isSidebarPersistent, setIsSidebarOpen]);
-
-  const handleToggleSidebar = useCallback(() => {
-    if (sidebarHoverTimeoutRef.current) {
-      clearTimeout(sidebarHoverTimeoutRef.current);
-      sidebarHoverTimeoutRef.current = null;
-    }
-
-    if (isSidebarPersistent) {
-      setIsSidebarPersistent(false);
-      setIsSidebarOpen(false);
-    } else {
-      setIsSidebarPersistent(true);
-      setIsSidebarOpen(true);
-    }
-  }, [isSidebarPersistent, setIsSidebarPersistent, setIsSidebarOpen]);
+  const {
+    handleSidebarHoverEnter,
+    handleSidebarHoverLeave,
+    handleToggleSidebar,
+  } = useSidebarHover();
 
   useEffect(() => {
     setActiveViewId(null);
