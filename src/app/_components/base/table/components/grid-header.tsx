@@ -42,6 +42,8 @@ interface GridHeaderProps {
   handleDragEnd: (e: DragEndEvent) => void;
   headerGroups: Header<GridRow, unknown>[]; // from TanStack
   frozenNonPrimaryCount: number;
+  filteredColumnIds: Set<number>;
+  sortedColumnIds: Set<number>;
 }
 
 export function GridHeader({
@@ -59,6 +61,8 @@ export function GridHeader({
   handleDragEnd,
   headerGroups,
   frozenNonPrimaryCount,
+  filteredColumnIds,
+  sortedColumnIds,
 }: GridHeaderProps) {
   const { openModal, activeTableId, setContextMenu } = useBase();
   const columnMutations = useColumnMutations(activeTableId);
@@ -110,7 +114,13 @@ export function GridHeader({
         {/* Primary Column */}
         {primaryColumn && (
           <div
-            className="relative flex items-center border-b border-gray-200 bg-white"
+            className={`relative flex items-center border-b border-gray-200 ${
+              filteredColumnIds.has(primaryColumn.id)
+                ? "bg-green-100"
+                : sortedColumnIds.has(primaryColumn.id)
+                  ? "bg-orange-100"
+                  : "bg-white"
+            }`}
             style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -168,7 +178,13 @@ export function GridHeader({
           return (
             <div
               key={header.id}
-              className="relative border-r border-gray-200 bg-white"
+              className={`relative border-r border-gray-200 ${
+                filteredColumnIds.has(col.id)
+                  ? "bg-green-100"
+                  : sortedColumnIds.has(col.id)
+                    ? "bg-orange-100"
+                    : "bg-white"
+              }`}
               style={{ width: header.getSize(), height: HEADER_HEIGHT }}
               onContextMenu={(e) => {
                 e.preventDefault();
@@ -201,7 +217,7 @@ export function GridHeader({
                   className="h-full"
                   onDoubleClick={() => handleHeaderDoubleClick(col)}
                 >
-                  <div className="group flex h-full items-center justify-between bg-white px-2 py-1.5">
+                  <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate text-xs text-gray-900">
@@ -258,7 +274,13 @@ export function GridHeader({
               return (
                 <div
                   key={header.id}
-                  className="relative border-r border-gray-200 bg-white"
+                  className={`relative border-r border-gray-200 ${
+                    filteredColumnIds.has(col.id)
+                      ? "bg-green-100"
+                      : sortedColumnIds.has(col.id)
+                        ? "bg-orange-100"
+                        : "bg-white"
+                  }`}
                   style={{ width: header.getSize(), height: HEADER_HEIGHT }}
                   onContextMenu={(e) => {
                     e.preventDefault();

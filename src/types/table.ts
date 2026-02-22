@@ -1,5 +1,6 @@
 export interface GridTableHandle {
   scrollToRow: (rowId: number) => void;
+  clearSelection: () => void;
 }
 
 export interface Table {

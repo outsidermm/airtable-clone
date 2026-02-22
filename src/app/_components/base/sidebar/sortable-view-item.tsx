@@ -67,7 +67,7 @@ export function SortableViewItem({
     activeViewId,
     setActiveViewId,
   );
-  const isActive = activeTableId === view.id;
+  const isActive = activeViewId === view.id;
   // Only apply vertical transform, ignore horizontal
   const constrainedTransform = transform ? { ...transform, x: 0 } : transform;
 

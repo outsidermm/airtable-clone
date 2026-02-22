@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
-import { useToast } from "~/app/_components/ui/toast";
 import { GridTable } from "./table/grid-table";
 import type { GridTableHandle } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
@@ -22,7 +21,9 @@ import type { GridColumn, GridRow } from "~/types/grid";
 import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
 import { PAGE_SIZE } from "./constants";
-import { pushQueryEntry } from "~/lib/query-log";
+import { useRowStore } from "./hooks/useRowStore";
+import { useSidebarHover } from "./hooks/useSidebarHover";
+import { useCellMutations } from "../hooks/use-cell-mutations";
 
 interface Table {
   id: number;
@@ -53,14 +54,10 @@ export function BaseContent({
     activeTableId,
     activeViewId,
     setActiveViewId,
-    setIsSidebarOpen,
-    isSidebarPersistent,
-    setIsSidebarPersistent,
     activeModal,
     modalAnchor,
     contextMenu,
     setContextMenu,
-    searchQuery,
     registerRefetchRows,
     registerOptimisticAddRow,
     registerOptimisticDeleteRow,
@@ -71,10 +68,8 @@ export function BaseContent({
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
-  const sidebarHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
-  const toast = useToast();
 
   // --- Base: keep live data for header (name, starred) ---
   const baseQuery = api.base.getById.useQuery(
@@ -105,10 +100,7 @@ export function BaseContent({
     { enabled: !!activeTableId },
   );
 
-  const tableMutations = useTableMutations(
-    baseId,
-    tables,
-  );
+  const tableMutations = useTableMutations(baseId, tables);
 
   // --- Views ---
   const views = useMemo(() => {
@@ -153,13 +145,15 @@ export function BaseContent({
     return views.find((v) => v.id === activeViewId)?.name ?? "Grid view";
   }, [views, activeViewId]);
 
+  const filteredColumnIds = useMemo(() => {
+    return new Set(viewConfig.filters.map((f) => f.columnId));
+  }, [viewConfig.filters]);
+
+  const sortedColumnIds = useMemo(() => {
+    return new Set(viewConfig.sorts.map((s) => s.columnId));
+  }, [viewConfig.sorts]);
+
   // --- Rows: random-access page store ---
-  const pageStoreRef = useRef<Map<number, GridRow[]>>(new Map());
-  const loadingPagesRef = useRef<Set<number>>(new Set());
-  const fetchKeyRef = useRef(0);
-  const [pageStore, setPageStore] = useState<Map<number, GridRow[]>>(new Map());
-  const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
-  const totalRowCountRef = useRef<number>(0);
   const pendingOptimisticEditsRef = useRef<
     Map<number, Record<string, string | number | null>>
   >(new Map());
@@ -169,151 +163,26 @@ export function BaseContent({
   const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
     null,
   );
+
+  const {
+    pageStore,
+    setPageStore,
+    pageStoreRef,
+    totalRowCount,
+    setTotalRowCount,
+    totalRowCountRef,
+    fetchPage,
+    refetchLoadedPages,
+  } = useRowStore({
+    setRowOrderOverride,
+    registerRefetchRows,
+  });
+
   const rowOrderOverrideRef = useRef<number[] | null>(null);
-
-  const fetchPage = useCallback(
-    async (pageIndex: number) => {
-      if (
-        loadingPagesRef.current.has(pageIndex) ||
-        pageStoreRef.current.has(pageIndex)
-      )
-        return;
-
-      loadingPagesRef.current.add(pageIndex);
-      const myFetchKey = fetchKeyRef.current;
-
-      try {
-        const offset = pageIndex * PAGE_SIZE;
-        let newRows: GridRow[];
-        let fetchedTotalCount: number | undefined;
-
-        const fetchStart = Date.now();
-        if (activeViewId) {
-          const data = await utils.view.getData.fetch(
-            { viewId: activeViewId, offset, limit: PAGE_SIZE },
-            { staleTime: 0 },
-          );
-          newRows = data.rows.map((row) => ({
-            id: row.id,
-            cells: row.cells as Record<string, string | number | null>,
-          }));
-          fetchedTotalCount = data.totalCount;
-          pushQueryEntry({
-            path: "view.getData",
-            label: `viewId=${activeViewId} page=${pageIndex}`,
-            sqlMs: data.sqlMs,
-            totalMs: Date.now() - fetchStart,
-            rowCount: newRows.length,
-          });
-        } else if (activeTableId) {
-          const data = await utils.row.getRows.fetch(
-            { tableId: activeTableId, offset, limit: PAGE_SIZE },
-            { staleTime: 0 },
-          );
-          newRows = data.rows.map((row) => ({
-            id: row.id,
-            cells: row.cells as Record<string, string | number | null>,
-          }));
-          fetchedTotalCount = data.totalCount;
-          pushQueryEntry({
-            path: "row.getRows",
-            label: `tableId=${activeTableId} page=${pageIndex}`,
-            sqlMs: data.sqlMs,
-            totalMs: Date.now() - fetchStart,
-            rowCount: newRows.length,
-          });
-        } else {
-          return;
-        }
-
-        if (fetchKeyRef.current !== myFetchKey) return;
-
-        pageStoreRef.current.set(pageIndex, newRows);
-        setPageStore(new Map(pageStoreRef.current));
-
-        if (pageIndex === 0 && fetchedTotalCount !== undefined) {
-          const count = fetchedTotalCount;
-          totalRowCountRef.current = count;
-          setTotalRowCount(count);
-        }
-      } finally {
-        if (fetchKeyRef.current === myFetchKey) {
-          loadingPagesRef.current.delete(pageIndex);
-        }
-      }
-    },
-    [activeViewId, activeTableId, utils],
-  );
 
   useEffect(() => {
     rowOrderOverrideRef.current = rowOrderOverride;
   }, [rowOrderOverride]);
-
-  const silentRefetchPage = useCallback(
-    async (pageIndex: number) => {
-      const myFetchKey = fetchKeyRef.current;
-      try {
-        const offset = pageIndex * PAGE_SIZE;
-        let newRows: GridRow[];
-        let fetchedTotalCount: number | undefined;
-
-        if (activeViewId) {
-          const data = await utils.view.getData.fetch(
-            { viewId: activeViewId, offset, limit: PAGE_SIZE },
-            { staleTime: 0 },
-          );
-          newRows = data.rows.map((row) => ({
-            id: row.id,
-            cells: row.cells as Record<string, string | number | null>,
-          }));
-          fetchedTotalCount = data.totalCount;
-        } else if (activeTableId) {
-          const data = await utils.row.getRows.fetch(
-            { tableId: activeTableId, offset, limit: PAGE_SIZE },
-            { staleTime: 0 },
-          );
-          newRows = data.rows.map((row) => ({
-            id: row.id,
-            cells: row.cells as Record<string, string | number | null>,
-          }));
-          fetchedTotalCount = data.totalCount;
-        } else {
-          return;
-        }
-
-        if (fetchKeyRef.current !== myFetchKey) return;
-
-        pageStoreRef.current.set(pageIndex, newRows);
-        setPageStore(new Map(pageStoreRef.current));
-
-        if (pageIndex === 0) {
-          setRowOrderOverride(null);
-
-          if (fetchedTotalCount !== undefined) {
-            const count = fetchedTotalCount;
-            totalRowCountRef.current = count;
-            setTotalRowCount(count);
-          }
-        }
-      } catch {
-        // Silently ignore errors
-      }
-    },
-    [activeViewId, activeTableId, utils],
-  );
-
-  const refetchLoadedPages = useCallback(() => {
-    const loadedPageIndices = [...pageStoreRef.current.keys()];
-    loadingPagesRef.current = new Set();
-    void silentRefetchPage(0);
-    for (const pageIndex of loadedPageIndices) {
-      if (pageIndex !== 0) void silentRefetchPage(pageIndex);
-    }
-  }, [silentRefetchPage]);
-
-  useEffect(() => {
-    registerRefetchRows(refetchLoadedPages);
-  }, [registerRefetchRows, refetchLoadedPages]);
 
   // --- Optimistic row mutations ---
   const optimisticAddRowImpl = useCallback((): {
@@ -352,7 +221,7 @@ export function BaseContent({
         setTotalRowCount(prevCount);
       },
     };
-  }, []);
+  }, [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef]);
 
   const optimisticDeleteRowImpl = useCallback(
     (rowId: number): { revert: () => void } => {
@@ -405,7 +274,7 @@ export function BaseContent({
         },
       };
     },
-    [],
+    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
   );
 
   const optimisticInsertRowNearImpl = useCallback(
@@ -476,7 +345,7 @@ export function BaseContent({
         },
       };
     },
-    [],
+    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
   );
 
   useEffect(() => {
@@ -490,19 +359,6 @@ export function BaseContent({
   useEffect(() => {
     registerOptimisticInsertRowNear(optimisticInsertRowNearImpl);
   }, [registerOptimisticInsertRowNear, optimisticInsertRowNearImpl]);
-
-  useEffect(() => {
-    fetchKeyRef.current++;
-    pageStoreRef.current = new Map();
-    loadingPagesRef.current = new Set();
-    setPageStore(new Map());
-    setTotalRowCount(undefined);
-    totalRowCountRef.current = 0;
-
-    if (activeViewId ?? activeTableId) {
-      void fetchPage(0);
-    }
-  }, [activeViewId, activeTableId, fetchPage]);
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -554,210 +410,17 @@ export function BaseContent({
   );
 
   // --- Cells ---
-  const cellUpdateStartRef = useRef<Map<string, number>>(new Map());
-
-  const updateCell = api.cell.update.useMutation({
-    onMutate: (variables) => {
-      cellUpdateStartRef.current.set(
-        `${variables.rowId}:${variables.columnId}`,
-        Date.now(),
-      );
-    },
-    onSuccess: (data, variables) => {
-      const key = `${variables.rowId}:${variables.columnId}`;
-      const startTime = cellUpdateStartRef.current.get(key);
-      cellUpdateStartRef.current.delete(key);
-      pushQueryEntry({
-        path: "cell.update",
-        label: `row=${variables.rowId} col=${variables.columnId}`,
-        sqlMs: data.sqlMs,
-        totalMs: startTime !== undefined ? Date.now() - startTime : 0,
-      });
-
-      const colKey = String(variables.columnId);
-      const savedValue = variables.value;
-      for (const [pageIndex, pageRows] of pageStoreRef.current) {
-        const rowIdx = pageRows.findIndex((r) => r.id === variables.rowId);
-        if (rowIdx !== -1) {
-          const newRows = [...pageRows];
-          newRows[rowIdx] = {
-            ...newRows[rowIdx]!,
-            cells: { ...newRows[rowIdx]!.cells, [colKey]: savedValue },
-          };
-          pageStoreRef.current.set(pageIndex, newRows);
-          setPageStore(new Map(pageStoreRef.current));
-          break;
-        }
-      }
-    },
-    onError: (error: { message: string }) => {
-      toast.error(error.message);
-    },
+  const { handleCellUpdate } = useCellMutations({
+    allColumns,
+    registerOnRowCreated,
+    registerOnColumnCreated,
+    setRowOrderOverride,
+    notifyRowIdSwap,
+    pageStoreRef,
+    setPageStore,
+    pendingOptimisticEditsRef,
+    pendingColumnEditsRef,
   });
-
-  const handleCellUpdate = useCallback(
-    (rowId: number, columnId: number, value: string) => {
-      const col = allColumns.find((c) => c.id === columnId);
-      if (!col) return;
-
-      const colKey = String(columnId);
-      const convertedValue: string | number | null =
-        col.type === "NUMBER"
-          ? isNaN(parseFloat(value))
-            ? null
-            : parseFloat(value)
-          : value;
-
-      const isTempRow = rowId < 0;
-      const isTempCol = columnId < 0;
-
-      if (isTempRow || isTempCol) {
-        for (const [pageIndex, pageRows] of pageStoreRef.current) {
-          const rowIdx = pageRows.findIndex((r) => r.id === rowId);
-          if (rowIdx !== -1) {
-            const newRows = [...pageRows];
-            newRows[rowIdx] = {
-              ...newRows[rowIdx]!,
-              cells: { ...newRows[rowIdx]!.cells, [colKey]: convertedValue },
-            };
-            pageStoreRef.current.set(pageIndex, newRows);
-            setPageStore(new Map(pageStoreRef.current));
-            break;
-          }
-        }
-
-        if (isTempRow && !isTempCol) {
-          const existing = pendingOptimisticEditsRef.current.get(rowId) ?? {};
-          pendingOptimisticEditsRef.current.set(rowId, {
-            ...existing,
-            [colKey]: convertedValue,
-          });
-        } else if (isTempCol && !isTempRow) {
-          const colEdits =
-            pendingColumnEditsRef.current.get(columnId) ??
-            new Map<number, string | number | null>();
-          colEdits.set(rowId, convertedValue);
-          pendingColumnEditsRef.current.set(columnId, colEdits);
-        }
-        return;
-      }
-
-      updateCell.mutate({ rowId, columnId, value: convertedValue });
-    },
-    [allColumns, updateCell],
-  );
-
-  const onRowCreatedImpl = useCallback(
-    (
-      tempId: number,
-      realRowId: number,
-      cells?: Record<string, string | number | null>,
-    ) => {
-      const pendingEdits = pendingOptimisticEditsRef.current.get(tempId);
-      pendingOptimisticEditsRef.current.delete(tempId);
-
-      notifyRowIdSwap(tempId, realRowId);
-
-      for (const [pageIndex, pageRows] of pageStoreRef.current) {
-        const rowIdx = pageRows.findIndex((r) => r.id === tempId);
-        if (rowIdx !== -1) {
-          const newRows = [...pageRows];
-          newRows[rowIdx] = {
-            ...newRows[rowIdx]!,
-            id: realRowId,
-            ...(cells !== undefined ? { cells } : {}),
-          };
-          pageStoreRef.current.set(pageIndex, newRows);
-          setPageStore(new Map(pageStoreRef.current));
-          break;
-        }
-      }
-
-      setRowOrderOverride((prev) => {
-        if (!prev) return prev;
-        return prev.map((id) => (id === tempId ? realRowId : id));
-      });
-
-      if (pendingEdits) {
-        for (const [colKey, value] of Object.entries(pendingEdits)) {
-          updateCell.mutate({
-            rowId: realRowId,
-            columnId: Number(colKey),
-            value,
-          });
-        }
-      }
-    },
-    [updateCell, notifyRowIdSwap],
-  );
-
-  useEffect(() => {
-    registerOnRowCreated(onRowCreatedImpl);
-  }, [registerOnRowCreated, onRowCreatedImpl]);
-
-  const onColumnCreatedImpl = useCallback(
-    (tempColId: number, realColId: number) => {
-      const pendingEdits = pendingColumnEditsRef.current.get(tempColId);
-      pendingColumnEditsRef.current.delete(tempColId);
-
-      const tempKey = String(tempColId);
-      const realKey = String(realColId);
-      let changed = false;
-      for (const [pageIndex, pageRows] of pageStoreRef.current) {
-        let pageChanged = false;
-        const updatedRows = pageRows.map((row) => {
-          if (tempKey in row.cells) {
-            const { [tempKey]: val, ...rest } = row.cells;
-            pageChanged = true;
-            const newCells: Record<string, string | number | null> =
-              val !== undefined ? { ...rest, [realKey]: val } : { ...rest };
-            return { ...row, cells: newCells };
-          }
-          return row;
-        });
-        if (pageChanged) {
-          pageStoreRef.current.set(pageIndex, updatedRows);
-          changed = true;
-        }
-      }
-      if (changed) setPageStore(new Map(pageStoreRef.current));
-
-      if (pendingEdits) {
-        for (const [rowId, value] of pendingEdits) {
-          updateCell.mutate({ rowId, columnId: realColId, value });
-        }
-      }
-    },
-    [updateCell],
-  );
-
-  useEffect(() => {
-    registerOnColumnCreated(onColumnCreatedImpl);
-  }, [registerOnColumnCreated, onColumnCreatedImpl]);
-
-  const searchResultsQuery = api.cell.search.useQuery(
-    { tableId: activeTableId, query: searchQuery, limit: 500 },
-    { enabled: !!activeTableId && searchQuery.length > 0 },
-  );
-
-  useEffect(() => {
-    if (!searchResultsQuery.data) return;
-    pushQueryEntry({
-      path: "cell.search",
-      label: `query="${searchQuery}"`,
-      sqlMs: searchResultsQuery.data.sqlMs,
-      totalMs: 0,
-      rowCount: searchResultsQuery.data.rows.length,
-    });
-  }, [searchResultsQuery.data, searchQuery]);
-
-  const searchGridRows = useMemo<GridRow[] | null>(() => {
-    if (!searchQuery || !searchResultsQuery.data) return null;
-    return searchResultsQuery.data.rows.map((row) => ({
-      id: row.id,
-      cells: row.cells as Record<string, string | number | null>,
-    }));
-  }, [searchQuery, searchResultsQuery.data]);
 
   const rowById = useMemo(() => {
     const map = new Map<number, GridRow>();
@@ -768,9 +431,6 @@ export function BaseContent({
   }, [pageStore]);
 
   const gridRows = useMemo<(GridRow | null)[]>(() => {
-    if (searchQuery && searchGridRows !== null) {
-      return searchGridRows;
-    }
     if (!totalRowCount) return [];
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
 
@@ -797,14 +457,7 @@ export function BaseContent({
       }
     }
     return sparse;
-  }, [
-    searchQuery,
-    searchGridRows,
-    pageStore,
-    rowById,
-    totalRowCount,
-    rowOrderOverride,
-  ]);
+  }, [pageStore, rowById, totalRowCount, rowOrderOverride]);
 
   const reorderRowMutation = api.row.reorder.useMutation({
     onSettled: () => refetchLoadedPages(),
@@ -846,7 +499,7 @@ export function BaseContent({
           : null;
       reorderRowMutation.mutate({ id: draggedId, prevId, nextId });
     },
-    [reorderRowMutation],
+    [reorderRowMutation, pageStoreRef],
   );
 
   const handleColumnRenameFromMenu = useCallback(
@@ -860,38 +513,11 @@ export function BaseContent({
     gridTableRef.current?.scrollToRow(rowId);
   }, []);
 
-  const handleSidebarHoverEnter = useCallback(() => {
-    if (sidebarHoverTimeoutRef.current) {
-      clearTimeout(sidebarHoverTimeoutRef.current);
-      sidebarHoverTimeoutRef.current = null;
-    }
-    if (!isSidebarPersistent) {
-      setIsSidebarOpen(true);
-    }
-  }, [isSidebarPersistent, setIsSidebarOpen]);
-
-  const handleSidebarHoverLeave = useCallback(() => {
-    if (!isSidebarPersistent) {
-      sidebarHoverTimeoutRef.current = setTimeout(() => {
-        setIsSidebarOpen(false);
-      }, 300);
-    }
-  }, [isSidebarPersistent, setIsSidebarOpen]);
-
-  const handleToggleSidebar = useCallback(() => {
-    if (sidebarHoverTimeoutRef.current) {
-      clearTimeout(sidebarHoverTimeoutRef.current);
-      sidebarHoverTimeoutRef.current = null;
-    }
-
-    if (isSidebarPersistent) {
-      setIsSidebarPersistent(false);
-      setIsSidebarOpen(false);
-    } else {
-      setIsSidebarPersistent(true);
-      setIsSidebarOpen(true);
-    }
-  }, [isSidebarPersistent, setIsSidebarPersistent, setIsSidebarOpen]);
+  const {
+    handleSidebarHoverEnter,
+    handleSidebarHoverLeave,
+    handleToggleSidebar,
+  } = useSidebarHover();
 
   useEffect(() => {
     setActiveViewId(null);
@@ -934,23 +560,24 @@ export function BaseContent({
               onRequestPage={fetchPage}
               sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
+              filteredColumnIds={filteredColumnIds}
+              sortedColumnIds={sortedColumnIds}
             />
           )}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="text-xs text-gray-500">
-              {searchQuery
-                ? searchGridRows !== null
-                  ? `${searchGridRows.length} matching ${searchGridRows.length === 1 ? "record" : "records"}`
-                  : "Searching..."
-                : totalRowCount != null
-                  ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
-                  : "Loading..."}
+              {totalRowCount != null
+                ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
+                : "Loading..."}
             </span>
           </div>
         </div>
       </div>
       {contextMenu?.type === "record" && (
-        <RecordContextMenu rowMutations={rowMutations} />
+        <RecordContextMenu
+          rowMutations={rowMutations}
+          onClearSelection={() => gridTableRef.current?.clearSelection()}
+        />
       )}
       {contextMenu?.type === "column" && contextMenu.data.columnId != null && (
         <ColumnContextMenu

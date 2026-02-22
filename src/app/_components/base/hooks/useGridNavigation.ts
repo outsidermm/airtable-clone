@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 import { useRowMutations } from "~/app/_components/hooks/use-row-mutations";
-import { useBase } from "../../base-context";
+import { useBase } from "../base-context";
 
 interface UseGridNavigationProps {
   rows: GridRow[];
@@ -15,6 +15,7 @@ interface UseGridNavigationProps {
   editingCell: CellAddress | null;
   setEditingCell: (cell: CellAddress | null) => void;
   setShowLastRowTooltip: (show: boolean) => void;
+  onCellUpdate?: (rowId: number, columnId: number, value: string) => void; // Added onCellUpdate
 }
 
 export function useGridNavigation({
@@ -26,9 +27,11 @@ export function useGridNavigation({
   editingCell,
   setEditingCell,
   setShowLastRowTooltip,
+  onCellUpdate,
 }: UseGridNavigationProps) {
-  const {activeTableId} = useBase();
+  const { activeTableId } = useBase();
   const rowMutations = useRowMutations(activeTableId);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 1. Handle Add Row
@@ -72,7 +75,7 @@ export function useGridNavigation({
         return; // Don't do arrow navigation while editing
       }
 
-      // 3. Handle Standard Navigation
+      // 3. Handle Standard Navigation & Cell Actions
       const isArrowKey = [
         "ArrowUp",
         "ArrowDown",
@@ -81,10 +84,29 @@ export function useGridNavigation({
       ].includes(e.key);
       const isTabKey = e.key === "Tab";
 
-      if (e.key === "Enter" && selectedCell && !editingCell) {
-        e.preventDefault();
-        setEditingCell(selectedCell);
-        return;
+      if (selectedCell && !editingCell) {
+        // Handle Backspace / Delete to clear the cell
+        if (e.key === "Backspace" || e.key === "Delete") {
+          e.preventDefault();
+          onCellUpdate?.(selectedCell.rowId, selectedCell.columnId, "");
+          return;
+        }
+
+        // Handle Enter to start Edit Mode
+        if (e.key === "Enter") {
+          e.preventDefault();
+          setEditingCell(selectedCell);
+          return;
+        }
+
+        // Handle Typing to Start Edit Mode
+        // This regex checks for single character keys (letters, numbers, symbols)
+        const isCharacterKey = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+        if (isCharacterKey) {
+          // No preventDefault here so the character can potentially be captured by the input
+          setEditingCell(selectedCell);
+          return;
+        }
       }
 
       if ((isArrowKey || isTabKey) && selectedCell) {
@@ -142,6 +164,7 @@ export function useGridNavigation({
     setEditingCell,
     setSelectedCell,
     setShowLastRowTooltip,
+    onCellUpdate, // Added to dependency array
   ]);
 }
 

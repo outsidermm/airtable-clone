@@ -11,6 +11,7 @@ export const HEADER_HEIGHT = 36;
 export const CHECKBOX_WIDTH = 66;
 export const PRIMARY_WIDTH = 250;
 export const PAGE_SIZE = 50;
+export const MAX_SAFE_HEIGHT = 10_000_000;
 
 export const FIELD_TYPES: FieldType[] = [
   // Field Agents

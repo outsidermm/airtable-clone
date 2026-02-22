@@ -11,11 +11,9 @@ interface GridCellProps {
   // State
   isSelectedCell: boolean;
   isInMultiSelection: boolean;
-  isActiveSearch: boolean;
-  isHighlighted: boolean;
   isEditing: boolean;
-  searchQuery?: string;
   showLastRowTooltip: boolean;
+  highlight?: "green" | "orange";
   // Handlers
   onMouseDown: (rowId: number, columnId: number, e: React.MouseEvent) => void;
   onMouseEnter: (rowId: number, columnId: number) => void;
@@ -31,11 +29,9 @@ export const GridCell = memo(function GridCell({
   value,
   isSelectedCell,
   isInMultiSelection,
-  isActiveSearch,
-  isHighlighted,
   isEditing,
-  searchQuery,
   showLastRowTooltip,
+  highlight,
   onMouseDown,
   onMouseEnter,
   onDoubleClick,
@@ -70,12 +66,12 @@ export const GridCell = memo(function GridCell({
 
   // Determine Background
   let cellBg = "";
-  if (isActiveSearch) {
-    cellBg = "bg-yellow-300";
-  } else if (isHighlighted) {
-    cellBg = "bg-yellow-100";
-  } else if (isInMultiSelection) {
+  if (isInMultiSelection) {
     cellBg = "bg-blue-50";
+  } else if (highlight === "green") {
+    cellBg = "bg-green-100";
+  } else if (highlight === "orange") {
+    cellBg = "bg-orange-100";
   }
 
   // Determine Ring/Border
@@ -91,31 +87,23 @@ export const GridCell = memo(function GridCell({
       onMouseDown={(e) => onMouseDown(rowId, columnId, e)}
       onMouseEnter={() => onMouseEnter(rowId, columnId)}
     >
-      {cellBg === "bg-yellow-100" && searchQuery ? (
-        <div className="w-full text-xs text-gray-900">
-          {displayValue}
-        </div>
-      ) : (
-        <>
-          <input
-            type="text"
-            value={localValue}
-            readOnly={!isEditing}
-            className={`w-full bg-transparent text-xs text-gray-900 outline-none ${
-              !isEditing ? "cursor-default select-none" : ""
-            }`}
-            onDoubleClick={() => onDoubleClick({ rowId, columnId })}
-            onChange={handleInputChange}
-            onBlur={onBlur}
-          />
+      <input
+        type="text"
+        value={localValue}
+        readOnly={!isEditing}
+        className={`w-full bg-transparent text-xs text-gray-900 outline-none ${
+          !isEditing ? "cursor-default select-none" : ""
+        }`}
+        onDoubleClick={() => onDoubleClick({ rowId, columnId })}
+        onChange={handleInputChange}
+        onBlur={onBlur}
+      />
 
-          {showLastRowTooltip && isEditing && (
-            <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
-              Shift+Enter to create new row
-              <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
-            </div>
-          )}
-        </>
+      {showLastRowTooltip && isEditing && (
+        <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
+          Shift+Enter to create new row
+          <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
+        </div>
       )}
     </div>
   );

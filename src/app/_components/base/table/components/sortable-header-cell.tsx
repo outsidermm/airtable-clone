@@ -49,7 +49,7 @@ export function SortableHeaderCell({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex h-full items-center justify-between bg-white px-2 py-1.5"
+      className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5"
       {...attributes}
       {...listeners}
     >

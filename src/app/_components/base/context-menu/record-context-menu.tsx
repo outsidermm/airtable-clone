@@ -19,9 +19,10 @@ import type { useRowMutations } from "../../hooks/use-row-mutations";
 
 interface RecordContextMenuProps {
   rowMutations: ReturnType<typeof useRowMutations>;
+  onClearSelection?: () => void;
 }
 
-export function RecordContextMenu({ rowMutations }: RecordContextMenuProps) {
+export function RecordContextMenu({ rowMutations, onClearSelection }: RecordContextMenuProps) {
   const { contextMenu, setContextMenu } = useBase();
 
   const rowId = contextMenu?.data.rowId;
@@ -120,6 +121,7 @@ export function RecordContextMenu({ rowMutations }: RecordContextMenuProps) {
         danger
         onClick={() => {
           rowMutations.handleBulkDeleteRow(selectedRowIds);
+          onClearSelection?.();
           close();
         }}
       />

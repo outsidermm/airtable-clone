@@ -215,7 +215,7 @@ export function SortDropdown({
                     );
 
                     return (
-                      <SortableItem key={String(index)} id={String(index)}>
+                      <SortableItem key={String(index)} id={String(index)} hideDragHandle={localSorts.length === 1}>
                         <div className="flex w-full items-center justify-between gap-2">
                           <div className="flex flex-1 items-center gap-2">
                             <div className="relative flex-1">

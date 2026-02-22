@@ -6,7 +6,6 @@ import {
   useCallback,
   useMemo,
   useEffect,
-  useImperativeHandle,
   forwardRef,
 } from "react";
 import {
@@ -14,18 +13,9 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { GridColumn, GridRow } from "~/types/grid";
@@ -34,21 +24,27 @@ import {
   HEADER_HEIGHT,
   CHECKBOX_WIDTH,
   PRIMARY_WIDTH,
+  MAX_SAFE_HEIGHT,
 } from "../constants";
 
 import { SortableRow } from "./components/sortable-row";
 import { GridHeader } from "./components/grid-header";
 
 // Custom Hooks
-import { useGridSelection } from "./hooks/useGridSelection";
-import { useGridNavigation } from "./hooks/useGridNavigation";
+import { useGridSelection } from "../hooks/useGridSelection";
+import { useGridNavigation } from "../hooks/useGridNavigation";
 import type { SortConfig } from "~/server/api/routers/view";
 import { PlusIcon } from "~/app/_components/ui/icons";
 import type { CellAddress } from "~/types/cell";
 import type { GridTableHandle } from "~/types/table";
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
-import { PAGE_SIZE } from "../constants";
+import { PlaceholderRow } from "./components/placeholder-row";
+import { FrozenColumnOverlay } from "./components/frozen-column-overlay";
+import { useOptimisticIds } from "../hooks/useOptimisticIds";
+import { useGridDnd } from "../hooks/useGridDnd";
+import { useTableVirtualizer } from "../hooks/useTableVirtualizer";
+import { useGridResizing } from "../hooks/useGridResizing";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -59,6 +55,8 @@ interface GridTableProps {
   onRequestPage: (pageIndex: number) => void;
   sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
+  filteredColumnIds: Set<number>;
+  sortedColumnIds: Set<number>;
 }
 
 export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
@@ -72,15 +70,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       onRequestPage,
       sorts = [],
       rowHeight = "short",
+      filteredColumnIds,
+      sortedColumnIds,
     },
     ref,
   ) {
-    const {
-      activeTableId,
-      registerRowIdSwapListener,
-      registerColumnIdSwapListener,
-      setContextMenu,
-    } = useBase();
+    const { activeTableId, setContextMenu } = useBase();
     const rowMutations = useRowMutations(activeTableId);
 
     const currentRowHeight = ROW_HEIGHT_MAP[rowHeight] ?? 36;
@@ -154,6 +149,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       editingCell,
       setEditingCell,
       setShowLastRowTooltip,
+      onCellUpdate,
     });
 
     // --- Stable Context Menu Ref ---
@@ -193,68 +189,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       [setContextMenu],
     );
 
-    // --- 4. Stable key map for optimistic rows ---
-    const stableKeyMapRef = useRef<Map<number, string>>(new Map());
-
-    const handleRowIdSwap = useCallback(
-      (tempId: number, realRowId: number) => {
-        const stableKey = stableKeyMapRef.current.get(tempId);
-        if (stableKey) {
-          stableKeyMapRef.current.delete(tempId);
-          stableKeyMapRef.current.set(realRowId, stableKey);
-        }
-        setEditingCell((prev) =>
-          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
-        );
-        setSelectedCell((prev) =>
-          prev?.rowId === tempId ? { ...prev, rowId: realRowId } : prev,
-        );
+    const { columnKeyMap, stableKeyMapRef: stableKeyMapRef } = useOptimisticIds(
+      {
+        setSelectedCell,
+        setEditingCell,
+        nonPrimaryColumns,
       },
-      [setSelectedCell, setEditingCell],
     );
-
-    useEffect(() => {
-      registerRowIdSwapListener(handleRowIdSwap);
-    }, [registerRowIdSwapListener, handleRowIdSwap]);
-
-    // --- 4b. Stable key map for optimistic columns ---
-    const stableColumnKeyMapRef = useRef<Map<number, string>>(new Map());
-
-    const handleColumnIdSwap = useCallback(
-      (tempId: number, realColId: number) => {
-        const stableKey = stableColumnKeyMapRef.current.get(tempId);
-        if (stableKey) {
-          stableColumnKeyMapRef.current.delete(tempId);
-          stableColumnKeyMapRef.current.set(realColId, stableKey);
-        }
-        setEditingCell((prev) =>
-          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
-        );
-        setSelectedCell((prev) =>
-          prev?.columnId === tempId ? { ...prev, columnId: realColId } : prev,
-        );
-      },
-      [setSelectedCell, setEditingCell],
-    );
-
-    useEffect(() => {
-      registerColumnIdSwapListener(handleColumnIdSwap);
-    }, [registerColumnIdSwapListener, handleColumnIdSwap]);
-
-    const columnKeyMap = useMemo(() => {
-      const map = new Map<number, string>();
-      nonPrimaryColumns.forEach((col, idx) => {
-        if (col.id < 0) {
-          const key = `temp-col-${idx}`;
-          stableColumnKeyMapRef.current.set(col.id, key);
-          map.set(col.id, key);
-        } else {
-          const stableKey = stableColumnKeyMapRef.current.get(col.id);
-          if (stableKey) map.set(col.id, stableKey);
-        }
-      });
-      return map;
-    }, [nonPrimaryColumns]);
 
     // --- 5. Helpers ---
     const handleCellChange = useCallback(
@@ -272,28 +213,23 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       },
       [onCellUpdate],
     );
-
-    const primaryResizeStartWidth = useRef<number>(0);
-    const primaryResizeStartX = useRef<number>(0);
-    const handlePrimaryResizeStart = useCallback(
-      (e: React.MouseEvent) => {
-        primaryResizeStartWidth.current = primaryColumnWidth;
-        primaryResizeStartX.current = e.clientX;
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-          const delta = moveEvent.clientX - primaryResizeStartX.current;
-          setPrimaryColumnWidth(
-            Math.max(80, primaryResizeStartWidth.current + delta),
-          );
-        };
-        const handleMouseUp = () => {
-          document.removeEventListener("mousemove", handleMouseMove);
-          document.removeEventListener("mouseup", handleMouseUp);
-        };
-        document.addEventListener("mousemove", handleMouseMove);
-        document.addEventListener("mouseup", handleMouseUp);
-      },
-      [primaryColumnWidth],
+    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
+      {},
     );
+
+    const { handlePrimaryResizeStart, handleFrozenBorderDragStart } =
+      useGridResizing({
+        nonPrimaryColumns,
+        columnSizing,
+        setFrozenExtraCount,
+        primaryColumnWidth,
+        setPrimaryColumnWidth,
+        clampedFrozenExtraCount,
+        parentRef,
+        freezeOverlayRef,
+        isDraggingFreezeRef,
+        setFreezeLineHoverY,
+      });
 
     // --- 5. TanStack Table Setup ---
     const columnDefs = useMemo<ColumnDef<GridRow>[]>(() => {
@@ -307,10 +243,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         cell: () => null,
       }));
     }, [nonPrimaryColumns]);
-
-    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
-      {},
-    );
 
     useEffect(() => {
       const initial: Record<string, number> = {};
@@ -346,100 +278,22 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       .reduce((sum, h) => sum + h.getSize(), 0);
 
     // --- 6. Virtualization ---
-    const tableRows = table.getRowModel().rows;
-    const tableRowById = useMemo(
-      () => new Map(tableRows.map((r) => [r.original.id, r])),
-      [tableRows],
-    );
-
-    const rowToSelectedColumns = useMemo(() => {
-      if (!isMultiSelect) return new Map<number, Set<number>>();
-      const map = new Map<number, Set<number>>();
-      for (const key of selectedCells) {
-        const dashIdx = key.indexOf("-");
-        const rId = Number(key.slice(0, dashIdx));
-        const cId = Number(key.slice(dashIdx + 1));
-        if (!map.has(rId)) map.set(rId, new Set());
-        map.get(rId)!.add(cId);
-      }
-      return map;
-    }, [selectedCells, isMultiSelect]);
-
-    const MAX_SAFE_HEIGHT = 10_000_000;
-    const totalVirtualHeight = rows.length * currentRowHeight;
-    const scrollScaleRef = useRef(1);
-    scrollScaleRef.current =
-      totalVirtualHeight > MAX_SAFE_HEIGHT
-        ? MAX_SAFE_HEIGHT / totalVirtualHeight
-        : 1;
-
-    const rowVirtualizer = useVirtualizer({
-      count: rows.length,
-      getScrollElement: () => parentRef.current,
-      estimateSize: () => currentRowHeight,
-      overscan: 5,
-      observeElementOffset: useCallback(
-        (
-          instance: Virtualizer<HTMLDivElement, Element>,
-          cb: (offset: number, isScrolling: boolean) => void,
-        ) => {
-          const el = instance.scrollElement as HTMLElement | null;
-          if (!el) return;
-          const onScroll = () =>
-            cb(el.scrollTop / scrollScaleRef.current, false);
-          onScroll();
-          el.addEventListener("scroll", onScroll, { passive: true });
-          return () => el.removeEventListener("scroll", onScroll);
-        },
-        [],
-      ),
-      scrollToFn: useCallback(
-        (
-          offset: number,
-          options: { adjustments?: number; behavior?: ScrollBehavior },
-          instance: Virtualizer<HTMLDivElement, Element>,
-        ) => {
-          (instance.scrollElement as HTMLElement | null)?.scrollTo({
-            top: offset * scrollScaleRef.current,
-            behavior: options.behavior,
-          });
-        },
-        [],
-      ),
-    });
-
-    useImperativeHandle(
+    const {
+      tableRowById,
+      rowToSelectedColumns,
+      rowVirtualizer,
+      scrollScaleRef,
+    } = useTableVirtualizer({
+      table,
+      rows,
+      currentRowHeight,
+      parentRef,
+      onRequestPage,
+      selectedCells,
+      isMultiSelect,
+      setRowSelection,
       ref,
-      () => ({
-        scrollToRow: (rowId: number) => {
-          const index = tableRows.findIndex((r) => r.original.id === rowId);
-          if (index !== -1)
-            rowVirtualizer.scrollToIndex(index, { align: "center" });
-        },
-      }),
-      [tableRows, rowVirtualizer],
-    );
-
-    useEffect(() => {
-      rowVirtualizer.measure();
-    }, [currentRowHeight, rowVirtualizer]);
-
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    const firstVirtualIndex = virtualItems[0]?.index ?? 0;
-    const lastVirtualIndex = virtualItems[virtualItems.length - 1]?.index ?? 0;
-
-    useEffect(() => {
-      if (rows.length === 0) return;
-      const id = setTimeout(() => {
-        const firstPage = Math.floor(firstVirtualIndex / PAGE_SIZE);
-        const lastPage = Math.floor(lastVirtualIndex / PAGE_SIZE);
-        const maxPage = Math.ceil(rows.length / PAGE_SIZE) - 1;
-        for (let p = firstPage; p <= Math.min(lastPage + 1, maxPage); p++) {
-          onRequestPage(p);
-        }
-      }, 50);
-      return () => clearTimeout(id);
-    }, [firstVirtualIndex, lastVirtualIndex, onRequestPage, rows.length]);
+    });
 
     // --- 7. Auto Scroll on Drag ---
     useEffect(() => {
@@ -485,124 +339,27 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       };
     }, [isSelecting, frozenWidth]);
 
-    // --- 8. Drag and Drop Logic ---
-    const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    );
+    const { sensors, handleDragEnd } = useGridDnd({
+      columns,
+      nonNullRows,
+      selectedRowIds,
+      frozenWidth,
+      parentRef,
+      isSelecting,
+      onReorderColumns,
+      onReorderRow,
+    });
+
     const columnOrder = useMemo(
       () => scrollableColumns.map((c) => `col-${c.id}`),
       [scrollableColumns],
     );
 
-    const handleFrozenBorderDragStart = useCallback(
-      (e: React.MouseEvent) => {
-        e.preventDefault();
-
-        isDraggingFreezeRef.current = true;
-        setFreezeLineHoverY(null);
-
-        const overlay = freezeOverlayRef.current;
-        if (overlay && parentRef.current) {
-          const containerRect = parentRef.current.getBoundingClientRect();
-          overlay.style.display = "block";
-          overlay.style.top = `${containerRect.top}px`;
-          overlay.style.height = `${containerRect.height}px`;
-          overlay.style.left = `${e.clientX}px`;
-        }
-
-        const startX = e.clientX;
-        const colWidths = nonPrimaryColumns.map(
-          (col) => columnSizing[String(col.id)] ?? col.width,
-        );
-        const initialExtraFrozenWidth = colWidths
-          .slice(0, clampedFrozenExtraCount)
-          .reduce((s, w) => s + w, 0);
-
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-          const delta = moveEvent.clientX - startX;
-          const targetPos = Math.max(0, initialExtraFrozenWidth + delta);
-
-          let newCount = 0;
-          let accum = 0;
-          for (let i = 0; i < nonPrimaryColumns.length - 1; i++) {
-            const w = colWidths[i] ?? 0;
-            if (targetPos >= accum + w / 2) newCount = i + 1;
-            accum += w;
-          }
-          setFrozenExtraCount(newCount);
-
-          if (freezeOverlayRef.current) {
-            freezeOverlayRef.current.style.left = `${moveEvent.clientX}px`;
-          }
-        };
-
-        const handleMouseUp = () => {
-          isDraggingFreezeRef.current = false;
-          if (freezeOverlayRef.current) {
-            freezeOverlayRef.current.style.display = "none";
-          }
-          document.removeEventListener("mousemove", handleMouseMove);
-          document.removeEventListener("mouseup", handleMouseUp);
-        };
-        document.addEventListener("mousemove", handleMouseMove);
-        document.addEventListener("mouseup", handleMouseUp);
-      },
-      [nonPrimaryColumns, clampedFrozenExtraCount, columnSizing],
-    );
     const rowOrder = useMemo(
       () => nonNullRows.map((r) => `row-${r.id}`),
       [nonNullRows],
     );
 
-    const handleDragEnd = useCallback(
-      (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        const activeStr = String(active.id);
-        const overStr = String(over.id);
-
-        if (activeStr.startsWith("col-") && overStr.startsWith("col-")) {
-          if (onReorderColumns) {
-            const activeId = Number(activeStr.replace("col-", ""));
-            const overId = Number(overStr.replace("col-", ""));
-            const oldIdx = columns.findIndex((c) => c.id === activeId);
-            const newIdx = columns.findIndex((c) => c.id === overId);
-            if (oldIdx !== -1 && newIdx !== -1) {
-              const newOrderIds = arrayMove(
-                columns.map((c) => c.id),
-                oldIdx,
-                newIdx,
-              );
-              onReorderColumns(newOrderIds);
-            }
-          }
-        } else if (
-          activeStr.startsWith("row-") &&
-          overStr.startsWith("row-") &&
-          onReorderRow
-        ) {
-          const draggedId = Number(activeStr.replace("row-", ""));
-          const targetId = Number(overStr.replace("row-", ""));
-          const draggedIndex = nonNullRows.findIndex((r) => r.id === draggedId);
-
-          if (
-            draggedIndex !== -1 &&
-            selectedRowIds.has(String(draggedIndex)) &&
-            selectedRowIds.size > 1
-          ) {
-            const selected = nonNullRows
-              .filter((_, i) => selectedRowIds.has(String(i)))
-              .map((r) => r.id);
-            onReorderRow(selected, targetId);
-          } else {
-            onReorderRow([draggedId], targetId);
-          }
-        }
-      },
-      [columns, nonNullRows, onReorderColumns, onReorderRow, selectedRowIds],
-    );
-
-    // --- 9. Deselect when clicking outside ---
     useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
         if (
@@ -660,6 +417,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 sensors={sensors}
                 handleDragEnd={handleDragEnd}
                 headerGroups={table.getHeaderGroups()[0]?.headers ?? []}
+                filteredColumnIds={filteredColumnIds}
+                sortedColumnIds={sortedColumnIds}
               />
 
               <DndContext
@@ -683,44 +442,16 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
                       if (!rowData) {
                         return (
-                          <div
+                          <PlaceholderRow
                             key={`placeholder-${virtualRow.index}`}
-                            className="absolute flex w-full border-b border-gray-200 bg-white"
-                            style={{
-                              top: virtualRow.start * scrollScaleRef.current,
-                              height: currentRowHeight,
-                              minWidth: "fit-content",
-                            }}
-                          >
-                            <div
-                              className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
-                              style={{ width: frozenWidth }}
-                            >
-                              <div className="flex h-full w-8.5 items-center justify-center">
-                                <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
-                              </div>
-                              <div className="flex-1 px-2">
-                                <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
-                              </div>
-                            </div>
-                            <div
-                              className="flex"
-                              style={{ width: totalScrollableWidth }}
-                            >
-                              {nonPrimaryColumns.map((col) => (
-                                <div
-                                  key={col.id}
-                                  className="flex items-center border-r border-gray-200 px-2"
-                                  style={{
-                                    width:
-                                      columnSizing[String(col.id)] ?? col.width,
-                                  }}
-                                >
-                                  <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                            virtualRow={virtualRow}
+                            scrollScaleRef={scrollScaleRef}
+                            currentRowHeight={currentRowHeight}
+                            frozenWidth={frozenWidth}
+                            totalScrollableWidth={totalScrollableWidth}
+                            nonPrimaryColumns={nonPrimaryColumns}
+                            columnSizing={columnSizing}
+                          />
                         );
                       }
 
@@ -790,10 +521,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           totalScrollableWidth={totalScrollableWidth}
                           showLastRowTooltip={showLastRowTooltip}
                           columnKeyMap={columnKeyMap}
-                          handleFrozenBorderDragStart={
-                            handleFrozenBorderDragStart
-                          }
                           onContextMenu={handleRowContextMenu}
+                          filteredColumnIds={filteredColumnIds}
+                          sortedColumnIds={sortedColumnIds}
                         />
                       );
                     })}
@@ -843,36 +573,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           </div>
 
           {/* Global full-height overlay freeze drag handler, starting below the header row */}
-          <div
-            className="group absolute bottom-4 z-60 flex w-4 cursor-col-resize justify-center"
-            style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
-            onMouseDown={handleFrozenBorderDragStart}
-            onMouseMove={(e) => {
-              if (isDraggingFreezeRef.current) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              setFreezeLineHoverY(e.clientY - rect.top);
-            }}
-            onMouseLeave={() => setFreezeLineHoverY(null)}
-          >
-            {/* The visible hover line */}
-            <div className="h-full w-0.5 bg-transparent transition-colors group-hover:bg-gray-400" />
-
-            {/* The dot tracking cursor's Y-position */}
-            {freezeLineHoverY !== null && !isDraggingFreezeRef.current && (
-              <>
-                <div
-                  className="pointer-events-none absolute left-1/2 h-8 w-2 -translate-x-1/2 rounded-full bg-blue-500 shadow-sm"
-                  style={{ top: freezeLineHoverY - 6 }}
-                />
-                <div
-                  className="pointer-events-none absolute left-4 rounded border border-gray-600 bg-white px-2 py-1 text-xs whitespace-nowrap text-gray-600 shadow transition-opacity"
-                  style={{ top: freezeLineHoverY - 12 }}
-                >
-                  Drag to adjust the number of frozen columns
-                </div>
-              </>
-            )}
-          </div>
+          <FrozenColumnOverlay
+            frozenWidth={frozenWidth}
+            handleFrozenBorderDragStart={handleFrozenBorderDragStart}
+            isDraggingFreezeRef={isDraggingFreezeRef}
+            freezeLineHoverY={freezeLineHoverY}
+            setFreezeLineHoverY={setFreezeLineHoverY}
+          />
         </div>
 
         <div
