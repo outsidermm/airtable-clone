@@ -10,10 +10,6 @@ import {
   ChevronRightIcon,
   ImportIcon,
   TeamIcon,
-  DocumentIcon,
-  ExcelIcon,
-  GSheetIcon,
-  ClipboardIcon,
   RenameIcon,
   HideIcon,
   TextIcon,
@@ -28,6 +24,7 @@ import {
   CheckIcon,
 } from "../../ui/icons";
 import type { Table } from "~/types/table";
+import { ImportTableModal } from "../modals/import-table-modal";
 import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
 
 interface TableTabsProps {
@@ -221,78 +218,36 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                   <div className="fixed inset-0 z-30" onClick={closeMenu} />
                   <div className="absolute top-full left-0 z-100 mt-0.5 w-80 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg">
                     <div className="relative">
-                      <button
+                      <MenuItem
+                        label="Import data"
+                        icon={<ImportIcon className="h-4 w-4 text-gray-400" />}
                         onMouseEnter={() => setIsImportSubOpen(true)}
                         onMouseLeave={() => setIsImportSubOpen(false)}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <ImportIcon className="h-4 w-4 text-gray-500" />
-                          Import data
-                        </span>
-                        <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
-                      </button>
+                        rightElement={
+                          <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
+                        }
+                        className="text-sm!"
+                      />
 
                       {isImportSubOpen && (
-                        <div
-                          onMouseEnter={() => setIsImportSubOpen(true)}
-                          onMouseLeave={() => setIsImportSubOpen(false)}
-                          className="absolute top-0 left-full ml-0.5 w-56 rounded-lg border border-gray-200 bg-white px-2 py-4 shadow-lg"
-                        >
-                          <button
-                            onClick={closeMenu}
-                            className="flex w-full items-center justify-between gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            Airtable base
-                            <span className="flex items-center gap-1 rounded-xl bg-blue-100 px-1.5 py-0.5 text-xs text-blue-500">
-                              <TeamIcon className="h-2.5 w-2.5" />
-                              Team
-                            </span>
-                          </button>
-                          <button
-                            onClick={closeMenu}
-                            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            <DocumentIcon className="h-4 w-4 text-gray-400" />
-                            CSV file
-                          </button>
-                          <button
-                            onClick={closeMenu}
-                            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            <ExcelIcon className="h-4 w-4 text-green-700" />
-                            Microsoft Excel
-                          </button>
-                          <button
-                            onClick={closeMenu}
-                            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            <GSheetIcon className="h-4 w-4" />
-                            Google Sheets
-                          </button>
-                          <button
-                            onClick={closeMenu}
-                            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            <ClipboardIcon className="h-4 w-4 text-gray-400" />
-                            Paste table data
-                          </button>
-                        </div>
+                        <ImportTableModal
+                          setIsImportSubOpen={setIsImportSubOpen}
+                          closeMenu={closeMenu}
+                        />
                       )}
                     </div>
 
-                    <div className="my-1 border-t border-gray-100" />
+                    <MenuDivider />
 
-                    <button
+                    <MenuItem
+                      label="Rename table"
+                      icon={<RenameIcon className="h-4 w-4 text-gray-400" />}
                       onClick={() => {
                         closeMenu();
                         setRenamingTableId(table.id);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <RenameIcon className="h-4 w-4 text-gray-400" />
-                      Rename table
-                    </button>
+                      className="text-sm!"
+                    />
                     <MenuItem
                       label="Hide table"
                       icon={<HideIcon className="h-4 w-4 text-gray-400" />}
@@ -365,7 +320,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                       }}
                       disabled={tables.length === 1}
                       className={`text-sm! ${
-                        tables.length === 1 ? "text-gray-400" : "text-gray-200"
+                        tables.length === 1 ? "text-gray-400" : ""
                       }`}
                     />
                   </div>
@@ -450,7 +405,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                       <button
                         key={table.id}
                         onClick={() => {
-                          setActiveTableId?.(table.id);
+                          setActiveTableId(table.id);
                           setIsTableSearchOpen(false);
                           setTableSearchQuery("");
                         }}
