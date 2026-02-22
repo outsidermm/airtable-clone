@@ -15,17 +15,9 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { GridColumn, GridRow } from "~/types/grid";
@@ -52,6 +44,7 @@ import { PAGE_SIZE } from "../constants";
 import { PlaceholderRow } from "./components/placeholder-row";
 import { FrozenColumnOverlay } from "./components/frozen-column-overlay";
 import { useOptimisticIds } from "./hooks/useOptimisticIds";
+import { useGridDnd } from "./hooks/useGridDnd";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -433,10 +426,17 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       };
     }, [isSelecting, frozenWidth]);
 
-    // --- 8. Drag and Drop Logic ---
-    const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    );
+    const { sensors, handleDragEnd } = useGridDnd({
+      columns,
+      nonNullRows,
+      selectedRowIds,
+      frozenWidth,
+      parentRef,
+      isSelecting,
+      onReorderColumns,
+      onReorderRow,
+    });
+
     const columnOrder = useMemo(
       () => scrollableColumns.map((c) => `col-${c.id}`),
       [scrollableColumns],
@@ -502,55 +502,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       [nonNullRows],
     );
 
-    const handleDragEnd = useCallback(
-      (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        const activeStr = String(active.id);
-        const overStr = String(over.id);
-
-        if (activeStr.startsWith("col-") && overStr.startsWith("col-")) {
-          if (onReorderColumns) {
-            const activeId = Number(activeStr.replace("col-", ""));
-            const overId = Number(overStr.replace("col-", ""));
-            const oldIdx = columns.findIndex((c) => c.id === activeId);
-            const newIdx = columns.findIndex((c) => c.id === overId);
-            if (oldIdx !== -1 && newIdx !== -1) {
-              const newOrderIds = arrayMove(
-                columns.map((c) => c.id),
-                oldIdx,
-                newIdx,
-              );
-              onReorderColumns(newOrderIds);
-            }
-          }
-        } else if (
-          activeStr.startsWith("row-") &&
-          overStr.startsWith("row-") &&
-          onReorderRow
-        ) {
-          const draggedId = Number(activeStr.replace("row-", ""));
-          const targetId = Number(overStr.replace("row-", ""));
-          const draggedIndex = nonNullRows.findIndex((r) => r.id === draggedId);
-
-          if (
-            draggedIndex !== -1 &&
-            selectedRowIds.has(String(draggedIndex)) &&
-            selectedRowIds.size > 1
-          ) {
-            const selected = nonNullRows
-              .filter((_, i) => selectedRowIds.has(String(i)))
-              .map((r) => r.id);
-            onReorderRow(selected, targetId);
-          } else {
-            onReorderRow([draggedId], targetId);
-          }
-        }
-      },
-      [columns, nonNullRows, onReorderColumns, onReorderRow, selectedRowIds],
-    );
-
-    // --- 9. Deselect when clicking outside ---
     useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
         if (
