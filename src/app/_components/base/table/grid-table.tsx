@@ -49,6 +49,8 @@ import type { GridTableHandle } from "~/types/table";
 import { useRowMutations } from "../../hooks/use-row-mutations";
 import { useBase } from "../base-context";
 import { PAGE_SIZE } from "../constants";
+import { PlaceholderRow } from "./components/placeholder-row";
+import { FrozenColumnOverlay } from "./components/frozen-column-overlay";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -84,8 +86,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       registerRowIdSwapListener,
       registerColumnIdSwapListener,
       setContextMenu,
-      activeModal,
-      contextMenu,
     } = useBase();
     const rowMutations = useRowMutations(activeTableId);
 
@@ -691,44 +691,16 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
                       if (!rowData) {
                         return (
-                          <div
+                          <PlaceholderRow
                             key={`placeholder-${virtualRow.index}`}
-                            className="absolute flex w-full border-b border-gray-200 bg-white"
-                            style={{
-                              top: virtualRow.start * scrollScaleRef.current,
-                              height: currentRowHeight,
-                              minWidth: "fit-content",
-                            }}
-                          >
-                            <div
-                              className="sticky left-0 z-10 flex shrink-0 items-center border-r-2 border-gray-300"
-                              style={{ width: frozenWidth }}
-                            >
-                              <div className="flex h-full w-8.5 items-center justify-center">
-                                <div className="h-3 w-5 animate-pulse rounded bg-gray-100" />
-                              </div>
-                              <div className="flex-1 px-2">
-                                <div className="h-3.5 w-24 animate-pulse rounded bg-gray-100" />
-                              </div>
-                            </div>
-                            <div
-                              className="flex"
-                              style={{ width: totalScrollableWidth }}
-                            >
-                              {nonPrimaryColumns.map((col) => (
-                                <div
-                                  key={col.id}
-                                  className="flex items-center border-r border-gray-200 px-2"
-                                  style={{
-                                    width:
-                                      columnSizing[String(col.id)] ?? col.width,
-                                  }}
-                                >
-                                  <div className="h-3.5 w-16 animate-pulse rounded bg-gray-100" />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                            virtualRow={virtualRow}
+                            scrollScaleRef={scrollScaleRef}
+                            currentRowHeight={currentRowHeight}
+                            frozenWidth={frozenWidth}
+                            totalScrollableWidth={totalScrollableWidth}
+                            nonPrimaryColumns={nonPrimaryColumns}
+                            columnSizing={columnSizing}
+                          />
                         );
                       }
 
@@ -853,37 +825,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           </div>
 
           {/* Global full-height overlay freeze drag handler, starting below the header row */}
-          <div
-            className="group absolute bottom-4 z-60 flex w-4 cursor-col-resize justify-center"
-            style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
-            onMouseDown={handleFrozenBorderDragStart}
-            onMouseMove={(e) => {
-              if (isDraggingFreezeRef.current || activeModal || contextMenu)
-                return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              setFreezeLineHoverY(e.clientY - rect.top);
-            }}
-            onMouseLeave={() => setFreezeLineHoverY(null)}
-          >
-            {/* The visible hover line */}
-            <div className="h-full w-0.5 bg-transparent transition-colors group-hover:bg-gray-400" />
-
-            {/* The dot tracking cursor's Y-position */}
-            {freezeLineHoverY !== null && !isDraggingFreezeRef.current && (
-              <>
-                <div
-                  className="pointer-events-none absolute left-1/2 h-8 w-2 -translate-x-1/2 rounded-full bg-blue-500 shadow-sm"
-                  style={{ top: freezeLineHoverY - 6 }}
-                />
-                <div
-                  className="pointer-events-none absolute left-4 rounded border border-gray-600 bg-white px-2 py-1 text-xs whitespace-nowrap text-gray-600 shadow transition-opacity"
-                  style={{ top: freezeLineHoverY - 12 }}
-                >
-                  Drag to adjust the number of frozen columns
-                </div>
-              </>
-            )}
-          </div>
+          <FrozenColumnOverlay
+            frozenWidth={frozenWidth}
+            handleFrozenBorderDragStart={handleFrozenBorderDragStart}
+            isDraggingFreezeRef={isDraggingFreezeRef}
+            freezeLineHoverY={freezeLineHoverY}
+            setFreezeLineHoverY={setFreezeLineHoverY}
+          />
         </div>
 
         <div
