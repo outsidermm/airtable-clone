@@ -35,7 +35,44 @@ export function useViewMutations(
     },
   });
 
-  const renameView = api.view.rename.useMutation({ onSuccess: invalidate });
+  const renameView = api.view.rename.useMutation({
+    onMutate: async ({ id, name }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await utils.table.getById.cancel({ id: activeTableIdRef.current });
+
+      // Snapshot the previous value
+      const previousTable = utils.table.getById.getData({
+        id: activeTableIdRef.current,
+      });
+
+      // Optimistically update the cache to the new view name
+      if (previousTable) {
+        utils.table.getById.setData(
+          { id: activeTableIdRef.current },
+          {
+            ...previousTable,
+            views: previousTable.views.map((v) =>
+              v.id === id ? { ...v, name } : v,
+            ),
+          },
+        );
+      }
+
+      return { previousTable };
+    },
+    onError: (err, newView, context) => {
+      // Rollback to the previous value if the mutation fails
+      if (context?.previousTable) {
+        utils.table.getById.setData(
+          { id: activeTableIdRef.current },
+          context.previousTable,
+        );
+      }
+    },
+    onSettled: () => {
+      invalidate();
+    },
+  });
 
   const updateView = api.view.update.useMutation({
     onSuccess: (data, variables) => {
