@@ -21,7 +21,25 @@ export function useTableMutations(baseId: string, tables: Table[]) {
   });
 
   const renameTable = api.table.rename.useMutation({
-    onSuccess: () => {
+    onMutate: async (input) => {
+      await utils.table.getAllByBase.cancel({ baseId });
+      const previousTables = utils.table.getAllByBase.getData({ baseId });
+      if (previousTables) {
+        utils.table.getAllByBase.setData(
+          { baseId },
+          previousTables.map((t) =>
+            t.id === input.id ? { ...t, name: input.name } : t,
+          ),
+        );
+      }
+      return { previousTables };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTables) {
+        utils.table.getAllByBase.setData({ baseId }, context.previousTables);
+      }
+    },
+    onSettled: () => {
       void utils.table.getAllByBase.invalidate({ baseId });
     },
   });
