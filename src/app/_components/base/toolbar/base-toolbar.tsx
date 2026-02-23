@@ -79,7 +79,13 @@ export function BaseToolbar({
   const [pendingAction, setPendingAction] = useState<"filter" | "sort" | null>(
     null,
   );
+
+  // Renaming state
+  const [isEditingViewName, setIsEditingViewName] = useState(false);
+  const [editingViewNameValue, setEditingViewNameValue] = useState("");
+
   const seedStartRef = useRef(0);
+  const viewClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
@@ -104,12 +110,10 @@ export function BaseToolbar({
     },
   });
 
-  const toggleDropdown = useCallback(
-    (dropdown: ToolbarDropdown) => {
-      setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
-    },
-    [activeDropdown],
-  );
+  // Use functional update to ensure timeout closures don't grab stale state
+  const toggleDropdown = useCallback((dropdown: ToolbarDropdown) => {
+    setActiveDropdown((prev) => (prev === dropdown ? null : dropdown));
+  }, []);
 
   const closeDropdown = useCallback(() => {
     setActiveDropdown(null);
@@ -169,12 +173,57 @@ export function BaseToolbar({
     [activeTableId, bulkCreateMutation, isSeeding],
   );
 
+  // View rename handlers that prevent overlay capturing the double click
+  const handleViewClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.detail === 1) {
+        viewClickTimeoutRef.current = setTimeout(() => {
+          toggleDropdown("viewMenu");
+        }, 200);
+      } else if (e.detail === 2) {
+        if (viewClickTimeoutRef.current) {
+          clearTimeout(viewClickTimeoutRef.current);
+          viewClickTimeoutRef.current = null;
+        }
+        setEditingViewNameValue(activeViewName);
+        setIsEditingViewName(true);
+        closeDropdown();
+      }
+    },
+    [activeViewName, closeDropdown, toggleDropdown],
+  );
+
+  const submitViewRename = useCallback(() => {
+    if (
+      isEditingViewName &&
+      activeViewId &&
+      editingViewNameValue.trim() &&
+      editingViewNameValue.trim() !== activeViewName
+    ) {
+      viewMutations.handleRenameView(activeViewId, editingViewNameValue.trim());
+    }
+    setIsEditingViewName(false);
+  }, [
+    isEditingViewName,
+    activeViewId,
+    editingViewNameValue,
+    activeViewName,
+    viewMutations,
+  ]);
+
   useEffect(() => {
     if (!viewMutations.isUpdatingView) {
       const timeout = setTimeout(() => setPendingAction(null), 300);
       return () => clearTimeout(timeout);
     }
   }, [viewMutations.isUpdatingView]);
+
+  useEffect(() => {
+    return () => {
+      if (viewClickTimeoutRef.current)
+        clearTimeout(viewClickTimeoutRef.current);
+    };
+  }, []);
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -222,21 +271,39 @@ export function BaseToolbar({
 
       {/* Grid view label */}
       <div className="relative">
-        <button
-          onClick={() => toggleDropdown("viewMenu")}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            toggleDropdown("viewMenu");
-          }}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-        >
-          <GridIcon className="h-3.5 w-3.5 text-blue-700" />
-          {activeViewName}
-          <ChevronDownIcon className="h-3 w-3" />
-        </button>
+        {isEditingViewName ? (
+          <div className="flex items-center rounded border-2 border-gray-300 bg-white px-2">
+            <input
+              type="text"
+              value={editingViewNameValue}
+              onChange={(e) => setEditingViewNameValue(e.target.value)}
+              onBlur={submitViewRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitViewRename();
+                if (e.key === "Escape") setIsEditingViewName(false);
+              }}
+              className="w-40 bg-transparent py-1 text-xs font-medium text-gray-900 outline-none"
+              autoFocus
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={handleViewClick}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              toggleDropdown("viewMenu");
+            }}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+          >
+            <GridIcon className="h-3.5 w-3.5 text-blue-700" />
+            {activeViewName}
+            <ChevronDownIcon className="h-3 w-3" />
+          </button>
+        )}
 
         {/* View menu dropdown */}
-        {activeDropdown === "viewMenu" && (
+        {activeDropdown === "viewMenu" && !isEditingViewName && (
           <ViewDetailDropdown
             viewCount={viewCount}
             closeDropdown={closeDropdown}
