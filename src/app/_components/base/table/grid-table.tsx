@@ -594,7 +594,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
               <div
                 className="flex flex-1 bg-gray-100"
-                style={{ minWidth: "fit-content", minHeight: 0 }}
+                style={{ minWidth: "fit-content", minHeight: 250 }}
               >
                 <div
                   className="sticky left-0"
