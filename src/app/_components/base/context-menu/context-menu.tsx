@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { createPortal } from "react-dom";
 import { useBase } from "../base-context";
 
@@ -12,6 +18,13 @@ export function ContextMenu({ children }: ContextMenuProps) {
   const { contextMenu, setContextMenu } = useBase();
   const menuRef = useRef<HTMLDivElement>(null);
   const position = contextMenu?.position;
+
+  const [style, setStyle] = useState<React.CSSProperties>({
+    opacity: 0,
+    pointerEvents: "none",
+    top: position?.y ?? 0,
+    left: position?.x ?? 0,
+  });
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
@@ -38,18 +51,43 @@ export function ContextMenu({ children }: ContextMenuProps) {
     };
   }, [handleClickOutside, handleKeyDown]);
 
-  if (!position) return null;
+  useLayoutEffect(() => {
+    if (!position || !menuRef.current) return;
 
-  // Adjust position to keep menu within viewport
-  const style = {
-    top: position.y,
-    left: position.x,
-  };
+    const rect = menuRef.current.getBoundingClientRect();
+    const padding = 16; // Minimum space from window edges
+
+    let newTop = position.y;
+    let newLeft = position.x;
+
+    // Adjust if it goes out of the bottom bound
+    if (newTop + rect.height > window.innerHeight - padding) {
+      newTop = position.y - rect.height;
+    }
+
+    // Adjust if it goes out of the right bound
+    if (newLeft + rect.width > window.innerWidth - padding) {
+      newLeft = window.innerWidth - rect.width - padding;
+    }
+
+    // Final safety boundary checks to ensure it doesn't go off the top or left edges
+    newTop = Math.max(padding, newTop);
+    newLeft = Math.max(padding, newLeft);
+
+    setStyle({
+      top: newTop,
+      left: newLeft,
+      opacity: 1,
+      pointerEvents: "auto",
+    });
+  }, [position]);
+
+  if (!position) return null;
 
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-70 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+      className="fixed z-60 min-w-70 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
       style={style}
     >
       {children}
