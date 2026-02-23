@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { api } from "~/trpc/react";
 import type { ViewConfig } from "~/server/api/routers/view";
 import { useBase } from "../base/base-context";
@@ -15,10 +15,16 @@ export function useViewMutations(
   // Filter/sort changes need it; hidden-column and row-height changes do not.
   const needsRowRefetchRef = useRef(false);
 
+  // Keep a stable ref to activeTableId to avoid stale closures in mutations
+  const activeTableIdRef = useRef(activeTableId);
+  useEffect(() => {
+    activeTableIdRef.current = activeTableId;
+  }, [activeTableId]);
+
   const invalidate = useCallback(() => {
-    void utils.table.getById.invalidate({ id: activeTableId });
-    void utils.view.getAllByTable.invalidate({ tableId: activeTableId });
-  }, [utils, activeTableId]);
+    void utils.table.getById.invalidate({ id: activeTableIdRef.current });
+    void utils.view.getAllByTable.invalidate({ tableId: activeTableIdRef.current });
+  }, [utils]);
 
   const createView = api.view.create.useMutation({
     onSuccess: (newView) => {
@@ -30,13 +36,14 @@ export function useViewMutations(
   const renameView = api.view.rename.useMutation({ onSuccess: invalidate });
 
   const updateView = api.view.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidate();
-      if (activeViewId) {
-        void utils.view.getById.invalidate({ id: activeViewId });
-        if (needsRowRefetchRef.current) {
-          refetchRows();
-        }
+      
+      // avoiding any stale activeViewId closure issues from the initial load.
+      void utils.view.getById.invalidate({ id: variables.id });
+      
+      if (needsRowRefetchRef.current) {
+        refetchRows();
       }
     },
   });

@@ -78,7 +78,9 @@ export function FilterDropdown({
     type: "column" | "operator" | "conjunction";
   } | null>(null);
 
-  const valueDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -86,6 +88,17 @@ export function FilterDropdown({
 
   const conjunctionLogic = (c: "and" | "or"): "AND" | "OR" =>
     c === "or" ? "OR" : "AND";
+
+  // Debounced execution to submit updates to the backend
+  const updateBackend = useCallback(
+    (newFilters: FilterConfig[], logic: "AND" | "OR") => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        onUpdateFilters(newFilters, logic);
+      }, 300);
+    },
+    [onUpdateFilters],
+  );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -95,62 +108,84 @@ export function FilterDropdown({
       const oldIndex = Number(active.id);
       const newIndex = Number(over.id);
 
-      const updated = arrayMove(localFilters, oldIndex, newIndex);
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = arrayMove(prev, oldIndex, newIndex);
+        updateBackend(updated, conjunctionLogic(conjunction));
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const addFilter = useCallback(() => {
-    const firstCol = columns[0];
-    if (!firstCol) return;
+    const targetCol = columns.find((c) => c.primary) ?? columns[0];
+    if (!targetCol) return;
+
     const newFilter: FilterConfig = {
-      columnId: firstCol.id,
-      operator: firstCol.type === "NUMBER" ? "equals" : "contains",
+      columnId: targetCol.id,
+      operator: targetCol.type === "NUMBER" ? "equals" : "contains",
       value: "",
     };
-    const updated = [...localFilters, newFilter];
-    setLocalFilters(updated);
-    onUpdateFilters(updated, conjunctionLogic(conjunction));
 
-    // Automatically open the column picker for the new filter
-    setOpenMenu({ index: updated.length - 1, type: "column" });
-  }, [columns, localFilters, onUpdateFilters, conjunction]);
+    setLocalFilters((prev) => [...prev, newFilter]);
+    // Note: Deliberately avoiding updateBackend here so it does not send
+    // incomplete queries without a value on initial load.
+  }, [columns]);
 
   const updateFilter = useCallback(
     (index: number, patch: Partial<FilterConfig>) => {
-      const updated = localFilters.map((f, i) =>
-        i === index ? { ...f, ...patch } : f,
-      );
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = prev.map((f, i) =>
+          i === index ? { ...f, ...patch } : f,
+        );
+
+        const filter = updated[index]!;
+        const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+        if (
+          !needsValue ||
+          (filter.value !== "" && filter.value !== undefined)
+        ) {
+          updateBackend(updated, conjunctionLogic(conjunction));
+        }
+
+        return updated;
+      });
       setOpenMenu(null);
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const updateFilterValue = useCallback(
     (index: number, value: string | number) => {
-      const updated = localFilters.map((f, i) =>
-        i === index ? { ...f, value } : f,
-      );
-      setLocalFilters(updated);
-      if (valueDebounceRef.current) clearTimeout(valueDebounceRef.current);
-      valueDebounceRef.current = setTimeout(() => {
-        onUpdateFilters(updated, conjunctionLogic(conjunction));
-      }, 300);
+      setLocalFilters((prev) => {
+        const updated = prev.map((f, i) => (i === index ? { ...f, value } : f));
+
+        const filter = updated[index]!;
+        const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+
+        // Only schedule an update if it either requires no value or has an active value
+        if (
+          !needsValue ||
+          (filter.value !== "" && filter.value !== undefined)
+        ) {
+          updateBackend(updated, conjunctionLogic(conjunction));
+        }
+
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const removeFilter = useCallback(
     (index: number) => {
-      const updated = localFilters.filter((_, i) => i !== index);
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = prev.filter((_, i) => i !== index);
+        updateBackend(updated, conjunctionLogic(conjunction));
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const getOperators = (col: GridColumn | undefined) => {
@@ -242,7 +277,10 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("and");
                                         setOpenMenu(null);
-                                        onUpdateFilters(localFilters, "AND");
+                                        setLocalFilters((prev) => {
+                                          updateBackend(prev, "AND");
+                                          return prev;
+                                        });
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >
@@ -252,7 +290,10 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("or");
                                         setOpenMenu(null);
-                                        onUpdateFilters(localFilters, "OR");
+                                        setLocalFilters((prev) => {
+                                          updateBackend(prev, "OR");
+                                          return prev;
+                                        });
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >
@@ -343,7 +384,6 @@ export function FilterDropdown({
                               <SearchableSelect
                                 widthClass="w-48"
                                 searchPlaceholder="Find an operator"
-                                // Use showSearch={false} if you want it to feel more like a standard dropdown
                                 options={operators.map((op) => ({
                                   id: op.value,
                                   label: op.label,
