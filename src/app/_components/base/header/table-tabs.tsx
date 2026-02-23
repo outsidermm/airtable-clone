@@ -39,6 +39,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
   const [tableSearchQuery, setTableSearchQuery] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
   const tableSearchRef = useRef<HTMLInputElement>(null);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
@@ -65,10 +66,38 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
     }
   }, [renamingTableId]);
 
+  // Clean up the timeout when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    };
+  }, []);
+
   const closeMenu = useCallback(() => {
     setTableMenuId(null);
     setIsImportSubOpen(false);
   }, []);
+
+  const handleTableClick = useCallback(
+    (e: React.MouseEvent, tableId: number) => {
+      if (e.detail === 1) {
+        clickTimeoutRef.current = setTimeout(() => {
+          if (activeTableId !== tableId) {
+            setActiveTableId(tableId);
+          } else {
+            setTableMenuId(tableId);
+          }
+        }, 200);
+      } else if (e.detail === 2) {
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+          clickTimeoutRef.current = null;
+        }
+        setRenamingTableId(tableId);
+      }
+    },
+    [activeTableId, setActiveTableId, setRenamingTableId],
+  );
 
   return (
     <div className={`flex items-end ${getLightColorClass(iconColor)}`}>
@@ -98,13 +127,12 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                 }
               >
                 <button
-                  onClick={() => setActiveTableId(table.id)}
+                  onClick={(e) => {
+                    handleTableClick(e, table.id);
+                  }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setTableMenuId(table.id);
-                  }}
-                  onDoubleClick={() => {
-                    setRenamingTableId(table.id);
                   }}
                   className="flex-1 text-left"
                 >
