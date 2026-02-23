@@ -124,6 +124,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
         columnId={col.id}
         width={width}
         value={rowData.cells[String(col.id)]}
+        columnType={col.type}
         // State flags
         isSelectedCell={isSelectedCell}
         isInMultiSelection={isInMultiSelection}
