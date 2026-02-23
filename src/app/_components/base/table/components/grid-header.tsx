@@ -253,6 +253,7 @@ export function GridHeader({
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        autoScroll={false}
       >
         <SortableContext
           items={columnOrder}
