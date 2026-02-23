@@ -395,7 +395,6 @@ export function BaseContent({
               onReorderRow={handleReorderRow}
               onReorderColumns={handleReorderColumns}
               onRequestPage={fetchPage}
-              sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
               filteredColumnIds={filteredColumnIds}
               sortedColumnIds={sortedColumnIds}

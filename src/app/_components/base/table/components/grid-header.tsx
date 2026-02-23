@@ -15,7 +15,6 @@ import {
 import { SortableHeaderCell } from "./sortable-header-cell";
 import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
 import type { GridColumn, GridRow } from "~/types/grid";
-import type { SortConfig } from "~/server/api/routers/view";
 import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
 import {
   ChevronDownIcon,
@@ -36,7 +35,6 @@ interface GridHeaderProps {
   // Table / Data Props
   isAllSelected: boolean;
   onToggleAllSelected: (e: unknown) => void;
-  sorts: SortConfig[];
   columnOrder: string[];
   sensors: SensorDescriptor<SensorOptions>[];
   handleDragEnd: (e: DragEndEvent) => void;
@@ -55,7 +53,6 @@ export function GridHeader({
   handlePrimaryResizeStart,
   isAllSelected,
   onToggleAllSelected,
-  sorts,
   columnOrder,
   sensors,
   handleDragEnd,
@@ -313,11 +310,7 @@ export function GridHeader({
                       className="h-full"
                       onDoubleClick={() => handleHeaderDoubleClick(col)}
                     >
-                      <SortableHeaderCell
-                        column={col}
-                        sorts={sorts}
-                        isPrimary={false}
-                      >
+                      <SortableHeaderCell column={col} isPrimary={false}>
                         <button
                           className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
                           onClick={(e) => {

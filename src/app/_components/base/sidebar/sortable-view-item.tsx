@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  type CSSProperties,
-} from "react";
-import {
-  useSortable,
-} from "@dnd-kit/sortable";
+import { type CSSProperties } from "react";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DragHandle } from "../../ui/drag-handle";
 import {
@@ -21,7 +17,6 @@ import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { View } from "~/types/view";
 import { api } from "~/trpc/react";
 
-
 // --- Sortable View Item ---
 interface SortableViewItemProps {
   view: View;
@@ -33,7 +28,6 @@ interface SortableViewItemProps {
   onSetEditingName: (name: string) => void;
   onSetEditingViewId: (id: number | null) => void;
   onSetViewMenuId: (id: number | null) => void;
-  // onDuplicateView: (viewId: number) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -47,7 +41,6 @@ export function SortableViewItem({
   onSetEditingName,
   onSetEditingViewId,
   onSetViewMenuId,
-  // onDuplicateView,
   editInputRef,
 }: SortableViewItemProps) {
   const {
@@ -168,7 +161,7 @@ export function SortableViewItem({
                 </button>
                 <button
                   onClick={() => {
-                    // onDuplicateView(view.id);
+                    viewMutations.handleDuplicateView(view.id);
                     onSetViewMenuId(null);
                   }}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

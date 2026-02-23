@@ -53,7 +53,6 @@ interface GridTableProps {
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
   onReorderColumns?: (newOrder: number[]) => void;
   onRequestPage: (pageIndex: number) => void;
-  sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
   filteredColumnIds: Set<number>;
   sortedColumnIds: Set<number>;
@@ -68,7 +67,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       onReorderRow,
       onReorderColumns,
       onRequestPage,
-      sorts = [],
       rowHeight = "short",
       filteredColumnIds,
       sortedColumnIds,
@@ -412,7 +410,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 handlePrimaryResizeStart={handlePrimaryResizeStart}
                 isAllSelected={table.getIsAllRowsSelected()}
                 onToggleAllSelected={table.getToggleAllRowsSelectedHandler()}
-                sorts={sorts}
                 columnOrder={columnOrder}
                 sensors={sensors}
                 handleDragEnd={handleDragEnd}

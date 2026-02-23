@@ -2,24 +2,21 @@ import type { CSSProperties } from "react";
 import {
   TextIcon,
   NumberIcon,
-  SortAscIcon,
-  SortDescIcon,
 } from "~/app/_components/ui/icons";
-import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
 import { useSortable } from "@dnd-kit/sortable";
 
-export function SortableHeaderCell({
-  column,
-  sorts,
-  isPrimary,
-  children,
-}: {
+interface SortableHeaderCellProps {
   column: GridColumn;
-  sorts: SortConfig[];
   isPrimary: boolean;
   children: React.ReactNode;
-}) {
+}
+
+export function SortableHeaderCell({
+  column,
+  isPrimary,
+  children,
+}: SortableHeaderCellProps) {
   const {
     attributes,
     listeners,
@@ -40,10 +37,8 @@ export function SortableHeaderCell({
     position: "relative",
   };
 
-  const sortEntry = sorts.find((s) => s.columnId === column.id);
 
   const ColumnTypeIcon = column.type === "NUMBER" ? NumberIcon : TextIcon;
-  const SortIcon = sortEntry?.direction === "asc" ? SortAscIcon : SortDescIcon;
 
   return (
     <div
@@ -58,7 +53,6 @@ export function SortableHeaderCell({
         <span className="truncate text-xs text-gray-900">
           {column.name}
         </span>
-        {sortEntry && <SortIcon className="h-3 w-3 shrink-0 text-blue-500" />}
       </div>
       {children}
     </div>
