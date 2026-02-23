@@ -33,7 +33,6 @@ import { GridHeader } from "./components/grid-header";
 // Custom Hooks
 import { useGridSelection } from "../hooks/useGridSelection";
 import { useGridNavigation } from "../hooks/useGridNavigation";
-import type { SortConfig } from "~/server/api/routers/view";
 import { PlusIcon } from "~/app/_components/ui/icons";
 import type { CellAddress } from "~/types/cell";
 import type { GridTableHandle } from "~/types/table";
