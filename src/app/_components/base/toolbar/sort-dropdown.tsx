@@ -48,13 +48,17 @@ export function SortDropdown({
   onClose,
 }: SortDropdownProps) {
   const [localSorts, setLocalSorts] = useState<LocalSortConfig[]>(sorts);
-
+  const [isVisible, setIsVisible] = useState(true);
   const [openMenu, setOpenMenu] = useState<{
     index: number;
     type: "column" | "direction";
   } | null>(null);
 
   const [globalSearch, setGlobalSearch] = useState("");
+
+  const onToggle = useCallback(() => {
+    setIsVisible((v) => !v);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -149,30 +153,34 @@ export function SortDropdown({
     return dir === "asc" ? "A → Z" : "Z → A";
   };
 
+  const containerWidthClass = localSorts.length === 0 ? "w-80" : "w-114";
+
   return (
     <>
       {/* Backdrop to close everything */}
       <div className="fixed inset-0 z-50" onClick={onClose} />
 
-      <div className="absolute top-full right-0 z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white pt-3 pb-2 shadow-lg">
+      <div
+        className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white pt-3 shadow-lg transition-all ${containerWidthClass}`}
+      >
         {/* Header */}
-        <div className="mx-3 flex flex-row items-center gap-1 border-b border-gray-100 pb-2">
-          <h3 className="text-sm text-gray-900">Sort by</h3>
+        <div className="mx-4 flex flex-row items-center gap-1 border-b border-gray-200 pb-2">
+          <h3 className="text-[13px] text-gray-600">Sort by</h3>
           <QuestionIcon className="ml-1 inline h-3.5 w-3.5 text-gray-400" />
         </div>
 
         {/* --- STATE A: NO SORTS (Search List) --- */}
         {localSorts.length === 0 ? (
           <div className="px-3 text-sm text-gray-500">
-            <div className="mt-1 flex max-h-3/4 flex-col items-start justify-center gap-1 overflow-y-visible rounded px-2 py-1.5">
-              <div className="mb-1 flex w-full flex-row items-center gap-2">
-                <SearchIcon className="h-3.5 w-3.5 text-blue-300" />
+            <div className="mt-1 flex max-h-3/4 flex-col items-start justify-center gap-1 overflow-y-visible rounded px-1 py-1.5">
+              <div className="mb-1 flex w-full flex-row items-center gap-2 px-1">
+                <SearchIcon className="h-3.5 w-3.5 text-gray-300" />
                 <input
                   type="text"
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
                   placeholder="Find a field"
-                  className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
+                  className="w-full bg-transparent text-[13px] text-gray-700 outline-none placeholder:text-gray-400"
                   autoFocus
                 />
               </div>
@@ -180,7 +188,7 @@ export function SortDropdown({
                 <button
                   key={col.id}
                   onClick={() => addSort(col.id)} // Pass ID directly
-                  className="flex w-full items-center gap-1.5 rounded px-1 py-1 hover:bg-gray-50"
+                  className="flex w-full items-center gap-1.5 rounded px-1 py-1 hover:bg-gray-100"
                 >
                   {col.type === "NUMBER" ? (
                     <NumberIcon className="h-3.5 w-3.5 text-gray-400" />
@@ -215,7 +223,11 @@ export function SortDropdown({
                     );
 
                     return (
-                      <SortableItem key={String(index)} id={String(index)} hideDragHandle={localSorts.length === 1}>
+                      <SortableItem
+                        key={String(index)}
+                        id={String(index)}
+                        hideDragHandle={localSorts.length === 1}
+                      >
                         <div className="flex w-full items-center justify-between gap-2">
                           <div className="flex flex-1 items-center gap-2">
                             <div className="relative flex-1">
@@ -347,7 +359,7 @@ export function SortDropdown({
                   <button
                     onClick={() => addSort(undefined)}
                     disabled={localSorts.length >= columns.length}
-                    className="flex items-center rounded px-1 py-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="flex items-center rounded px-1 py-1 text-[13px] text-gray-500 hover:text-gray-700 disabled:opacity-50"
                   >
                     <PlusIcon className="mr-1 h-3.5 w-3.5" />
                     Add another sort
@@ -356,6 +368,37 @@ export function SortDropdown({
               </div>
             </SortableContext>
           </DndContext>
+        )}
+        {localSorts.length >= 1 && (
+          <div className="flex items-center justify-between bg-gray-100 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onToggle}
+                className={`flex h-2.5 w-5 items-center rounded-full px-0.5 transition-colors ${
+                  isVisible ? "bg-green-600" : "bg-gray-300"
+                }`}
+              >
+                <div
+                  className={`h-2 w-2 rounded-full bg-white shadow transition-transform ${
+                    isVisible ? "translate-x-2" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <span className="text-[13px] text-gray-700">
+                Automatically sort records
+              </span>
+            </div>
+            {!isVisible && (
+              <div className="flex items-center gap-2">
+                <button className="flex items-center text-xs text-gray-600 hover:text-gray-900">
+                  Cancel
+                </button>
+                <button className="flex items-center rounded bg-blue-600 px-3 py-2 text-xs text-white">
+                  Sort
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </>
