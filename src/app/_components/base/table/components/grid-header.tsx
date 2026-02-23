@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -15,7 +14,7 @@ import {
 import { SortableHeaderCell } from "./sortable-header-cell";
 import { HEADER_HEIGHT, CHECKBOX_WIDTH } from "../../constants";
 import type { GridColumn, GridRow } from "~/types/grid";
-import type { Header } from "@tanstack/react-table"; // Adjust based on your table setup
+import type { Header } from "@tanstack/react-table";
 import {
   ChevronDownIcon,
   NumberIcon,
@@ -23,7 +22,6 @@ import {
   TextIcon,
 } from "~/app/_components/ui/icons";
 import { useBase } from "../../base-context";
-import { useColumnMutations } from "~/app/_components/hooks/use-column-mutations";
 
 interface GridHeaderProps {
   frozenWidth: number;
@@ -32,13 +30,12 @@ interface GridHeaderProps {
   nonPrimaryColumns: GridColumn[];
   primaryColumnWidth: number;
   handlePrimaryResizeStart: (e: React.MouseEvent) => void;
-  // Table / Data Props
   isAllSelected: boolean;
   onToggleAllSelected: (e: unknown) => void;
   columnOrder: string[];
   sensors: SensorDescriptor<SensorOptions>[];
   handleDragEnd: (e: DragEndEvent) => void;
-  headerGroups: Header<GridRow, unknown>[]; // from TanStack
+  headerGroups: Header<GridRow, unknown>[];
   frozenNonPrimaryCount: number;
   filteredColumnIds: Set<number>;
   sortedColumnIds: Set<number>;
@@ -61,24 +58,11 @@ export function GridHeader({
   filteredColumnIds,
   sortedColumnIds,
 }: GridHeaderProps) {
-  const { openModal, activeTableId, setContextMenu } = useBase();
-  const columnMutations = useColumnMutations(activeTableId);
-  const [editingHeader, setEditingHeader] = useState<number | null>(null);
-  const [editingHeaderValue, setEditingHeaderValue] = useState("");
+  const { openModal, setContextMenu, setEditingColumnId } = useBase();
 
-  const handleHeaderDoubleClick = (col: GridColumn) => {
-    setEditingHeader(col.id);
-    setEditingHeaderValue(col.name);
-  };
-
-  const handleHeaderRename = (colId: number, currentName: string) => {
-    if (
-      editingHeaderValue.trim() &&
-      editingHeaderValue.trim() !== currentName
-    ) {
-      columnMutations.handleUpdateColumn(colId, editingHeaderValue.trim());
-    }
-    setEditingHeader(null);
+  const handleHeaderDoubleClick = (col: GridColumn, e: React.MouseEvent) => {
+    setEditingColumnId(col.id);
+    openModal("edit-column", e.currentTarget as HTMLElement);
   };
 
   return (
@@ -86,7 +70,6 @@ export function GridHeader({
       className="sticky top-0 z-40 flex shrink-0"
       style={{ minWidth: "fit-content" }}
     >
-      {/* Frozen: checkbox + primary header */}
       <div
         className="sticky left-0 z-50 flex shrink-0 border-b border-gray-200 bg-white"
         style={{
@@ -95,7 +78,6 @@ export function GridHeader({
           borderRight: "2px solid rgb(209, 213, 219)",
         }}
       >
-        {/* Checkbox */}
         <div className="flex items-center" style={{ width: CHECKBOX_WIDTH }}>
           <div className="w-5 shrink-0 pl-1.5" />
           <div className="flex flex-1 justify-center">
@@ -108,7 +90,6 @@ export function GridHeader({
           </div>
         </div>
 
-        {/* Primary Column */}
         {primaryColumn && (
           <div
             className={`relative flex items-center border-b border-gray-200 ${
@@ -129,37 +110,17 @@ export function GridHeader({
               });
             }}
           >
-            {editingHeader === primaryColumn.id ? (
-              <div className="flex h-full w-full items-center px-2">
-                <input
-                  type="text"
-                  value={editingHeaderValue}
-                  onChange={(e) => setEditingHeaderValue(e.target.value)}
-                  onBlur={() =>
-                    handleHeaderRename(primaryColumn.id, primaryColumn.name)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter")
-                      handleHeaderRename(primaryColumn.id, primaryColumn.name);
-                    if (e.key === "Escape") setEditingHeader(null);
-                  }}
-                  className="w-full bg-transparent text-xs text-gray-700 outline-none"
-                  autoFocus
-                />
+            <div
+              className="group flex h-full w-full items-center justify-between px-2 py-1.5"
+              onDoubleClick={(e) => handleHeaderDoubleClick(primaryColumn, e)}
+            >
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                <span className="truncate text-xs font-normal text-gray-700">
+                  {primaryColumn.name}
+                </span>
               </div>
-            ) : (
-              <div
-                className="group flex h-full w-full items-center justify-between px-2 py-1.5"
-                onDoubleClick={() => handleHeaderDoubleClick(primaryColumn)}
-              >
-                <div className="flex items-center gap-1.5 overflow-hidden">
-                  <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                  <span className="truncate text-xs font-medium text-gray-900">
-                    {primaryColumn.name}
-                  </span>
-                </div>
-              </div>
-            )}
+            </div>
             <div
               onMouseDown={handlePrimaryResizeStart}
               className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
@@ -167,7 +128,6 @@ export function GridHeader({
           </div>
         )}
 
-        {/* Frozen non-primary headers (static, not draggable) */}
         {headerGroups.slice(0, frozenNonPrimaryCount).map((header) => {
           const col = nonPrimaryColumns.find((c) => String(c.id) === header.id);
           if (!col) return null;
@@ -193,51 +153,33 @@ export function GridHeader({
                 });
               }}
             >
-              {editingHeader === col.id ? (
-                <div className="flex h-full items-center bg-white px-2">
-                  <input
-                    type="text"
-                    value={editingHeaderValue}
-                    onChange={(e) => setEditingHeaderValue(e.target.value)}
-                    onBlur={() => handleHeaderRename(col.id, col.name)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter")
-                        handleHeaderRename(col.id, col.name);
-                      if (e.key === "Escape") setEditingHeader(null);
-                    }}
-                    className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <div
-                  className="h-full"
-                  onDoubleClick={() => handleHeaderDoubleClick(col)}
-                >
-                  <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                      <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                      <span className="truncate text-xs font-medium text-gray-900">
-                        {col.name}
-                      </span>
-                    </div>
-                    <button
-                      className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setContextMenu({
-                          type: "column",
-                          position: { x: e.clientX, y: e.clientY },
-                          anchorEl: e.currentTarget as HTMLElement,
-                          data: { columnId: col.id },
-                        });
-                      }}
-                    >
-                      <ChevronDownIcon className="h-3 w-3" />
-                    </button>
+              <div
+                className="h-full"
+                onDoubleClick={(e) => handleHeaderDoubleClick(col, e)}
+              >
+                <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
+                  <div className="flex items-center gap-1.5 overflow-hidden">
+                    <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                    <span className="truncate text-xs text-gray-900">
+                      {col.name}
+                    </span>
                   </div>
+                  <button
+                    className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        type: "column",
+                        position: { x: e.clientX, y: e.clientY },
+                        anchorEl: e.currentTarget as HTMLElement,
+                        data: { columnId: col.id },
+                      });
+                    }}
+                  >
+                    <ChevronDownIcon className="h-3 w-3" />
+                  </button>
                 </div>
-              )}
+              </div>
               <div
                 onMouseDown={header.getResizeHandler()}
                 onTouchStart={header.getResizeHandler()}
@@ -248,7 +190,6 @@ export function GridHeader({
         })}
       </div>
 
-      {/* Scrollable headers */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -272,7 +213,7 @@ export function GridHeader({
               return (
                 <div
                   key={header.id}
-                  className={`relative border border-gray-100 ${
+                  className={`relative border-r border-gray-200 ${
                     filteredColumnIds.has(col.id)
                       ? "bg-green-100"
                       : sortedColumnIds.has(col.id)
@@ -290,50 +231,32 @@ export function GridHeader({
                     });
                   }}
                 >
-                  {editingHeader === col.id ? (
-                    <div className="flex h-full items-center bg-white px-2">
-                      <input
-                        type="text"
-                        value={editingHeaderValue}
-                        onChange={(e) => setEditingHeaderValue(e.target.value)}
-                        onBlur={() => handleHeaderRename(col.id, col.name)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter")
-                            handleHeaderRename(col.id, col.name);
-                          if (e.key === "Escape") setEditingHeader(null);
+                  <div
+                    className="h-full"
+                    onDoubleClick={(e) => handleHeaderDoubleClick(col, e)}
+                  >
+                    <SortableHeaderCell column={col} isPrimary={false}>
+                      <button
+                        className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setContextMenu({
+                            type: "column",
+                            position: { x: e.clientX, y: e.clientY },
+                            anchorEl: e.currentTarget as HTMLElement,
+                            data: { columnId: col.id },
+                          });
                         }}
-                        className="w-full bg-transparent text-xs text-gray-900 outline-none"
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="h-full"
-                      onDoubleClick={() => handleHeaderDoubleClick(col)}
-                    >
-                      <SortableHeaderCell column={col} isPrimary={false}>
-                        <button
-                          className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setContextMenu({
-                              type: "column",
-                              position: { x: e.clientX, y: e.clientY },
-                              anchorEl: e.currentTarget as HTMLElement,
-                              data: { columnId: col.id },
-                            });
-                          }}
-                        >
-                          <ChevronDownIcon className="h-3 w-3" />
-                        </button>
-                      </SortableHeaderCell>
-                    </div>
-                  )}
-                  {/* TanStack Resize Handler */}
+                      >
+                        <ChevronDownIcon className="h-3 w-3" />
+                      </button>
+                    </SortableHeaderCell>
+                  </div>
                   <div
                     onMouseDown={header.getResizeHandler()}
                     onTouchStart={header.getResizeHandler()}
-                    className="absolute top-0 right-0 z-10 h-full w-0.5 cursor-col-resize bg-transparent hover:bg-blue-500"
+                    className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
                   />
                 </div>
               );

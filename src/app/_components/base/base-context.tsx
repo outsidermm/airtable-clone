@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import type { ContextMenuState } from "~/types/grid";
 
 // Define the types of modals that can be opened globally
-type BaseModalType = "add-table" | "add-column" | "set-primary" | null;
+type BaseModalType = "add-table" | "add-column" | "edit-column" | "set-primary" | null;
 
 interface BaseContextType {
   // Navigation State
@@ -32,11 +32,13 @@ interface BaseContextType {
   openModal: (type: BaseModalType, anchor?: HTMLElement | null) => void;
   modalAnchor: HTMLElement | null;
 
-  // Column Insertion State
+  // Column Insertion & Edit State
   insertAfterColumnId: number | null;
   setInsertAfterColumnId: (id: number | null) => void;
   insertBeforeColumnId: number | null;
   setInsertBeforeColumnId: (id: number | null) => void;
+  editingColumnId: number | null;
+  setEditingColumnId: (id: number | null) => void;
 
   // Table Rename State
   renamingTableId: number | null;
@@ -49,11 +51,11 @@ interface BaseContextType {
   contextMenu: ContextMenuState | null;
   setContextMenu: (menu: ContextMenuState | null) => void;
 
-  // Page store refresh — registered by base-content, called by mutation hooks
+  // Page store refresh
   refetchRows: () => void;
   registerRefetchRows: (fn: () => void) => void;
 
-  // Optimistic row operations — registered by base-content
+  // Optimistic row operations
   optimisticAddRow: () => { tempId: number; revert: () => void };
   optimisticDeleteRow: (rowId: number) => { revert: () => void };
   optimisticInsertRowNear: (
@@ -75,8 +77,7 @@ interface BaseContextType {
     ) => { tempId: number; revert: () => void },
   ) => void;
 
-  // Called by createRow/duplicateRow.onSuccess to swap temp ID → real ID and flush pending edits.
-  // Pass cells to also update the temp row's cells (used by duplicate).
+  // Handlers
   onRowCreated: (
     tempId: number,
     realRowId: number,
@@ -90,19 +91,16 @@ interface BaseContextType {
     ) => void,
   ) => void;
 
-  // Notifies grid-table to update its stable key map and selection state on row ID swap
   notifyRowIdSwap: (tempId: number, realId: number) => void;
   registerRowIdSwapListener: (
     fn: (tempId: number, realId: number) => void,
   ) => void;
 
-  // Column parallel: flush buffered cell edits when a temp column gets its real ID
   onColumnCreated: (tempColId: number, realColId: number) => void;
   registerOnColumnCreated: (
     fn: (tempColId: number, realColId: number) => void,
   ) => void;
 
-  // Notifies grid-table to update stable column key map + selection state on column ID swap
   notifyColumnIdSwap: (tempId: number, realId: number) => void;
   registerColumnIdSwapListener: (
     fn: (tempId: number, realId: number) => void,
@@ -141,171 +139,56 @@ export function BaseProvider({
   // Modals
   const [activeModal, setActiveModal] = useState<BaseModalType>(null);
   const [modalAnchor, setModalAnchor] = useState<HTMLElement | null>(null);
-  const [insertAfterColumnId, setInsertAfterColumnId] = useState<number | null>(
-    null,
-  );
-  const [insertBeforeColumnId, setInsertBeforeColumnId] = useState<
-    number | null
-  >(null);
+  const [insertAfterColumnId, setInsertAfterColumnId] = useState<number | null>(null);
+  const [insertBeforeColumnId, setInsertBeforeColumnId] = useState<number | null>(null);
+  const [editingColumnId, setEditingColumnId] = useState<number | null>(null);
   const [renamingTableId, setRenamingTableId] = useState<number | null>(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
-
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  // Stable ref to whichever refetchRows implementation base-content registers
   const refetchRowsFnRef = useRef<() => void>(() => {
-    /* no-op until base-content registers */
+    // hello
   });
-  const refetchRows = useCallback(() => {
-    refetchRowsFnRef.current();
-  }, []);
-  const registerRefetchRows = useCallback((fn: () => void) => {
-    refetchRowsFnRef.current = fn;
-  }, []);
+  const refetchRows = useCallback(() => refetchRowsFnRef.current(), []);
+  const registerRefetchRows = useCallback((fn: () => void) => { refetchRowsFnRef.current = fn; }, []);
 
-  // Optimistic row operation refs — registered by base-content
-  const optimisticAddRowFnRef = useRef<
-    () => { tempId: number; revert: () => void }
-  >(() => ({ tempId: -1, revert: () => undefined }));
-  const optimisticDeleteRowFnRef = useRef<
-    (rowId: number) => { revert: () => void }
-  >(() => ({ revert: () => undefined }));
-  const optimisticAddRow = useCallback(
-    () => optimisticAddRowFnRef.current(),
-    [],
-  );
-  const optimisticDeleteRow = useCallback(
-    (rowId: number) => optimisticDeleteRowFnRef.current(rowId),
-    [],
-  );
+  const optimisticAddRowFnRef = useRef<() => { tempId: number; revert: () => void }>(() => ({ tempId: -1, revert: () => undefined }));
+  const optimisticDeleteRowFnRef = useRef<(rowId: number) => { revert: () => void }>(() => ({ revert: () => undefined }));
+  const optimisticAddRow = useCallback(() => optimisticAddRowFnRef.current(), []);
+  const optimisticDeleteRow = useCallback((rowId: number) => optimisticDeleteRowFnRef.current(rowId), []);
 
-  const optimisticInsertRowNearFnRef = useRef<
-    (
-      tableId: number,
-      beforeRowId?: number | null,
-      afterRowId?: number | null,
-    ) => { tempId: number; revert: () => void }
-  >(() => ({ tempId: -1, revert: () => undefined }));
-  const optimisticInsertRowNear = useCallback(
-    (
-      tableId: number,
-      beforeRowId?: number | null,
-      afterRowId?: number | null,
-    ) => optimisticInsertRowNearFnRef.current(tableId, beforeRowId, afterRowId),
-    [],
-  );
-  const registerOptimisticInsertRowNear = useCallback(
-    (
-      fn: (
-        tableId: number,
-        beforeRowId?: number | null,
-        afterRowId?: number | null,
-      ) => { tempId: number; revert: () => void },
-    ) => {
-      optimisticInsertRowNearFnRef.current = fn;
-    },
-    [],
-  );
+  const optimisticInsertRowNearFnRef = useRef<(tableId: number, beforeRowId?: number | null, afterRowId?: number | null) => { tempId: number; revert: () => void }>(() => ({ tempId: -1, revert: () => undefined }));
+  const optimisticInsertRowNear = useCallback((tableId: number, beforeRowId?: number | null, afterRowId?: number | null) => optimisticInsertRowNearFnRef.current(tableId, beforeRowId, afterRowId), []);
+  const registerOptimisticInsertRowNear = useCallback((fn: (tableId: number, beforeRowId?: number | null, afterRowId?: number | null) => { tempId: number; revert: () => void }) => { optimisticInsertRowNearFnRef.current = fn; }, []);
 
-  const registerOptimisticAddRow = useCallback(
-    (fn: () => { tempId: number; revert: () => void }) => {
-      optimisticAddRowFnRef.current = fn;
-    },
-    [],
-  );
-  const registerOptimisticDeleteRow = useCallback(
-    (fn: (rowId: number) => { revert: () => void }) => {
-      optimisticDeleteRowFnRef.current = fn;
-    },
-    [],
-  );
+  const registerOptimisticAddRow = useCallback((fn: () => { tempId: number; revert: () => void }) => { optimisticAddRowFnRef.current = fn; }, []);
+  const registerOptimisticDeleteRow = useCallback((fn: (rowId: number) => { revert: () => void }) => { optimisticDeleteRowFnRef.current = fn; }, []);
 
-  // onRowCreated — called when createRow/duplicateRow.onSuccess fires, swaps tempId → realId in page store
-  const onRowCreatedFnRef = useRef<
-    (
-      tempId: number,
-      realRowId: number,
-      cells?: Record<string, string | number | null>,
-    ) => void
-  >(() => undefined);
-  const onRowCreated = useCallback(
-    (
-      tempId: number,
-      realRowId: number,
-      cells?: Record<string, string | number | null>,
-    ) => {
-      onRowCreatedFnRef.current(tempId, realRowId, cells);
-    },
-    [],
-  );
-  const registerOnRowCreated = useCallback(
-    (
-      fn: (
-        tempId: number,
-        realRowId: number,
-        cells?: Record<string, string | number | null>,
-      ) => void,
-    ) => {
-      onRowCreatedFnRef.current = fn;
-    },
-    [],
-  );
+  const onRowCreatedFnRef = useRef<(tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void>(() => undefined);
+  const onRowCreated = useCallback((tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => { onRowCreatedFnRef.current(tempId, realRowId, cells); }, []);
+  const registerOnRowCreated = useCallback((fn: (tempId: number, realRowId: number, cells?: Record<string, string | number | null>) => void) => { onRowCreatedFnRef.current = fn; }, []);
 
-  // notifyRowIdSwap — tells grid-table to update stable keys + selection state
-  const rowIdSwapListenerRef = useRef<(tempId: number, realId: number) => void>(
-    () => undefined,
-  );
-  const notifyRowIdSwap = useCallback((tempId: number, realId: number) => {
-    rowIdSwapListenerRef.current(tempId, realId);
-  }, []);
-  const registerRowIdSwapListener = useCallback(
-    (fn: (tempId: number, realId: number) => void) => {
-      rowIdSwapListenerRef.current = fn;
-    },
-    [],
-  );
+  const rowIdSwapListenerRef = useRef<(tempId: number, realId: number) => void>(() => undefined);
+  const notifyRowIdSwap = useCallback((tempId: number, realId: number) => { rowIdSwapListenerRef.current(tempId, realId); }, []);
+  const registerRowIdSwapListener = useCallback((fn: (tempId: number, realId: number) => void) => { rowIdSwapListenerRef.current = fn; }, []);
 
-  // onColumnCreated — flush buffered cell edits when a temp column gets its real ID
-  const onColumnCreatedFnRef = useRef<
-    (tempColId: number, realColId: number) => void
-  >(() => undefined);
-  const onColumnCreated = useCallback(
-    (tempColId: number, realColId: number) => {
-      onColumnCreatedFnRef.current(tempColId, realColId);
-    },
-    [],
-  );
-  const registerOnColumnCreated = useCallback(
-    (fn: (tempColId: number, realColId: number) => void) => {
-      onColumnCreatedFnRef.current = fn;
-    },
-    [],
-  );
+  const onColumnCreatedFnRef = useRef<(tempColId: number, realColId: number) => void>(() => undefined);
+  const onColumnCreated = useCallback((tempColId: number, realColId: number) => { onColumnCreatedFnRef.current(tempColId, realColId); }, []);
+  const registerOnColumnCreated = useCallback((fn: (tempColId: number, realColId: number) => void) => { onColumnCreatedFnRef.current = fn; }, []);
 
-  // notifyColumnIdSwap — tells grid-table to update stable column keys + selection state
-  const columnIdSwapListenerRef = useRef<
-    (tempId: number, realId: number) => void
-  >(() => undefined);
-  const notifyColumnIdSwap = useCallback((tempId: number, realId: number) => {
-    columnIdSwapListenerRef.current(tempId, realId);
-  }, []);
-  const registerColumnIdSwapListener = useCallback(
-    (fn: (tempId: number, realId: number) => void) => {
-      columnIdSwapListenerRef.current = fn;
-    },
-    [],
-  );
+  const columnIdSwapListenerRef = useRef<(tempId: number, realId: number) => void>(() => undefined);
+  const notifyColumnIdSwap = useCallback((tempId: number, realId: number) => { columnIdSwapListenerRef.current(tempId, realId); }, []);
+  const registerColumnIdSwapListener = useCallback((fn: (tempId: number, realId: number) => void) => { columnIdSwapListenerRef.current = fn; }, []);
 
-  // Helper to open modals with an optional anchor (for positioning)
-  const openModal = (
-    type: BaseModalType,
-    anchor: HTMLElement | null = null,
-  ) => {
-    if (type !== "add-column") {
+  const openModal = (type: BaseModalType, anchor: HTMLElement | null = null) => {
+    if (type !== "add-column" && type !== "edit-column") {
       setInsertAfterColumnId(null);
       setInsertBeforeColumnId(null);
+    }
+    if (type !== "edit-column") {
+      setEditingColumnId(null);
     }
     setActiveModal(type);
     setModalAnchor(anchor);
@@ -329,6 +212,8 @@ export function BaseProvider({
         setInsertAfterColumnId,
         insertBeforeColumnId,
         setInsertBeforeColumnId,
+        editingColumnId,
+        setEditingColumnId,
         renamingTableId,
         setRenamingTableId,
         searchQuery,

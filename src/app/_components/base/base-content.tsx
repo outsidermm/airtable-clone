@@ -64,6 +64,7 @@ export function BaseContent({
     registerOnRowCreated,
     notifyRowIdSwap,
     registerOnColumnCreated,
+    editingColumnId,
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -454,6 +455,13 @@ export function BaseContent({
       )}
       {activeModal === "add-column" && (
         <AddColumnModal anchorEl={modalAnchor} />
+      )}
+      {activeModal === "edit-column" && (
+        <AddColumnModal
+          anchorEl={modalAnchor}
+          editColumnId={editingColumnId}
+          columns={allColumns}
+        />
       )}
     </div>
   );

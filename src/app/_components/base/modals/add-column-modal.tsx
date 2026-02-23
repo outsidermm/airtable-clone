@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { FieldType } from "~/types/field";
+import type { GridColumn } from "~/types/grid";
 import { FIELD_TYPES } from "../constants";
 import {
   QuestionIcon,
@@ -14,9 +15,15 @@ import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface AddColumnModalProps {
   anchorEl?: HTMLElement | null;
+  editColumnId?: number | null;
+  columns?: GridColumn[];
 }
 
-export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
+export function AddColumnModal({
+  anchorEl,
+  editColumnId,
+  columns,
+}: AddColumnModalProps) {
   const {
     activeTableId,
     openModal,
@@ -25,12 +32,19 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
   } = useBase();
   const columnMutations = useColumnMutations(activeTableId);
 
+  const editColumn = columns?.find((c) => c.id === editColumnId);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(
-    null,
+    editColumn
+      ? (FIELD_TYPES.find((f) => f.type === editColumn.type) ?? null)
+      : null,
   );
-  const [columnName, setColumnName] = useState("");
-  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [columnName, setColumnName] = useState(
+    editColumn ? editColumn.name : "",
+  );
+  const [isConfiguring, setIsConfiguring] = useState(!!editColumn);
+
   const [position, setPosition] = useState<{
     top: number;
     left: number;
@@ -84,18 +98,26 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
   const handleConfirm = () => {
     if (selectedFieldType) {
-      const commonPayload = {
-        type: selectedFieldType.type,
-        afterColumnId: insertAfterColumnId ?? undefined,
-        beforeColumnId: insertBeforeColumnId ?? undefined,
-      };
-      if (columnName.trim() === "") {
-        columnMutations.handleAddColumn(commonPayload);
+      if (editColumnId) {
+        columnMutations.handleUpdateColumn(
+          editColumnId,
+          columnName.trim() || (editColumn?.name ?? ""),
+          selectedFieldType.type,
+        );
       } else {
-        columnMutations.handleAddColumn({
-          ...commonPayload,
-          name: columnName.trim(),
-        });
+        const commonPayload = {
+          type: selectedFieldType.type,
+          afterColumnId: insertAfterColumnId ?? undefined,
+          beforeColumnId: insertBeforeColumnId ?? undefined,
+        };
+        if (columnName.trim() === "") {
+          columnMutations.handleAddColumn(commonPayload);
+        } else {
+          columnMutations.handleAddColumn({
+            ...commonPayload,
+            name: columnName.trim(),
+          });
+        }
       }
       openModal(null);
     }
@@ -211,6 +233,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                 <input
                   autoFocus
                   type="text"
+                  value={columnName}
                   onChange={(e) => setColumnName(e.target.value)}
                   placeholder="Field name (optional)"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
@@ -223,6 +246,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                     setIsConfiguring(false);
                   }}
                   className="flex w-full items-center justify-between rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all hover:bg-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                  disabled={editColumn?.primary} // Do not allow primary field type change natively
                 >
                   <div className="flex items-center gap-2.5">
                     <span
@@ -248,7 +272,6 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
               <div>
                 <label className="my-4 text-sm">Default</label>
                 <input
-                  autoFocus
                   type="text"
                   placeholder="Enter default value (optional)"
                   className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
@@ -275,7 +298,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                   disabled={!selectedFieldType}
                   className="rounded-md bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Create field
+                  {editColumnId ? "Save" : "Create field"}
                 </button>
               </div>
             </div>
