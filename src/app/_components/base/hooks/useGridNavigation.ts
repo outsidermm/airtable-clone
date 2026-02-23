@@ -40,6 +40,7 @@ export function useGridNavigation({
         if (selectedCell) {
           rowMutations.handleInsertRowBelow(selectedCell.rowId);
         }
+        return;
       }
 
       // 2. Handle Editing Navigation (Enter / Escape)

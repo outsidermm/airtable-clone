@@ -120,9 +120,8 @@ export const GridCell = memo(function GridCell({
 
       {/* Existing Shift+Enter Tooltip */}
       {showLastRowTooltip && isEditing && !showNumberWarning && (
-        <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
+        <div className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500">
           Shift+Enter to create new row
-          <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
         </div>
       )}
     </div>
