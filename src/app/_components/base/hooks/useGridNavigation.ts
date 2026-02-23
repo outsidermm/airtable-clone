@@ -15,7 +15,7 @@ interface UseGridNavigationProps {
   editingCell: CellAddress | null;
   setEditingCell: (cell: CellAddress | null) => void;
   setShowLastRowTooltip: (show: boolean) => void;
-  onCellUpdate?: (rowId: number, columnId: number, value: string) => void; // Added onCellUpdate
+  onCellUpdate?: (rowId: number, columnId: number, value: string) => void;
 }
 
 export function useGridNavigation({
@@ -33,25 +33,57 @@ export function useGridNavigation({
   const rowMutations = useRowMutations(activeTableId);
 
   useEffect(() => {
+    const allColumns = primaryColumn
+      ? [primaryColumn, ...nonPrimaryColumns]
+      : nonPrimaryColumns;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. Handle Add Row
+      const isTabKey = e.key === "Tab";
+      const isArrowKey = [
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+      ].includes(e.key);
+
+      // Helper to prevent rogue native focus from clinging to the input
+      // after we programmatically exit edit mode.
+      const clearNativeFocus = () => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      };
+
+      // 1. Handle Add Row (Shift + Enter)
       if (e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
-        if (selectedCell) {
-          rowMutations.handleInsertRowBelow(selectedCell.rowId);
+        const targetCell = editingCell ?? selectedCell;
+        if (targetCell) {
+          rowMutations.handleInsertRowBelow(targetCell.rowId);
+          setEditingCell(null);
+          setShowLastRowTooltip(false);
+          clearNativeFocus();
+        } else {
+          rowMutations.handleAddRow();
         }
         return;
       }
 
-      // 2. Handle Editing Navigation (Enter / Escape)
-      if (editingCell) {
+      const isCurrentlyEditing = !!editingCell;
+
+      // 2. Handle Editing Navigation Overrides
+      if (isCurrentlyEditing) {
         if (e.key === "Escape") {
           e.preventDefault();
           setEditingCell(null);
           setShowLastRowTooltip(false);
+          clearNativeFocus();
+          return;
         } else if (e.key === "Enter") {
           e.preventDefault();
           setEditingCell(null);
+          clearNativeFocus();
+
           const currentRowIndex = rows.findIndex(
             (r) => r.id === editingCell.rowId,
           );
@@ -71,27 +103,34 @@ export function useGridNavigation({
               setTimeout(() => setShowLastRowTooltip(false), 3000);
             }
           }
+          return;
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          // Move cursor to the front or back of the string natively
+          e.preventDefault();
           const activeEl = document.activeElement as HTMLInputElement;
           if (activeEl && typeof activeEl.setSelectionRange === "function") {
             const pos = e.key === "ArrowUp" ? 0 : activeEl.value.length;
             activeEl.setSelectionRange(pos, pos);
           }
+          return; // Stop grid navigation
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          // Let standard text cursor movement happen
+          return; // Stop grid navigation
         }
 
-        return; // Don't do arrow navigation while editing
+        // If it's Tab, exit edit mode and fall through to navigation
+        if (isTabKey) {
+          e.preventDefault();
+          setEditingCell(null);
+          clearNativeFocus();
+        } else {
+          // Any other typing keys, ignore grid navigation
+          return;
+        }
       }
 
-      // 3. Handle Standard Navigation & Cell Actions
-      const isArrowKey = [
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-      ].includes(e.key);
-      const isTabKey = e.key === "Tab";
-
-      if (selectedCell && !editingCell) {
+      // 3. Handle Standard Non-Editing Cell Actions
+      if (selectedCell && !isCurrentlyEditing) {
         // Handle Backspace / Delete to clear the cell
         if (e.key === "Backspace" || e.key === "Delete") {
           e.preventDefault();
@@ -107,7 +146,6 @@ export function useGridNavigation({
         }
 
         // Handle Typing to Start Edit Mode
-        // This regex checks for single character keys (letters, numbers, symbols)
         const isCharacterKey =
           e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
         if (isCharacterKey) {
@@ -117,12 +155,9 @@ export function useGridNavigation({
         }
       }
 
-      if ((isArrowKey || isTabKey) && selectedCell) {
+      // 4. Standard Navigation Movements
+      if (selectedCell && (isTabKey || (isArrowKey && !isCurrentlyEditing))) {
         e.preventDefault();
-
-        const allColumns = primaryColumn
-          ? [primaryColumn, ...nonPrimaryColumns]
-          : nonPrimaryColumns;
 
         const currentRowIndex = rows.findIndex(
           (r) => r.id === selectedCell.rowId,
@@ -138,11 +173,11 @@ export function useGridNavigation({
 
         if (e.key === "ArrowUp") {
           newRowIndex = Math.max(0, currentRowIndex - 1);
-        } else if (e.key === "ArrowDown" || (e.key === "Enter" && e.shiftKey)) {
+        } else if (e.key === "ArrowDown") {
           newRowIndex = Math.min(rows.length - 1, currentRowIndex + 1);
-        } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
+        } else if (e.key === "ArrowLeft" || (isTabKey && e.shiftKey)) {
           newColumnIndex = Math.max(0, currentColumnIndex - 1);
-        } else if (e.key === "ArrowRight" || e.key === "Tab") {
+        } else if (e.key === "ArrowRight" || (isTabKey && !e.shiftKey)) {
           newColumnIndex = Math.min(
             allColumns.length - 1,
             currentColumnIndex + 1,
@@ -160,8 +195,11 @@ export function useGridNavigation({
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    // CRITICAL: Set capture to true. This forces our code to run BEFORE the browser tries
+    // to natively manage focus via Tab or swallow Enter keystrokes.
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [
     editingCell,
     selectedCell,
@@ -172,7 +210,7 @@ export function useGridNavigation({
     setEditingCell,
     setSelectedCell,
     setShowLastRowTooltip,
-    onCellUpdate, // Added to dependency array
+    onCellUpdate,
   ]);
 }
 
