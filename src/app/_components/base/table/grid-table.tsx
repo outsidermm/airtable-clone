@@ -83,6 +83,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [rowSelection, setRowSelection] = useState<Record<string, boolean>>(
       {},
     );
+    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
+      {},
+    );
     const [editingCell, setEditingCell] = useState<CellAddress | null>(null);
     const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
@@ -125,6 +128,22 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       [rows],
     );
 
+    // Calculate frozen width early so it can be passed into useGridNavigation
+    const extraFrozenWidth = useMemo(() => {
+      return nonPrimaryColumns
+        .slice(0, clampedFrozenExtraCount)
+        .reduce(
+          (sum, col) =>
+            sum + Math.max(80, columnSizing[String(col.id)] ?? col.width),
+          0,
+        );
+    }, [nonPrimaryColumns, clampedFrozenExtraCount, columnSizing]);
+
+    const frozenWidth =
+      CHECKBOX_WIDTH +
+      (primaryColumn ? primaryColumnWidth : 0) +
+      extraFrozenWidth;
+
     // --- 3. Custom Hooks ---
     const {
       selectedCell,
@@ -147,6 +166,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       setEditingCell,
       setShowLastRowTooltip,
       onCellUpdate,
+      frozenWidth,
     });
 
     // --- Stable Context Menu Ref ---
@@ -210,9 +230,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       },
       [onCellUpdate],
     );
-    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
-      {},
-    );
 
     const { handlePrimaryResizeStart, handleFrozenBorderDragStart } =
       useGridResizing({
@@ -263,13 +280,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     });
 
     const allHeaders = table.getHeaderGroups()[0]?.headers ?? [];
-    const extraFrozenWidth = allHeaders
-      .filter((_, i) => i < clampedFrozenExtraCount)
-      .reduce((sum, h) => sum + h.getSize(), 0);
-    const frozenWidth =
-      CHECKBOX_WIDTH +
-      (primaryColumn ? primaryColumnWidth : 0) +
-      extraFrozenWidth;
     const totalScrollableWidth = allHeaders
       .filter((_, i) => i >= clampedFrozenExtraCount)
       .reduce((sum, h) => sum + h.getSize(), 0);

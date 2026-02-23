@@ -5,6 +5,7 @@ import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";
 import { useRowMutations } from "~/app/_components/hooks/use-row-mutations";
 import { useBase } from "../base-context";
+import { HEADER_HEIGHT } from "../constants";
 
 interface UseGridNavigationProps {
   rows: GridRow[];
@@ -16,6 +17,7 @@ interface UseGridNavigationProps {
   setEditingCell: (cell: CellAddress | null) => void;
   setShowLastRowTooltip: (show: boolean) => void;
   onCellUpdate?: (rowId: number, columnId: number, value: string) => void;
+  frozenWidth?: number;
 }
 
 export function useGridNavigation({
@@ -28,6 +30,7 @@ export function useGridNavigation({
   setEditingCell,
   setShowLastRowTooltip,
   onCellUpdate,
+  frozenWidth = 0,
 }: UseGridNavigationProps) {
   const { activeTableId } = useBase();
   const rowMutations = useRowMutations(activeTableId);
@@ -96,7 +99,7 @@ export function useGridNavigation({
                   columnId: editingCell.columnId,
                 };
                 setSelectedCell(nextCell);
-                setTimeout(() => scrollToCell(nextCell), 0);
+                setTimeout(() => scrollToCell(nextCell, frozenWidth), 0);
               }
             } else {
               setShowLastRowTooltip(true);
@@ -190,7 +193,7 @@ export function useGridNavigation({
         if (newRow && newColumn) {
           const newCell = { rowId: newRow.id, columnId: newColumn.id };
           setSelectedCell(newCell);
-          setTimeout(() => scrollToCell(newCell), 0);
+          setTimeout(() => scrollToCell(newCell, frozenWidth), 0);
         }
       }
     };
@@ -211,17 +214,55 @@ export function useGridNavigation({
     setSelectedCell,
     setShowLastRowTooltip,
     onCellUpdate,
+    frozenWidth,
   ]);
 }
 
 // Helper to scroll
-function scrollToCell(cell: CellAddress) {
+function scrollToCell(cell: CellAddress, frozenWidth: number) {
   const cellId = `cell-${cell.rowId}-${cell.columnId}`;
   const cellElement = document.getElementById(cellId);
-  if (cellElement) {
+  if (!cellElement) return;
+
+  const scrollContainer = cellElement.closest(".overflow-x-auto");
+  if (!scrollContainer) {
+    // Fallback if no scroll container is found
     cellElement.scrollIntoView({
       block: "nearest",
       inline: "nearest",
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const cellRect = cellElement.getBoundingClientRect();
+
+  let scrollDeltaX = 0;
+  let scrollDeltaY = 0;
+
+  // 1. Check horizontal visibility against frozen pane & right edge
+  if (cellRect.left < containerRect.left + frozenWidth) {
+    // Hidden behind the left frozen panels
+    scrollDeltaX = cellRect.left - (containerRect.left + frozenWidth) - 16;
+  } else if (cellRect.right > containerRect.right) {
+    // Hidden beyond the right scroll boundary
+    scrollDeltaX = cellRect.right - containerRect.right + 16;
+  }
+
+  // 2. Check vertical visibility against top sticky header & bottom edge
+  if (cellRect.top < containerRect.top + HEADER_HEIGHT) {
+    // Hidden behind the top sticky header row
+    scrollDeltaY = cellRect.top - (containerRect.top + HEADER_HEIGHT) - 16;
+  } else if (cellRect.bottom > containerRect.bottom) {
+    // Hidden beyond the bottom scroll boundary
+    scrollDeltaY = cellRect.bottom - containerRect.bottom + 16;
+  }
+
+  if (scrollDeltaX !== 0 || scrollDeltaY !== 0) {
+    scrollContainer.scrollBy({
+      left: scrollDeltaX,
+      top: scrollDeltaY,
       behavior: "smooth",
     });
   }
