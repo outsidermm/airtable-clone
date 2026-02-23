@@ -40,6 +40,9 @@ const viewConfigSchema = z.object({
   // display in their global order (Column.order LexoRank). When set, this order
   // takes precedence so different views can have different column arrangements.
   columnOrder: z.array(z.number().int()).optional(),
+  // Number of non-primary columns pinned to the left (beyond the always-frozen
+  // primary column). Stored per-view so different views can freeze different counts.
+  frozenColumns: z.number().int().min(0).optional().default(0),
 });
 
 export type SortConfig = z.infer<typeof sortConfigSchema>;

@@ -45,6 +45,7 @@ const DEFAULT_VIEW_CONFIG: ViewConfig = {
   filterGroupLogic: "AND",
   hiddenColumns: [],
   rowHeight: "short",
+  frozenColumns: 0,
 };
 
 export function BaseContent({
@@ -138,6 +139,7 @@ export function BaseContent({
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
       columnOrder: cfg.columnOrder,
+      frozenColumns: cfg.frozenColumns,
     };
   }, [viewQuery.data?.config]);
 
@@ -239,6 +241,17 @@ export function BaseContent({
       updateViewConfigMutation.mutate({
         id: activeViewId,
         config: { ...viewConfig, columnOrder: newOrder },
+      });
+    },
+    [activeViewId, viewConfig, updateViewConfigMutation],
+  );
+
+  const handleFrozenColumnsChange = useCallback(
+    (count: number) => {
+      if (!activeViewId) return;
+      updateViewConfigMutation.mutate({
+        id: activeViewId,
+        config: { ...viewConfig, frozenColumns: count },
       });
     },
     [activeViewId, viewConfig, updateViewConfigMutation],
@@ -395,6 +408,8 @@ export function BaseContent({
               onCellUpdate={handleCellUpdate}
               onReorderRow={handleReorderRow}
               onReorderColumns={handleReorderColumns}
+              onFrozenColumnsChange={handleFrozenColumnsChange}
+              initialFrozenColumns={viewConfig.frozenColumns}
               onRequestPage={fetchPage}
               rowHeight={viewConfig.rowHeight ?? "short"}
               filteredColumnIds={filteredColumnIds}
