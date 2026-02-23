@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
 import { GridTable } from "./table/grid-table";
-import type { GridTableHandle } from "~/types/table";
+import type { GridTableHandle, Table } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
 import { BaseHeader } from "./header/base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
@@ -25,14 +25,8 @@ import { useRowStore } from "./hooks/useRowStore";
 import { useOptimisticGrid } from "./hooks/useOptimisticGrid";
 import { useSidebarHover } from "./hooks/useSidebarHover";
 import { useCellMutations } from "../hooks/use-cell-mutations";
-import { SpinnerIcon } from "../ui/icons";
+import { AIIcon, PlusIcon, SpinnerIcon } from "../ui/icons";
 import React from "react";
-
-interface Table {
-  id: number;
-  name: string;
-  baseId: string;
-}
 
 interface BaseContentProps {
   baseId: string;
@@ -393,7 +387,7 @@ export function BaseContent({
           onMouseEnter={handleSidebarHoverEnter}
           onMouseLeave={handleSidebarHoverLeave}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="relative flex flex-1 flex-col overflow-hidden">
           {isLoading ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
               <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" />
@@ -417,6 +411,25 @@ export function BaseContent({
               sortedColumnIds={sortedColumnIds}
             />
           )}
+
+          {/* Floating Actions Tab */}
+          <div className="absolute bottom-10 left-4 z-60 flex items-center rounded-full border border-gray-300 bg-white">
+            <button
+              className="flex items-center justify-center rounded-l-full px-2.5 py-1.5 transition-colors hover:bg-gray-100"
+              title="Add record"
+            >
+              <PlusIcon className="h-4 w-4 text-gray-600" />
+            </button>
+            <div className="h-8 w-px bg-gray-300" />
+            <button
+              className="flex items-center justify-center rounded-r-full px-3 py-1.5 transition-colors hover:bg-gray-100"
+              title="Add more"
+            >
+              <AIIcon className="h-4 w-4 text-green-700" />
+              <span className="mx-1 text-xs text-gray-700">Add...</span>
+            </button>
+          </div>
+
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="flex items-center gap-2 text-xs text-gray-500">
               {totalRowCount != null ? (
