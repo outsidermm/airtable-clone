@@ -224,6 +224,10 @@ export function BaseToolbar({
       <div className="relative">
         <button
           onClick={() => toggleDropdown("viewMenu")}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            toggleDropdown("viewMenu");
+          }}
           className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
         >
           <GridIcon className="h-3.5 w-3.5 text-blue-700" />
