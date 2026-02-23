@@ -99,6 +99,10 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
               >
                 <button
                   onClick={() => setActiveTableId(table.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setTableMenuId(table.id);
+                  }}
                   onDoubleClick={() => {
                     setRenamingTableId(table.id);
                   }}
