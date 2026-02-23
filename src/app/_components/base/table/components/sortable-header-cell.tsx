@@ -50,7 +50,7 @@ export function SortableHeaderCell({
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
         <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-        <span className="truncate text-xs text-gray-900">
+        <span className="truncate text-xs text-gray-900 font-medium">
           {column.name}
         </span>
       </div>
