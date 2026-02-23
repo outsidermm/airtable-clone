@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { pushQueryEntry } from "~/lib/query-log";
 import type { GridColumn } from "~/types/grid";
 import type {
@@ -26,6 +26,7 @@ import {
   ShareIcon,
   SearchIcon,
   RowHeightShortIcon,
+  SpinnerIcon,
 } from "~/app/_components/ui/icons";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { RowHeightOption } from "~/types/row";
@@ -75,6 +76,9 @@ export function BaseToolbar({
   );
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"filter" | "sort" | null>(
+    null,
+  );
   const seedStartRef = useRef(0);
 
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
@@ -114,6 +118,7 @@ export function BaseToolbar({
   const handleUpdateFilters = useCallback(
     (filters: FilterConfig[], filterGroupLogic?: "AND" | "OR") => {
       if (!activeViewId) return;
+      setPendingAction("filter");
       // Filters change which rows are visible — row data must be refetched
       viewMutations.handleUpdateView(
         activeViewId,
@@ -132,6 +137,7 @@ export function BaseToolbar({
   const handleUpdateSorts = useCallback(
     (sorts: SortConfig[]) => {
       if (!activeViewId) return;
+      setPendingAction("sort");
       // Sorts change row ordering — row data must be refetched
       viewMutations.handleUpdateView(
         activeViewId,
@@ -162,6 +168,13 @@ export function BaseToolbar({
     },
     [activeTableId, bulkCreateMutation, isSeeding],
   );
+
+  useEffect(() => {
+    if (!viewMutations.isUpdatingView) {
+      const timeout = setTimeout(() => setPendingAction(null), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [viewMutations.isUpdatingView]);
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -293,7 +306,11 @@ export function BaseToolbar({
                 : "bg-white hover:border-gray-100 hover:bg-gray-100"
             }`}
           >
-            <FilterIcon className="h-3.5 w-3.5" />
+            {pendingAction === "filter" ? (
+              <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FilterIcon className="h-3.5 w-3.5" />
+            )}
             <span className="hidden md:inline">{filterFieldMsg}</span>
           </button>
           {activeDropdown === "filter" && (
@@ -341,7 +358,11 @@ export function BaseToolbar({
                 : "hover:bg-gray-100"
             }`}
           >
-            <SortIcon className="h-3.5 w-3.5" />
+            {pendingAction === "sort" ? (
+              <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <SortIcon className="h-3.5 w-3.5" />
+            )}
             <span className="hidden md:inline">{sortFieldMsg}</span>
           </button>
           {activeDropdown === "sort" && (

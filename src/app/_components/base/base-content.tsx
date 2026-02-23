@@ -25,6 +25,7 @@ import { useRowStore } from "./hooks/useRowStore";
 import { useOptimisticGrid } from "./hooks/useOptimisticGrid";
 import { useSidebarHover } from "./hooks/useSidebarHover";
 import { useCellMutations } from "../hooks/use-cell-mutations";
+import { SpinnerIcon } from "../ui/icons";
 
 interface Table {
   id: number;
@@ -379,8 +380,11 @@ export function BaseContent({
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-sm text-gray-500">Loading...</div>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" />
+              <div className="text-sm font-medium text-gray-500">
+                Loading table data...
+              </div>
             </div>
           ) : (
             <GridTable
@@ -398,10 +402,23 @@ export function BaseContent({
             />
           )}
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
-            <span className="text-xs text-gray-500">
-              {totalRowCount != null
-                ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
-                : "Loading..."}
+            <span className="flex items-center gap-2 text-xs text-gray-500">
+              {totalRowCount != null ? (
+                <>
+                  {`${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`}
+                  {!isLoading && (
+                    <span className="ml-2 flex items-center gap-1 text-gray-400">
+                      <SpinnerIcon className="h-3 w-3 animate-spin" />
+                      Updating...
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" />
+                  Loading records...
+                </>
+              )}
             </span>
           </div>
         </div>

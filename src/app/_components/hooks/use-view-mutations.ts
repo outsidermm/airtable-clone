@@ -23,7 +23,9 @@ export function useViewMutations(
 
   const invalidate = useCallback(() => {
     void utils.table.getById.invalidate({ id: activeTableIdRef.current });
-    void utils.view.getAllByTable.invalidate({ tableId: activeTableIdRef.current });
+    void utils.view.getAllByTable.invalidate({
+      tableId: activeTableIdRef.current,
+    });
   }, [utils]);
 
   const createView = api.view.create.useMutation({
@@ -38,10 +40,10 @@ export function useViewMutations(
   const updateView = api.view.update.useMutation({
     onSuccess: (data, variables) => {
       invalidate();
-      
+
       // avoiding any stale activeViewId closure issues from the initial load.
       void utils.view.getById.invalidate({ id: variables.id });
-      
+
       if (needsRowRefetchRef.current) {
         refetchRows();
       }
@@ -124,5 +126,6 @@ export function useViewMutations(
     handleDeleteView,
     handleDuplicateView,
     handleReorderViews,
+    isUpdatingView: updateView.isPending,
   };
 }
