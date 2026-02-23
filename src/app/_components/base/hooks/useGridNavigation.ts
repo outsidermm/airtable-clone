@@ -52,7 +52,6 @@ export function useGridNavigation({
         } else if (e.key === "Enter") {
           e.preventDefault();
           setEditingCell(null);
-
           const currentRowIndex = rows.findIndex(
             (r) => r.id === editingCell.rowId,
           );
@@ -72,7 +71,14 @@ export function useGridNavigation({
               setTimeout(() => setShowLastRowTooltip(false), 3000);
             }
           }
+        } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          const activeEl = document.activeElement as HTMLInputElement;
+          if (activeEl && typeof activeEl.setSelectionRange === "function") {
+            const pos = e.key === "ArrowUp" ? 0 : activeEl.value.length;
+            activeEl.setSelectionRange(pos, pos);
+          }
         }
+
         return; // Don't do arrow navigation while editing
       }
 
