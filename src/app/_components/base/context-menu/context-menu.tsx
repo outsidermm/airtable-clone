@@ -87,7 +87,7 @@ export function ContextMenu({ children }: ContextMenuProps) {
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-60 min-w-70 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+      className="fixed z-60 min-w-80 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
       style={style}
     >
       {children}

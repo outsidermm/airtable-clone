@@ -87,7 +87,7 @@ export function MenuItem({
       disabled={disabled}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`group flex w-full items-center justify-between text-xs px-3 py-1.5 transition-all hover:bg-gray-100 ${
+      className={`group flex w-full items-center justify-between text-[13px] px-3 py-1.5 transition-all hover:bg-gray-100 ${
         disabled
           ? "cursor-not-allowed text-gray-300"
           : danger

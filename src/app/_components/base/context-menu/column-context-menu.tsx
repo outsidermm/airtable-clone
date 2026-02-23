@@ -92,7 +92,7 @@ export function ColumnContextMenu({
         }}
       />
       <MenuItem
-        label="Insert field to the left"
+        label="Insert left"
         icon={<ArrowLeftIcon className="h-4 w-4" />}
         onClick={() => {
           setInsertBeforeColumnId(column.id);
@@ -102,7 +102,7 @@ export function ColumnContextMenu({
         }}
       />
       <MenuItem
-        label="Insert field to the right"
+        label="Insert right"
         icon={<ArrowRightIcon className="h-4 w-4" />}
         onClick={() => {
           setInsertAfterColumnId(column.id);
