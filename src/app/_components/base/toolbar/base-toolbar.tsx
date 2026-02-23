@@ -284,7 +284,7 @@ export function BaseToolbar({
             }`}
           >
             <HideIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">{hiddenFieldMsg}</span>
+            <span className="hidden lg:inline">{hiddenFieldMsg}</span>
           </button>
           {activeDropdown === "hideFields" && (
             <HideFieldsDropdown
@@ -311,7 +311,7 @@ export function BaseToolbar({
             ) : (
               <FilterIcon className="h-3.5 w-3.5" />
             )}
-            <span className="hidden md:inline">{filterFieldMsg}</span>
+            <span className="hidden lg:inline">{filterFieldMsg}</span>
           </button>
           {activeDropdown === "filter" && (
             <FilterDropdown
@@ -331,7 +331,7 @@ export function BaseToolbar({
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
           >
             <GroupIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Group</span>
+            <span className="hidden lg:inline">Group</span>
           </button>
           {activeDropdown === "group" && (
             <>
@@ -363,7 +363,7 @@ export function BaseToolbar({
             ) : (
               <SortIcon className="h-3.5 w-3.5" />
             )}
-            <span className="hidden md:inline">{sortFieldMsg}</span>
+            <span className="hidden lg:inline">{sortFieldMsg}</span>
           </button>
           {activeDropdown === "sort" && (
             <SortDropdown
@@ -378,7 +378,7 @@ export function BaseToolbar({
         {/* Color */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ColorIcon className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Color</span>
+          <span className="hidden lg:inline">Color</span>
         </button>
 
         {/* Row height (icon only) */}
@@ -401,7 +401,7 @@ export function BaseToolbar({
         {/* Share and sync */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ShareIcon className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Share and sync</span>
+          <span className="hidden lg:inline">Share and sync</span>
         </button>
 
         {/* Search */}
