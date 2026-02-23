@@ -3,7 +3,12 @@ import React from "react";
 import { useTableMutations } from "../../hooks/use-table-mutations";
 import type { Table } from "~/types/table";
 import type { Base } from "~/types/base";
-import { ChevronDownIcon, QuestionIcon } from "../../ui/icons";
+import {
+  ChevronDownIcon,
+  PlusIcon,
+  QuestionIcon,
+  SendRecordIcon,
+} from "../../ui/icons";
 import { SearchableSelect } from "../../ui/searchable-select";
 
 interface RenameTableModalProps {
@@ -38,7 +43,7 @@ export function RenameTableModal({
       />
 
       {/* Modal Container */}
-      <div className="absolute top-full z-1000 mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+      <div className="absolute top-full z-1000 mt-1 w-80 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
         {/* Input */}
         <div className="mb-4">
           <input
@@ -63,26 +68,26 @@ export function RenameTableModal({
 
         {/* Dropdown Label */}
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-700">
+          <p className="text-sm text-gray-700">
             What should each record be called?
           </p>
           <QuestionIcon className="h-4 w-4 text-gray-400" />
         </div>
 
         {/* Dropdown Container */}
-        <div className="relative mb-5 w-full">
+        <div className="relative w-full">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setOpenDropdown((open) => !open);
             }}
-            className="flex w-full items-center justify-between rounded-md bg-gray-50 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-700"
+            className="flex w-full items-center justify-between rounded-md bg-gray-50 p-2 text-[13px] text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
             <span className="truncate">
               {selectedDropdown.length >= 1 ? selectedDropdown : "Record"}
             </span>
-            <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-400" />
+            <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-600" />
           </button>
 
           {/* Searchable Select Wrapper */}
@@ -111,13 +116,22 @@ export function RenameTableModal({
             </div>
           )}
         </div>
+        <div className="mt-2 mb-3 text-xs text-gray-500">
+          <span>
+            Examples:
+            <PlusIcon className="mr-1 ml-3 inline h-3 w-3 text-gray-400" />
+            Add record
+            <SendRecordIcon className="mr-1 ml-3 inline h-3 w-3 text-gray-400" />
+            Send records
+          </span>
+        </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={() => setRenamingTableId(null)}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            className="rounded-md px-3 py-1.5 text-[13px] text-gray-700 hover:bg-gray-100"
           >
             Cancel
           </button>
@@ -134,7 +148,7 @@ export function RenameTableModal({
               }
             }}
             disabled={!renamingTableValue.trim()}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-blue-600 px-2.5 py-0.5 text-[13px] text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
