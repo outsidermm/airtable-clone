@@ -26,6 +26,7 @@ import { useOptimisticGrid } from "./hooks/useOptimisticGrid";
 import { useSidebarHover } from "./hooks/useSidebarHover";
 import { useCellMutations } from "../hooks/use-cell-mutations";
 import { SpinnerIcon } from "../ui/icons";
+import React from "react";
 
 interface Table {
   id: number;
@@ -419,20 +420,14 @@ export function BaseContent({
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
             <span className="flex items-center gap-2 text-xs text-gray-500">
               {totalRowCount != null ? (
-                <>
+                <React.Fragment>
                   {`${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`}
-                  {!isLoading && (
-                    <span className="ml-2 flex items-center gap-1 text-gray-400">
-                      <SpinnerIcon className="h-3 w-3 animate-spin" />
-                      Updating...
-                    </span>
-                  )}
-                </>
+                </React.Fragment>
               ) : (
-                <>
+                <React.Fragment>
                   <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" />
                   Loading records...
-                </>
+                </React.Fragment>
               )}
             </span>
           </div>
