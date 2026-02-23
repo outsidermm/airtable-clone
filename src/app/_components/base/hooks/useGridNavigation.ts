@@ -37,9 +37,9 @@ export function useGridNavigation({
       // 1. Handle Add Row
       if (e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
-        rowMutations.handleAddRow();
-        setShowLastRowTooltip(false);
-        return;
+        if (selectedCell) {
+          rowMutations.handleInsertRowBelow(selectedCell.rowId);
+        }
       }
 
       // 2. Handle Editing Navigation (Enter / Escape)
@@ -101,7 +101,8 @@ export function useGridNavigation({
 
         // Handle Typing to Start Edit Mode
         // This regex checks for single character keys (letters, numbers, symbols)
-        const isCharacterKey = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+        const isCharacterKey =
+          e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
         if (isCharacterKey) {
           // No preventDefault here so the character can potentially be captured by the input
           setEditingCell(selectedCell);
@@ -130,7 +131,7 @@ export function useGridNavigation({
 
         if (e.key === "ArrowUp") {
           newRowIndex = Math.max(0, currentRowIndex - 1);
-        } else if (e.key === "ArrowDown") {
+        } else if (e.key === "ArrowDown" || (e.key === "Enter" && e.shiftKey)) {
           newRowIndex = Math.min(rows.length - 1, currentRowIndex + 1);
         } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
           newColumnIndex = Math.max(0, currentColumnIndex - 1);
