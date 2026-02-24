@@ -99,7 +99,7 @@ export function useTableVirtualizer({
         el.addEventListener("scroll", onScroll, { passive: true });
         return () => el.removeEventListener("scroll", onScroll);
       },
-      [],
+      [totalVirtualHeight],
     ),
     scrollToFn: useCallback(
       (
