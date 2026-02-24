@@ -33,27 +33,32 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. Install pnpm BEFORE setting up Node to enable caching
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # You can remove this line if you have 'packageManager' set in package.json
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: "pnpm" # 2. Update cache key from npm to pnpm
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile # 3. Equivalent to 'npm ci'
 
       - name: Setup Database Schema
-        # Pushes your Prisma schema to the temporary Postgres container
-        run: npx prisma db push
+        run: pnpm exec prisma db push # 4. Replace 'npx' with 'pnpm exec'
 
       - name: Run Unit Tests (Vitest)
-        run: npm run test
+        run: pnpm run test
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Run E2E Tests (Playwright)
-        run: npx playwright test
+        run: pnpm exec playwright test
 
       - name: Upload Playwright Report
         if: always()
