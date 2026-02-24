@@ -27,13 +27,8 @@ export function MenuContainer({
     <>
       {/* Universal Backdrop */}
       <div
-        role="presentation"
         className="fixed inset-0 z-40 h-full w-full bg-transparent"
         onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        onKeyDown={(e) => {
           e.stopPropagation();
           onClose();
         }}

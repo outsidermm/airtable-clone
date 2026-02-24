@@ -131,10 +131,8 @@ export function AddColumnModal({
   return (
     <>
       <div
-        role="presentation"
         className="fixed inset-0 z-50"
         onClick={() => openModal(null)}
-        onKeyDown={() => openModal(null)}
         style={{ background: isDropdown ? "transparent" : "rgba(0,0,0,0.4)" }}
       />
 
@@ -272,9 +270,8 @@ export function AddColumnModal({
               </p>
 
               <div>
-                <label htmlFor="default-value" className="my-4 text-xs text-gray-600">Default</label>
+                <label className="my-4 text-xs text-gray-600">Default</label>
                 <input
-                  id="default-value"
                   type="text"
                   placeholder="Enter default value (optional)"
                   className="mt-3 w-full rounded border border-gray-300 px-3 py-2 text-sm shadow transition-all focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"

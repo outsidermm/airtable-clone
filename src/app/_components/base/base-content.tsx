@@ -434,6 +434,10 @@ export function BaseContent({
     handleToggleSidebar,
   } = useSidebarHover();
 
+  useEffect(() => {
+    setActiveViewId(null);
+  }, [activeTableId, setActiveViewId]);
+
   const isLoading = tableQuery.isLoading;
 
   return (

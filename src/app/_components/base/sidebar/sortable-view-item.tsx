@@ -137,10 +137,8 @@ export function SortableViewItem({
           {viewMenuId === view.id && (
             <>
               <div
-                role="presentation"
                 className="fixed inset-0 z-30"
                 onClick={() => onSetViewMenuId(null)}
-                onKeyDown={() => onSetViewMenuId(null)}
               />
               <div className="absolute top-full right-0 z-40 mt-1 w-60 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                 <button

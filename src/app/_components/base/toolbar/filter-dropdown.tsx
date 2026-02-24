@@ -263,7 +263,7 @@ export function FilterDropdown({
 
   return (
     <>
-      <div role="presentation" className="fixed inset-0 z-40" onClick={onClose} onKeyDown={onClose} />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
       <div
         className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg transition-all ${containerWidthClass}`}
@@ -307,7 +307,7 @@ export function FilterDropdown({
 
                   return (
                     <SortableGeneralItem
-                      key={`${filter.columnId}-${filter.operator}-${String(filter.value)}`}
+                      key={String(index)}
                       id={String(index)}
                       dragHandleClassName="border border-gray-200 p-1.75 rounded-r"
                     >

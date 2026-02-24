@@ -38,10 +38,8 @@ export function RenameTableModal({
     <React.Fragment>
       {/* Background Overlay */}
       <div
-        role="presentation"
         className="fixed inset-0 z-30"
         onClick={() => setRenamingTableId(null)}
-        onKeyDown={() => setRenamingTableId(null)}
       />
 
       {/* Modal Container */}

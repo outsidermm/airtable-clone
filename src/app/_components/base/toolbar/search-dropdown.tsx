@@ -147,7 +147,7 @@ export function SearchDropdown({
 
   return (
     <>
-      <div className="fixed inset-0 z-50" role="presentation" onClick={onClose} onKeyDown={onClose} />
+      <div className="fixed inset-0 z-50" onClick={onClose} />
       <div className="absolute top-full right-0 z-50 mt-1 flex h-10 w-96 items-center justify-between gap-3 rounded border border-gray-200 bg-white px-4 py-2 shadow-lg">
         {/* Added flex-1 to let the input take up available space, pushing results to the right */}
         <input

@@ -28,7 +28,7 @@ export function ViewDetailDropdown({
   );
   return (
     <>
-      <div role="presentation" className="fixed inset-0 z-30" onClick={closeDropdown} onKeyDown={closeDropdown} />
+      <div className="fixed inset-0 z-30" onClick={closeDropdown} />
       <div className="absolute top-full left-0 z-45 mt-1 w-91 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
         <button
           className="flex w-full flex-col items-start justify-between gap-2.5 px-3 py-2 text-gray-700 hover:bg-gray-50"
@@ -41,9 +41,9 @@ export function ViewDetailDropdown({
             </div>
             <ChevronRightIcon className="h-4 w-4 text-gray-400" />
           </div>
-          <span className="text-xs text-gray-500">
+          <label className="text-xs text-gray-500">
             Editors and up can edit the view configuration
-          </span>
+          </label>
         </button>
         <MenuDivider />
         <MenuItem

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 
 interface SelectOption {
   id: string | number;
@@ -30,10 +30,11 @@ export function SearchableSelect({
   showSearch = true,
 }: SearchableSelectProps) {
   const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const focusOnMount = useCallback((el: HTMLInputElement | null) => {
-    if (el) el.focus();
-  }, []);
+  useEffect(() => {
+    if (showSearch) inputRef.current?.focus();
+  }, [showSearch]);
 
   const filtered = options.filter((opt) =>
     opt.label.toLowerCase().includes(search.toLowerCase()),
@@ -42,7 +43,7 @@ export function SearchableSelect({
   return (
     <>
       {/* Invisible backdrop to capture click-outside */}
-      <div className="fixed inset-0 z-40" role="presentation" onClick={onClose} onKeyDown={onClose} />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
       <div
         className={`absolute top-full left-0 z-50 mt-1 rounded-md border border-gray-200 bg-white p-1 shadow-xl ${widthClass}`}
@@ -50,7 +51,7 @@ export function SearchableSelect({
         {showSearch && (
           <div className="mb-1 flex items-center gap-2 border-b border-gray-100 px-2 pt-1 pb-1.5">
             <input
-              ref={focusOnMount}
+              ref={inputRef}
               type="text"
               className="w-full bg-transparent text-xs outline-none placeholder:text-gray-500"
               placeholder={searchPlaceholder}

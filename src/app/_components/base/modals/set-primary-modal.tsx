@@ -55,9 +55,9 @@ export function SetPrimaryModal({
     <>
       <div
         className="fixed inset-0 z-50 bg-black/25"
-        role="presentation"
-        onClick={() => openModal(null)}
-        onKeyDown={() => openModal(null)}
+        onClick={() => {
+          openModal(null);
+        }}
       />
 
       <div
@@ -79,9 +79,9 @@ export function SetPrimaryModal({
 
         <div className="px-2 py-1">
           <div>
-            <span className="mb-2 block text-xs tracking-wider text-gray-500">
+            <label className="mb-2 block text-xs tracking-wider text-gray-500">
               Primary Field
-            </span>
+            </label>
 
             {/* Isolate the relative wrapper for JUST the button and dropdown */}
             <div className="relative">

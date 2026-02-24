@@ -127,7 +127,6 @@ export function BaseProvider({
   const setActiveTableId = useCallback(
     (id: number) => {
       setActiveTableIdState(id);
-      setActiveViewId(null);
       router.replace(`/base/${baseId}?tableId=${id}`, { scroll: false });
     },
     [baseId, router],

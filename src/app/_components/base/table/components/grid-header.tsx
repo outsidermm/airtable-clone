@@ -145,19 +145,6 @@ export function GridHeader({
                   : "bg-white"
             }`}
             style={{ width: primaryColumnWidth, height: HEADER_HEIGHT }}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "ContextMenu") {
-                e.preventDefault();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setContextMenu({
-                  type: "column",
-                  position: { x: rect.left, y: rect.bottom },
-                  anchorEl: e.currentTarget as HTMLElement,
-                  data: { columnId: primaryColumn.id },
-                });
-              }
-            }}
             onContextMenu={(e) => {
               e.preventDefault();
               setContextMenu({
@@ -206,19 +193,6 @@ export function GridHeader({
                     : "bg-white"
               }`}
               style={{ width: header.getSize(), height: HEADER_HEIGHT }}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "ContextMenu") {
-                  e.preventDefault();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setContextMenu({
-                    type: "column",
-                    position: { x: rect.left, y: rect.bottom },
-                    anchorEl: e.currentTarget as HTMLElement,
-                    data: { columnId: col.id },
-                  });
-                }
-              }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({
@@ -304,19 +278,6 @@ export function GridHeader({
                         : "bg-white"
                   }`}
                   style={{ width: header.getSize(), height: HEADER_HEIGHT }}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "ContextMenu") {
-                      e.preventDefault();
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setContextMenu({
-                        type: "column",
-                        position: { x: rect.left, y: rect.bottom },
-                        anchorEl: e.currentTarget as HTMLElement,
-                        data: { columnId: col.id },
-                      });
-                    }
-                  }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setContextMenu({

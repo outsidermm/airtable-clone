@@ -54,7 +54,6 @@ export function FrozenColumnOverlay({
     // It is intentionally outside the scroll container so it stays fixed at the
     // frozen column boundary regardless of horizontal scroll position.
     <div
-      role="separator"
       aria-label="Drag to adjust frozen columns"
       className="group absolute bottom-4 z-40 flex w-4 cursor-col-resize justify-center"
       style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
