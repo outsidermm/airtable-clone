@@ -406,11 +406,11 @@ export function BaseContent({
         />
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3">
-              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" />
-              <div className="text-sm font-medium text-gray-500">
+            <div role="status" aria-label="Loading table data" className="flex flex-1 flex-col items-center justify-center gap-3">
+              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" aria-hidden="true" />
+              <p className="text-sm font-medium text-gray-500">
                 Loading table data...
-              </div>
+              </p>
             </div>
           ) : (
             <GridTable
@@ -434,20 +434,28 @@ export function BaseContent({
             <button
               className="flex items-center justify-center rounded-l-full px-2.5 py-1.5 transition-colors hover:bg-gray-100"
               title="Add record"
+              aria-label="Add record"
             >
-              <PlusIcon className="h-4 w-4 text-gray-600" />
+              <PlusIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
             </button>
-            <div className="h-8 w-px bg-gray-300" />
+            <div className="h-8 w-px bg-gray-300" aria-hidden="true" />
             <button
               className="flex items-center justify-center rounded-r-full px-3 py-1.5 transition-colors hover:bg-gray-100"
               title="Add more"
+              aria-label="Add records with AI"
             >
-              <AIIcon className="h-4 w-4 text-green-700" />
+              <AIIcon className="h-4 w-4 text-green-700" aria-hidden="true" />
               <span className="mx-1 text-xs text-gray-700">Add...</span>
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
+          {/* Record count bar — aria-live re-announces when totalRowCount changes
+              after filters/sorts mutate the view query result from view.getData. */}
+          <div
+            className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <span className="flex items-center gap-2 text-xs text-gray-500">
               {totalRowCount != null ? (
                 <React.Fragment>
@@ -455,7 +463,7 @@ export function BaseContent({
                 </React.Fragment>
               ) : (
                 <React.Fragment>
-                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" />
+                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" aria-hidden="true" />
                   Loading records...
                 </React.Fragment>
               )}

@@ -41,6 +41,9 @@ export function SortableHeaderCell({
   const ColumnTypeIcon = column.type === "NUMBER" ? NumberIcon : TextIcon;
 
   return (
+    // DnD Kit spreads role="button" + aria-roledescription via {...attributes},
+    // which overrides any role we set here. The draggable affordance takes precedence
+    // over columnheader semantics for this wrapper; the parent div carries role="columnheader".
     <div
       ref={setNodeRef}
       style={style}
@@ -49,7 +52,7 @@ export function SortableHeaderCell({
       {...listeners}
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
-        <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
         <span className="truncate text-xs text-gray-900 font-medium">
           {column.name}
         </span>

@@ -142,8 +142,13 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
   };
 
   return (
+    // virtualIndex is the row's actual position in the full dataset (not just the
+    // rendered window), making aria-rowindex a truthful 1-based dataset position.
     <div
       ref={setNodeRef}
+      role="row"
+      aria-rowindex={virtualIndex + 1}
+      aria-selected={isRowSelected}
       data-index={virtualIndex}
       className="absolute left-0 flex"
       style={style}
@@ -152,7 +157,10 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
       onContextMenu={(e) => onContextMenu(rowId, virtualIndex, e)}
     >
       {/* === FROZEN SECTION === */}
+      {/* role="none" makes this layout-only wrapper transparent to the a11y tree
+          so role="row" directly owns its role="gridcell" children. */}
       <div
+        role="none"
         className={`sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
@@ -175,6 +183,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
                   type="checkbox"
                   className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
                   checked
+                  aria-label={`Deselect row ${virtualIndex + 1}`}
                   onChange={row.getToggleSelectedHandler()}
                 />
               </div>
@@ -186,13 +195,19 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
                 <DragHandle {...attributes} {...listeners} />
               </div>
               <div className="flex flex-1 justify-center">
-                <span className="text-xs text-gray-400 group-hover:hidden">
+                {/* Row number is a visual affordance only; aria-rowindex on the
+                    parent already encodes position for the accessibility tree. */}
+                <span
+                  aria-hidden="true"
+                  className="text-xs text-gray-400 group-hover:hidden"
+                >
                   {virtualIndex + 1}
                 </span>
                 <input
                   type="checkbox"
                   className="hidden h-3.5 w-3.5 rounded border-gray-300 text-blue-600 group-hover:block"
                   checked={false}
+                  aria-label={`Select row ${virtualIndex + 1}`}
                   onChange={row.getToggleSelectedHandler()}
                 />
               </div>
@@ -212,7 +227,9 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
       </div>
 
       {/* === SCROLLABLE SECTION === */}
+      {/* role="none" mirrors the frozen section: layout container only. */}
       <div
+        role="none"
         className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >

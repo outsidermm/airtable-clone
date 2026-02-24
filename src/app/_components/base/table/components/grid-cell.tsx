@@ -56,6 +56,11 @@ export const GridCell = memo(function GridCell({
     setLocalValue(displayValue);
   }, [displayValue]);
 
+  // Stable tooltip IDs derived from the cell address (rowId-columnId), matching
+  // the same addressing scheme used for the container id (`cell-${rowId}-${columnId}`).
+  const warningId = `cell-warning-${rowId}-${columnId}`;
+  const tooltipId = `cell-tooltip-${rowId}-${columnId}`;
+
   // Optimized Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextValue = e.target.value;
@@ -94,15 +99,30 @@ export const GridCell = memo(function GridCell({
   return (
     <div
       id={`cell-${rowId}-${columnId}`}
+      role="gridcell"
+      aria-selected={isSelectedCell}
+      aria-readonly={!isEditing}
       className={`relative flex items-center px-2 ${borderClass} ${cellBg}`}
       style={{ width, minWidth: 80 }}
       onMouseDown={(e) => onMouseDown(rowId, columnId, e)}
       onMouseEnter={() => onMouseEnter(rowId, columnId)}
     >
+      {/* inputMode hints the mobile keyboard type without constraining the input type,
+          preserving our own numeric validation logic (digits, negative sign, decimal). */}
       <input
         type="text"
+        inputMode={columnType === "NUMBER" ? "decimal" : "text"}
         value={localValue}
         readOnly={!isEditing}
+        aria-readonly={!isEditing}
+        aria-invalid={showNumberWarning || undefined}
+        aria-describedby={
+          showNumberWarning && isEditing
+            ? warningId
+            : showLastRowTooltip && isEditing && !showNumberWarning
+              ? tooltipId
+              : undefined
+        }
         className={`w-full bg-transparent text-xs text-gray-900 outline-none ${
           !isEditing ? "cursor-default select-none" : ""
         }`}
@@ -113,14 +133,22 @@ export const GridCell = memo(function GridCell({
 
       {/* Number Warning Tooltip */}
       {showNumberWarning && isEditing && (
-        <div className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500">
+        <div
+          id={warningId}
+          role="alert"
+          className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500"
+        >
           Please enter a number
         </div>
       )}
 
-      {/* Existing Shift+Enter Tooltip */}
+      {/* Shift+Enter Tooltip */}
       {showLastRowTooltip && isEditing && !showNumberWarning && (
-        <div className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500">
+        <div
+          id={tooltipId}
+          role="status"
+          className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500"
+        >
           Shift+Enter to create new row
         </div>
       )}

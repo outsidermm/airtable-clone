@@ -437,8 +437,15 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
         <div className="relative flex flex-1 overflow-hidden">
+          {/* aria-rowcount reflects the full sparse array size (totalRowCount),
+              not just rendered rows — essential for the virtualizer model where
+              rows.length equals the full dataset even if most slots are null. */}
           <div
             ref={parentRef}
+            role="grid"
+            aria-label="Data table"
+            aria-rowcount={rows.length}
+            aria-colcount={columns.length + 1}
             className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
           >
             <div
@@ -474,6 +481,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                     strategy={verticalListSortingStrategy}
                   >
                     <div
+                      role="rowgroup"
                       style={{
                         height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
                         position: "relative",
@@ -595,9 +603,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 >
                   <button
                     onClick={rowMutations.handleAddRow}
+                    aria-label="Add row"
                     className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
                   >
-                    <PlusIcon className="h-4 w-4" />
+                    <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
                 <div
@@ -608,6 +617,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
               {rows.length === 0 ? (
                 <div
+                  role="status"
                   className="flex flex-1 items-center py-20 text-gray-400"
                   style={{
                     width: frozenWidth + totalScrollableWidth,
@@ -645,8 +655,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           />
         </div>
 
+        {/* Fixed-position ghost line shown while dragging the frozen-column border */}
         <div
           ref={freezeOverlayRef}
+          aria-hidden="true"
           style={{
             position: "fixed",
             display: "none",

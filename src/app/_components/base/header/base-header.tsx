@@ -93,6 +93,8 @@ Teammates will see this guide when they first open the base and can find it anyt
           <div className="relative flex items-center gap-2">
             <button
               onClick={() => setShowBaseMenu(!showBaseMenu)}
+              aria-expanded={showBaseMenu}
+              aria-haspopup="dialog"
               className="text-md flex items-center gap-2 rounded-md px-2 py-1 font-semibold text-gray-900"
             >
               <div
@@ -112,8 +114,10 @@ Teammates will see this guide when they first open the base and can find it anyt
 
             {showBaseMenu && !isRenamingBase && (
               <>
+                {/* Click-catcher backdrop — mouse-only affordance for dismiss */}
                 <div
                   className="fixed inset-0 z-30"
+                  aria-hidden="true"
                   onClick={() => {
                     setShowBaseMenu(false);
                     setShowBaseSubMenu(false);
@@ -123,6 +127,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <input
                       type="text"
+                      aria-label="Base name"
                       value={baseNameValue}
                       onChange={(e) => setBaseNameValue(e.target.value)}
                       onBlur={() => {
@@ -167,9 +172,12 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div className="relative">
                       <button
                         onClick={() => setShowBaseSubMenu(!showBaseSubMenu)}
+                        aria-label="More options"
+                        aria-expanded={showBaseSubMenu}
+                        aria-haspopup="menu"
                         className="rounded-md p-1 text-gray-700 hover:bg-gray-50"
                       >
-                        <DotsHorizontalIcon className="h-4 w-4" />
+                        <DotsHorizontalIcon className="h-4 w-4" aria-hidden="true" />
                       </button>
 
                       {showBaseSubMenu && (
@@ -186,17 +194,20 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div className="mb-2">
                       <button
                         onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}
+                        aria-expanded={isAppearanceOpen}
+                        aria-controls="appearance-section"
                         className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-900 hover:bg-gray-50"
                       >
                         <ChevronRightIcon
                           className={`h-4 w-4 transition-transform ${
                             isAppearanceOpen ? "rotate-90" : ""
                           }`}
+                          aria-hidden="true"
                         />
                         Appearance
                       </button>
                       {isAppearanceOpen && (
-                        <div className="mt-2 px-2">
+                        <div id="appearance-section" className="mt-2 px-2">
                           <div className="mb-3 flex gap-8 border-b border-gray-200">
                             <button
                               onClick={() => setAppearanceTab("color")}
@@ -252,18 +263,22 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div>
                       <button
                         onClick={() => setIsBaseGuideOpen(!isBaseGuideOpen)}
+                        aria-expanded={isBaseGuideOpen}
+                        aria-controls="base-guide-section"
                         className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-900 hover:bg-gray-50"
                       >
                         <ChevronRightIcon
                           className={`h-4 w-4 transition-transform ${
                             isBaseGuideOpen ? "rotate-90" : ""
                           }`}
+                          aria-hidden="true"
                         />
                         Base guide
                       </button>
                       {isBaseGuideOpen && (
-                        <div className="mt-2 px-2">
+                        <div id="base-guide-section" className="mt-2 px-2">
                           <textarea
+                            aria-label="Base guide"
                             value={baseGuideValue}
                             onChange={(e) => setBaseGuideValue(e.target.value)}
                             className="w-full resize-none rounded-md px-2 py-1.5 text-[13px] text-gray-600 focus:border-blue-300 focus:ring-1 focus:ring-blue-300 focus:outline-none"
@@ -284,39 +299,49 @@ Teammates will see this guide when they first open the base and can find it anyt
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {(["Data", "Automations", "Interfaces", "Forms"] as const).map(
-              (tab) => {
-                const tabKey = tab.toLowerCase();
-                return (
-                  <button
-                    key={tabKey}
-                    onClick={() => setActiveTab(tabKey)}
-                    className={`relative px-1 py-5 text-sm font-medium transition-colors ${
-                      activeTab === tabKey
-                        ? "text-gray-900"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    {tab}
-                    {activeTab === tabKey && (
-                      <div
-                        className={`absolute right-0 bottom-0 left-0 h-0.5 ${iconColor}`}
-                      />
-                    )}
-                  </button>
-                );
-              },
-            )}
-          </div>
+          {/* Top-level application mode switcher (Data / Automations / etc.).
+              Only "Data" is implemented; others are stubs for future views. */}
+          <nav aria-label="Base sections">
+            <div role="tablist" className="flex items-center gap-3">
+              {(["Data", "Automations", "Interfaces", "Forms"] as const).map(
+                (tab) => {
+                  const tabKey = tab.toLowerCase();
+                  return (
+                    <button
+                      key={tabKey}
+                      role="tab"
+                      aria-selected={activeTab === tabKey}
+                      onClick={() => setActiveTab(tabKey)}
+                      className={`relative px-1 py-5 text-sm font-medium transition-colors ${
+                        activeTab === tabKey
+                          ? "text-gray-900"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {tab}
+                      {activeTab === tabKey && (
+                        <div
+                          aria-hidden="true"
+                          className={`absolute right-0 bottom-0 left-0 h-0.5 ${iconColor}`}
+                        />
+                      )}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </nav>
 
           <div className="flex items-center gap-2">
-            <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100">
-              <ClockIcon className="h-4 w-4" />
+            <button
+              aria-label="View history"
+              className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
+            >
+              <ClockIcon className="h-4 w-4" aria-hidden="true" />
             </button>
 
             <button className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-              <RocketIcon className="h-4 w-4" />
+              <RocketIcon className="h-4 w-4" aria-hidden="true" />
               Launch
             </button>
 
