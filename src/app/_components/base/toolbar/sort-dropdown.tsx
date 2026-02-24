@@ -158,7 +158,7 @@ export function SortDropdown({
   return (
     <>
       {/* Backdrop to close everything */}
-      <div className="fixed inset-0 z-50" onClick={onClose} />
+      <div role="presentation" className="fixed inset-0 z-50" onClick={onClose} onKeyDown={onClose} />
 
       <div
         className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white pt-3 shadow-xl transition-all ${containerWidthClass}`}
@@ -232,7 +232,7 @@ export function SortDropdown({
 
                     return (
                       <SortableGeneralItem
-                        key={String(index)}
+                        key={`${String(sort.columnId ?? "null")}-${sort.direction}`}
                         id={String(index)}
                         hideDragHandle={localSorts.length === 1}
                       >

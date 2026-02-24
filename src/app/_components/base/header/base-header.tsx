@@ -64,7 +64,9 @@ interface BaseHeaderProps {
   tables: Table[];
 }
 
-export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
+const EMPTY_TABLES: Table[] = [];
+
+export function BaseHeader({ base, tables = EMPTY_TABLES }: BaseHeaderProps) {
   const baseMutations = useBaseMutations();
   const [activeTab, setActiveTab] = useState("data");
   const [showBaseMenu, setShowBaseMenu] = useState(false);
@@ -89,7 +91,7 @@ This link contains…
 
 Teammates will see this guide when they first open the base and can find it anytime by clicking the down arrow on the top of their screen.`,
   );
-  const [iconColor, setIconColor] = useState(getStoredBaseColor(base.id));
+  const [iconColor, setIconColor] = useState(() => getStoredBaseColor(base.id));
   const [showDeleteBaseConfirm, setShowDeleteBaseConfirm] = useState(false);
 
   const handleStarClick = (e: React.MouseEvent) => {
@@ -152,6 +154,7 @@ Teammates will see this guide when they first open the base and can find it anyt
               <>
                 {/* Click-catcher backdrop — mouse-only affordance for dismiss */}
                 <div
+                  role="presentation"
                   className="fixed inset-0 z-30"
                   aria-hidden="true"
                   onClick={() => {
@@ -269,9 +272,9 @@ Teammates will see this guide when they first open the base and can find it anyt
 
                           {appearanceTab === "color" && (
                             <div className="grid grid-cols-10 gap-1.5">
-                              {BASE_COLORS.map((color, i) => (
+                              {BASE_COLORS.map((color) => (
                                 <button
-                                  key={i}
+                                  key={color}
                                   onClick={() => handleColorChange(color)}
                                   className={`h-7 w-8 rounded-lg border-2 border-gray-200 transition-all hover:scale-110 ${color}`}
                                 >

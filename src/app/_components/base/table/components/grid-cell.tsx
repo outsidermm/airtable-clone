@@ -31,7 +31,7 @@
  *   the parent (SortableRow / GridTable).
  */
 
-import { memo, useEffect, useMemo, useState, useTransition } from "react";
+import { memo, useMemo, useRef, useState, useTransition } from "react";
 import type { CellAddress } from "~/types/cell";
 import type { ColumnType } from "generated/prisma/enums";
 
@@ -83,9 +83,11 @@ export const GridCell = memo(function GridCell({
   const [localValue, setLocalValue] = useState(displayValue);
   const [showNumberWarning, setShowNumberWarning] = useState(false);
 
-  useEffect(() => {
+  const prevDisplayValueRef = useRef(displayValue);
+  if (prevDisplayValueRef.current !== displayValue) {
+    prevDisplayValueRef.current = displayValue;
     setLocalValue(displayValue);
-  }, [displayValue]);
+  }
 
   // Stable tooltip IDs derived from the cell address (rowId-columnId), matching
   // the same addressing scheme used for the container id (`cell-${rowId}-${columnId}`).

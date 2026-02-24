@@ -198,8 +198,13 @@ export function ViewSidebar({
           {showCreateMenu && !showCreateForm && createMenuPosition && (
             <>
               <div
+                role="presentation"
                 className="fixed inset-0 z-30"
                 onClick={() => {
+                  setShowCreateMenu(false);
+                  setCreateMenuPosition(null);
+                }}
+                onKeyDown={() => {
                   setShowCreateMenu(false);
                   setCreateMenuPosition(null);
                 }}
@@ -281,8 +286,13 @@ export function ViewSidebar({
           {showCreateForm && createMenuPosition && (
             <>
               <div
+                role="presentation"
                 className="fixed inset-0 z-45"
                 onClick={() => {
+                  setShowCreateForm(false);
+                  setCreateMenuPosition(null);
+                }}
+                onKeyDown={() => {
                   setShowCreateForm(false);
                   setCreateMenuPosition(null);
                 }}
@@ -304,9 +314,9 @@ export function ViewSidebar({
                 </div>
 
                 <div className="mb-4">
-                  <label className="block font-medium text-gray-700">
+                  <span className="block font-medium text-gray-700">
                     Who can edit
-                  </label>
+                  </span>
                   <div className="flex flex-row items-center gap-4 text-xs">
                     {viewPermissionOptions.map((option) => {
                       const isSelected = whoCanEdit === option.id;

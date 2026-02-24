@@ -225,6 +225,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
               {deleteConfirmTableId === table.id && (
                 <>
                   <div
+                    role="presentation"
                     className="fixed inset-0 z-30"
                     aria-hidden="true"
                     onClick={() => setDeleteConfirmTableId(null)}

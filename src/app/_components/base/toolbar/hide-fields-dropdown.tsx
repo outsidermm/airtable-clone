@@ -130,7 +130,7 @@ export function HideFieldsDropdown({
 
   return (
     <>
-      <div className="fixed inset-0 z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50" role="presentation" onClick={onClose} onKeyDown={onClose} />
       <div className="absolute top-full right-0 z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
         {columns.length === 1 ? (
           <div className="mb-16 px-5">
@@ -166,12 +166,12 @@ export function HideFieldsDropdown({
               {filteredColumns.length === 0 ? (
                 <div className="mb-20 flex items-center gap-3 px-4">
                   <p className="text-[13px] text-gray-400">No results.</p>
-                  <p
+                  <button
                     onClick={() => setSearch("")}
                     className="cursor-pointer text-[13px] text-gray-400 underline hover:text-gray-500"
                   >
                     Clear
-                  </p>
+                  </button>
                 </div>
               ) : (
                 <DndContext

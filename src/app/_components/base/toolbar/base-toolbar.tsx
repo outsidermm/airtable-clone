@@ -406,7 +406,7 @@ export function BaseToolbar({
           </button>
           {activeDropdown === "group" && (
             <>
-              <div className="fixed inset-0 z-50" onClick={closeDropdown} />
+              <div role="presentation" className="fixed inset-0 z-50" onClick={closeDropdown} onKeyDown={closeDropdown} />
               <div className="absolute top-full right-0 z-60 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-3 shadow-lg">
                 <div className="border-b border-gray-100 px-3 pb-2">
                   <h3 className="text-sm text-gray-700">Group by</h3>
