@@ -36,20 +36,18 @@ jobs:
       # 1. Install pnpm BEFORE setting up Node to enable caching
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9 # You can remove this line if you have 'packageManager' set in package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm" # 2. Update cache key from npm to pnpm
+          cache: "pnpm"
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile # 3. Equivalent to 'npm ci'
+        run: pnpm install --frozen-lockfile
 
       - name: Setup Database Schema
-        run: pnpm exec prisma db push # 4. Replace 'npx' with 'pnpm exec'
+        run: pnpm exec prisma db push
 
       - name: Run Unit Tests (Vitest)
         run: pnpm run test
