@@ -1,0 +1,64 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Run Unit and E2E Tests
+    runs-on: ubuntu-latest
+
+    # Set up a temporary PostgreSQL 15 database for this test run
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Map the Prisma connection string to the temporary database
+    env:
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup Database Schema
+        # Pushes your Prisma schema to the temporary Postgres container
+        run: npx prisma db push
+
+      - name: Run Unit Tests (Vitest)
+        run: npm run test
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Tests (Playwright)
+        run: npx playwright test
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
