@@ -19,7 +19,7 @@ export function FrozenColumnOverlay({
   const { contextMenu, activeModal} = useBase();
   return (
     <div
-      className="group absolute bottom-4 z-60 flex w-4 cursor-col-resize justify-center"
+      className="group absolute bottom-4 z-40 flex w-4 cursor-col-resize justify-center"
       style={{ left: frozenWidth - 8, top: HEADER_HEIGHT }}
       onMouseDown={handleFrozenBorderDragStart}
       onMouseMove={(e) => {

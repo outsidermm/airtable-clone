@@ -33,7 +33,6 @@ import { GridHeader } from "./components/grid-header";
 // Custom Hooks
 import { useGridSelection } from "../hooks/useGridSelection";
 import { useGridNavigation } from "../hooks/useGridNavigation";
-import type { SortConfig } from "~/server/api/routers/view";
 import { PlusIcon } from "~/app/_components/ui/icons";
 import type { CellAddress } from "~/types/cell";
 import type { GridTableHandle } from "~/types/table";
@@ -52,8 +51,9 @@ interface GridTableProps {
   onCellUpdate: (rowId: number, columnId: number, value: string) => void;
   onReorderRow?: (draggedRowIds: number[], targetRowId: number) => void;
   onReorderColumns?: (newOrder: number[]) => void;
+  onFrozenColumnsChange?: (count: number) => void;
+  initialFrozenColumns?: number;
   onRequestPage: (pageIndex: number) => void;
-  sorts?: SortConfig[];
   rowHeight?: "short" | "medium" | "tall" | "extraTall";
   filteredColumnIds: Set<number>;
   sortedColumnIds: Set<number>;
@@ -67,8 +67,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       onCellUpdate,
       onReorderRow,
       onReorderColumns,
+      onFrozenColumnsChange,
+      initialFrozenColumns,
       onRequestPage,
-      sorts = [],
       rowHeight = "short",
       filteredColumnIds,
       sortedColumnIds,
@@ -86,12 +87,21 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     const [rowSelection, setRowSelection] = useState<Record<string, boolean>>(
       {},
     );
+    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
+      {},
+    );
     const [editingCell, setEditingCell] = useState<CellAddress | null>(null);
     const [showLastRowTooltip, setShowLastRowTooltip] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
     const [primaryColumnWidth, setPrimaryColumnWidth] = useState(PRIMARY_WIDTH);
-    const [frozenExtraCount, setFrozenExtraCount] = useState(0);
+    const [frozenExtraCount, setFrozenExtraCount] = useState(
+      initialFrozenColumns ?? 0,
+    );
     const freezeOverlayRef = useRef<HTMLDivElement>(null);
+    // Tracks the last value that was either synced from the prop or saved to DB,
+    // so we can distinguish user-driven changes from prop-driven resets.
+    const savedFrozenRef = useRef(initialFrozenColumns ?? 0);
+    const frozenSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const isDraggingFreezeRef = useRef(false);
     const [freezeLineHoverY, setFreezeLineHoverY] = useState<number | null>(
@@ -128,6 +138,22 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       [rows],
     );
 
+    // Calculate frozen width early so it can be passed into useGridNavigation
+    const extraFrozenWidth = useMemo(() => {
+      return nonPrimaryColumns
+        .slice(0, clampedFrozenExtraCount)
+        .reduce(
+          (sum, col) =>
+            sum + Math.max(80, columnSizing[String(col.id)] ?? col.width),
+          0,
+        );
+    }, [nonPrimaryColumns, clampedFrozenExtraCount, columnSizing]);
+
+    const frozenWidth =
+      CHECKBOX_WIDTH +
+      (primaryColumn ? primaryColumnWidth : 0) +
+      extraFrozenWidth;
+
     // --- 3. Custom Hooks ---
     const {
       selectedCell,
@@ -150,6 +176,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       setEditingCell,
       setShowLastRowTooltip,
       onCellUpdate,
+      frozenWidth,
     });
 
     // --- Stable Context Menu Ref ---
@@ -160,6 +187,26 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       selectedRowIdsRef.current = selectedRowIds;
       selectedRowIdsFromCellsRef.current = selectedRowIdsFromCells;
     }, [selectedRowIds, selectedRowIdsFromCells]);
+
+    // Sync frozen count when the active view changes (initialFrozenColumns prop updates).
+    useEffect(() => {
+      const val = initialFrozenColumns ?? 0;
+      savedFrozenRef.current = val;
+      setFrozenExtraCount(val);
+    }, [initialFrozenColumns]);
+
+    // Debounced persist: save to DB 400ms after the user stops dragging the freeze border.
+    useEffect(() => {
+      if (frozenExtraCount === savedFrozenRef.current) return;
+      if (frozenSaveTimerRef.current) clearTimeout(frozenSaveTimerRef.current);
+      frozenSaveTimerRef.current = setTimeout(() => {
+        savedFrozenRef.current = frozenExtraCount;
+        onFrozenColumnsChange?.(frozenExtraCount);
+      }, 400);
+      return () => {
+        if (frozenSaveTimerRef.current) clearTimeout(frozenSaveTimerRef.current);
+      };
+    }, [frozenExtraCount, onFrozenColumnsChange]);
 
     const handleRowContextMenu = useCallback(
       (rowId: number, rowIndex: number, e: React.MouseEvent) => {
@@ -213,9 +260,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
       },
       [onCellUpdate],
     );
-    const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
-      {},
-    );
 
     const { handlePrimaryResizeStart, handleFrozenBorderDragStart } =
       useGridResizing({
@@ -266,13 +310,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     });
 
     const allHeaders = table.getHeaderGroups()[0]?.headers ?? [];
-    const extraFrozenWidth = allHeaders
-      .filter((_, i) => i < clampedFrozenExtraCount)
-      .reduce((sum, h) => sum + h.getSize(), 0);
-    const frozenWidth =
-      CHECKBOX_WIDTH +
-      (primaryColumn ? primaryColumnWidth : 0) +
-      extraFrozenWidth;
     const totalScrollableWidth = allHeaders
       .filter((_, i) => i >= clampedFrozenExtraCount)
       .reduce((sum, h) => sum + h.getSize(), 0);
@@ -412,7 +449,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 handlePrimaryResizeStart={handlePrimaryResizeStart}
                 isAllSelected={table.getIsAllRowsSelected()}
                 onToggleAllSelected={table.getToggleAllRowsSelectedHandler()}
-                sorts={sorts}
                 columnOrder={columnOrder}
                 sensors={sensors}
                 handleDragEnd={handleDragEnd}
@@ -558,7 +594,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
               <div
                 className="flex flex-1 bg-gray-100"
-                style={{ minWidth: "fit-content", minHeight: 0 }}
+                style={{ minWidth: "fit-content", minHeight: 125 }}
               >
                 <div
                   className="sticky left-0"

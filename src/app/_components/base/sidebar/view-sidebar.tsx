@@ -38,16 +38,12 @@ import { MenuBadge, MenuDivider, MenuItem } from "../../ui/menu";
 
 interface ViewSidebarProps {
   views: View[];
-  // onDuplicateView: (viewId: number) => void;
-  // onReorderViews: (viewIds: number[]) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
 
 export function ViewSidebar({
   views,
-  // onDuplicateView,
-  // onReorderViews,
   onMouseEnter,
   onMouseLeave,
 }: ViewSidebarProps) {
@@ -423,7 +419,6 @@ export function ViewSidebar({
                 onSetEditingName={setEditingName}
                 onSetEditingViewId={setEditingViewId}
                 onSetViewMenuId={setViewMenuId}
-                // onDuplicateView={onDuplicateView}
                 editInputRef={editInputRef}
               />
             ))}

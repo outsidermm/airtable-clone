@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { pushQueryEntry } from "~/lib/query-log";
 import type { GridColumn } from "~/types/grid";
 import type {
@@ -26,6 +26,7 @@ import {
   ShareIcon,
   SearchIcon,
   RowHeightShortIcon,
+  SpinnerIcon,
 } from "~/app/_components/ui/icons";
 import { useViewMutations } from "../../hooks/use-view-mutations";
 import type { RowHeightOption } from "~/types/row";
@@ -75,7 +76,16 @@ export function BaseToolbar({
   );
   const [activeDropdown, setActiveDropdown] = useState<ToolbarDropdown>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"filter" | "sort" | null>(
+    null,
+  );
+
+  // Renaming state
+  const [isEditingViewName, setIsEditingViewName] = useState(false);
+  const [editingViewNameValue, setEditingViewNameValue] = useState("");
+
   const seedStartRef = useRef(0);
+  const viewClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const bulkCreateMutation = api.row.bulkCreate.useMutation({
     onMutate: () => {
@@ -100,12 +110,10 @@ export function BaseToolbar({
     },
   });
 
-  const toggleDropdown = useCallback(
-    (dropdown: ToolbarDropdown) => {
-      setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
-    },
-    [activeDropdown],
-  );
+  // Use functional update to ensure timeout closures don't grab stale state
+  const toggleDropdown = useCallback((dropdown: ToolbarDropdown) => {
+    setActiveDropdown((prev) => (prev === dropdown ? null : dropdown));
+  }, []);
 
   const closeDropdown = useCallback(() => {
     setActiveDropdown(null);
@@ -114,6 +122,7 @@ export function BaseToolbar({
   const handleUpdateFilters = useCallback(
     (filters: FilterConfig[], filterGroupLogic?: "AND" | "OR") => {
       if (!activeViewId) return;
+      setPendingAction("filter");
       // Filters change which rows are visible — row data must be refetched
       viewMutations.handleUpdateView(
         activeViewId,
@@ -132,6 +141,7 @@ export function BaseToolbar({
   const handleUpdateSorts = useCallback(
     (sorts: SortConfig[]) => {
       if (!activeViewId) return;
+      setPendingAction("sort");
       // Sorts change row ordering — row data must be refetched
       viewMutations.handleUpdateView(
         activeViewId,
@@ -162,6 +172,58 @@ export function BaseToolbar({
     },
     [activeTableId, bulkCreateMutation, isSeeding],
   );
+
+  // View rename handlers that prevent overlay capturing the double click
+  const handleViewClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.detail === 1) {
+        viewClickTimeoutRef.current = setTimeout(() => {
+          toggleDropdown("viewMenu");
+        }, 200);
+      } else if (e.detail === 2) {
+        if (viewClickTimeoutRef.current) {
+          clearTimeout(viewClickTimeoutRef.current);
+          viewClickTimeoutRef.current = null;
+        }
+        setEditingViewNameValue(activeViewName);
+        setIsEditingViewName(true);
+        closeDropdown();
+      }
+    },
+    [activeViewName, closeDropdown, toggleDropdown],
+  );
+
+  const submitViewRename = useCallback(() => {
+    if (
+      isEditingViewName &&
+      activeViewId &&
+      editingViewNameValue.trim() &&
+      editingViewNameValue.trim() !== activeViewName
+    ) {
+      viewMutations.handleRenameView(activeViewId, editingViewNameValue.trim());
+    }
+    setIsEditingViewName(false);
+  }, [
+    isEditingViewName,
+    activeViewId,
+    editingViewNameValue,
+    activeViewName,
+    viewMutations,
+  ]);
+
+  useEffect(() => {
+    if (!viewMutations.isUpdatingView) {
+      const timeout = setTimeout(() => setPendingAction(null), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [viewMutations.isUpdatingView]);
+
+  useEffect(() => {
+    return () => {
+      if (viewClickTimeoutRef.current)
+        clearTimeout(viewClickTimeoutRef.current);
+    };
+  }, []);
 
   const filterCount = viewConfig.filters?.length ?? 0;
   const sortCount = viewConfig.sorts?.length ?? 0;
@@ -209,17 +271,39 @@ export function BaseToolbar({
 
       {/* Grid view label */}
       <div className="relative">
-        <button
-          onClick={() => toggleDropdown("viewMenu")}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-        >
-          <GridIcon className="h-3.5 w-3.5 text-blue-700" />
-          {activeViewName}
-          <ChevronDownIcon className="h-3 w-3" />
-        </button>
+        {isEditingViewName ? (
+          <div className="flex items-center rounded border-2 border-gray-300 bg-white px-2">
+            <input
+              type="text"
+              value={editingViewNameValue}
+              onChange={(e) => setEditingViewNameValue(e.target.value)}
+              onBlur={submitViewRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitViewRename();
+                if (e.key === "Escape") setIsEditingViewName(false);
+              }}
+              className="w-40 bg-transparent py-1 text-xs font-medium text-gray-900 outline-none"
+              autoFocus
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={handleViewClick}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              toggleDropdown("viewMenu");
+            }}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+          >
+            <GridIcon className="h-3.5 w-3.5 text-blue-700" />
+            {activeViewName}
+            <ChevronDownIcon className="h-3 w-3" />
+          </button>
+        )}
 
         {/* View menu dropdown */}
-        {activeDropdown === "viewMenu" && (
+        {activeDropdown === "viewMenu" && !isEditingViewName && (
           <ViewDetailDropdown
             viewCount={viewCount}
             closeDropdown={closeDropdown}
@@ -271,7 +355,7 @@ export function BaseToolbar({
             }`}
           >
             <HideIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">{hiddenFieldMsg}</span>
+            <span className="hidden lg:inline">{hiddenFieldMsg}</span>
           </button>
           {activeDropdown === "hideFields" && (
             <HideFieldsDropdown
@@ -293,8 +377,12 @@ export function BaseToolbar({
                 : "bg-white hover:border-gray-100 hover:bg-gray-100"
             }`}
           >
-            <FilterIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">{filterFieldMsg}</span>
+            {pendingAction === "filter" ? (
+              <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FilterIcon className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden lg:inline">{filterFieldMsg}</span>
           </button>
           {activeDropdown === "filter" && (
             <FilterDropdown
@@ -314,7 +402,7 @@ export function BaseToolbar({
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
           >
             <GroupIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Group</span>
+            <span className="hidden lg:inline">Group</span>
           </button>
           {activeDropdown === "group" && (
             <>
@@ -341,8 +429,12 @@ export function BaseToolbar({
                 : "hover:bg-gray-100"
             }`}
           >
-            <SortIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">{sortFieldMsg}</span>
+            {pendingAction === "sort" ? (
+              <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <SortIcon className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden lg:inline">{sortFieldMsg}</span>
           </button>
           {activeDropdown === "sort" && (
             <SortDropdown
@@ -357,7 +449,7 @@ export function BaseToolbar({
         {/* Color */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ColorIcon className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Color</span>
+          <span className="hidden lg:inline">Color</span>
         </button>
 
         {/* Row height (icon only) */}
@@ -380,7 +472,7 @@ export function BaseToolbar({
         {/* Share and sync */}
         <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
           <ShareIcon className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Share and sync</span>
+          <span className="hidden lg:inline">Share and sync</span>
         </button>
 
         {/* Search */}

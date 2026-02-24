@@ -62,7 +62,10 @@ export function ViewDetailDropdown({
         <MenuItem
           label="Duplicate view"
           icon={<DuplicateIcon className="h-4 w-4" />}
-          onClick={closeDropdown}
+          onClick={() => {
+            viewMutations.handleDuplicateView(activeViewId!);
+            closeDropdown();
+          }}
           className="text-sm!"
         />
         <MenuDivider />

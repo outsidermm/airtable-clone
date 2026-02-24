@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { ColumnType } from "generated/prisma/enums";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 // Zod schemas for view config
 const sortConfigSchema = z.object({
@@ -35,11 +32,17 @@ const viewConfigSchema = z.object({
   // "OR" is used by the search-to-filter feature so any column can match
   filterGroupLogic: z.enum(["AND", "OR"]).optional().default("AND"),
   hiddenColumns: z.array(z.number().int()).optional().default([]),
-  rowHeight: z.enum(["short", "medium", "tall", "extraTall"]).optional().default("short"),
+  rowHeight: z
+    .enum(["short", "medium", "tall", "extraTall"])
+    .optional()
+    .default("short"),
   // Per-view column display order (array of column IDs). When undefined, columns
   // display in their global order (Column.order LexoRank). When set, this order
   // takes precedence so different views can have different column arrangements.
   columnOrder: z.array(z.number().int()).optional(),
+  // Number of non-primary columns pinned to the left (beyond the always-frozen
+  // primary column). Stored per-view so different views can freeze different counts.
+  frozenColumns: z.number().int().min(0).optional().default(0),
 });
 
 export type SortConfig = z.infer<typeof sortConfigSchema>;
@@ -52,7 +55,7 @@ export const viewRouter = createTRPCRouter({
     .input(
       z.object({
         tableId: z.number().int(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
@@ -93,7 +96,7 @@ export const viewRouter = createTRPCRouter({
       z.object({
         id: z.number().int(),
         name: z.string().min(1).max(255),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       // Verify user owns the table that owns this view
@@ -160,7 +163,7 @@ export const viewRouter = createTRPCRouter({
       // Create duplicate with same config and name + " (copy)"
       return ctx.db.view.create({
         data: {
-          name: `${view.name} (copy)`,
+          name: `${view.name} copy`,
           tableId: view.tableId,
           config: view.config ?? undefined,
           order: view.order,
@@ -174,7 +177,7 @@ export const viewRouter = createTRPCRouter({
       z.object({
         id: z.number().int(),
         config: viewConfigSchema,
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       // Verify user owns the table that owns this view
@@ -260,7 +263,7 @@ export const viewRouter = createTRPCRouter({
         cursor: z.number().int().optional(),
         // offset enables random-access page fetching (OFFSET N in raw SQL)
         offset: z.number().int().min(0).optional(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       // Get view with ownership verification
@@ -279,7 +282,12 @@ export const viewRouter = createTRPCRouter({
 
       // Parse view config
       const config = viewConfigSchema.parse(view.config);
-      const { filters, sorts, hiddenColumns, filterGroupLogic = "AND" } = config;
+      const {
+        filters,
+        sorts,
+        hiddenColumns,
+        filterGroupLogic = "AND",
+      } = config;
 
       // Get all columns to determine types for filtering
       const columns = await ctx.db.column.findMany({
@@ -298,8 +306,11 @@ export const viewRouter = createTRPCRouter({
         if (!column) return;
 
         // Skip incomplete filters — operators that need a value but have none
-        const needsValue = !["is_empty", "is_not_empty"].includes(filter.operator);
-        if (needsValue && (filter.value === undefined || filter.value === "")) return;
+        const needsValue = !["is_empty", "is_not_empty"].includes(
+          filter.operator,
+        );
+        if (needsValue && (filter.value === undefined || filter.value === ""))
+          return;
 
         const colKey = String(filter.columnId);
         const isText = column.type === ColumnType.TEXT;
@@ -308,11 +319,11 @@ export const viewRouter = createTRPCRouter({
           case "is_empty":
             if (isText) {
               filterConditions.push(
-                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' = '')`
+                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' = '')`,
               );
             } else {
               filterConditions.push(
-                `(NOT r.cells ? '${colKey}' OR jsonb_typeof(r.cells->'${colKey}') = 'null')`
+                `(NOT r.cells ? '${colKey}' OR jsonb_typeof(r.cells->'${colKey}') = 'null')`,
               );
             }
             break;
@@ -320,25 +331,25 @@ export const viewRouter = createTRPCRouter({
           case "is_not_empty":
             if (isText) {
               filterConditions.push(
-                `(r.cells->>'${colKey}' IS NOT NULL AND r.cells->>'${colKey}' != '')`
+                `(r.cells->>'${colKey}' IS NOT NULL AND r.cells->>'${colKey}' != '')`,
               );
             } else {
               filterConditions.push(
-                `(r.cells ? '${colKey}' AND jsonb_typeof(r.cells->'${colKey}') != 'null')`
+                `(r.cells ? '${colKey}' AND jsonb_typeof(r.cells->'${colKey}') != 'null')`,
               );
             }
             break;
 
           case "contains":
             filterConditions.push(
-              `r.cells->>'${colKey}' ILIKE $${filterParams.length + 1}`
+              `r.cells->>'${colKey}' ILIKE $${filterParams.length + 1}`,
             );
             filterParams.push(`%${filter.value}%`);
             break;
 
           case "not_contains":
             filterConditions.push(
-              `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' NOT ILIKE $${filterParams.length + 1})`
+              `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' NOT ILIKE $${filterParams.length + 1})`,
             );
             filterParams.push(`%${filter.value}%`);
             break;
@@ -347,12 +358,12 @@ export const viewRouter = createTRPCRouter({
             if (isText) {
               // Use @> containment — leverages the GIN jsonb_path_ops index on Row.cells
               filterConditions.push(
-                `r.cells @> jsonb_build_object($${filterParams.length + 1}::text, $${filterParams.length + 2}::text)`
+                `r.cells @> jsonb_build_object($${filterParams.length + 1}::text, $${filterParams.length + 2}::text)`,
               );
               filterParams.push(colKey, String(filter.value!));
             } else {
               filterConditions.push(
-                `(r.cells->>'${colKey}')::float = $${filterParams.length + 1}`
+                `(r.cells->>'${colKey}')::float = $${filterParams.length + 1}`,
               );
               filterParams.push(filter.value!);
             }
@@ -361,12 +372,12 @@ export const viewRouter = createTRPCRouter({
           case "not_equals":
             if (isText) {
               filterConditions.push(
-                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' != $${filterParams.length + 1})`
+                `(r.cells->>'${colKey}' IS NULL OR r.cells->>'${colKey}' != $${filterParams.length + 1})`,
               );
               filterParams.push(filter.value!);
             } else {
               filterConditions.push(
-                `(r.cells->>'${colKey}' IS NULL OR (r.cells->>'${colKey}')::float != $${filterParams.length + 1})`
+                `(r.cells->>'${colKey}' IS NULL OR (r.cells->>'${colKey}')::float != $${filterParams.length + 1})`,
               );
               filterParams.push(filter.value!);
             }
@@ -374,28 +385,28 @@ export const viewRouter = createTRPCRouter({
 
           case "greater_than":
             filterConditions.push(
-              `(r.cells->>'${colKey}')::float > $${filterParams.length + 1}`
+              `(r.cells->>'${colKey}')::float > $${filterParams.length + 1}`,
             );
             filterParams.push(filter.value as number);
             break;
 
           case "less_than":
             filterConditions.push(
-              `(r.cells->>'${colKey}')::float < $${filterParams.length + 1}`
+              `(r.cells->>'${colKey}')::float < $${filterParams.length + 1}`,
             );
             filterParams.push(filter.value as number);
             break;
 
           case "greater_than_or_equal":
             filterConditions.push(
-              `(r.cells->>'${colKey}')::float >= $${filterParams.length + 1}`
+              `(r.cells->>'${colKey}')::float >= $${filterParams.length + 1}`,
             );
             filterParams.push(filter.value as number);
             break;
 
           case "less_than_or_equal":
             filterConditions.push(
-              `(r.cells->>'${colKey}')::float <= $${filterParams.length + 1}`
+              `(r.cells->>'${colKey}')::float <= $${filterParams.length + 1}`,
             );
             filterParams.push(filter.value as number);
             break;
@@ -413,11 +424,11 @@ export const viewRouter = createTRPCRouter({
 
         if (isText) {
           orderByParts.push(
-            `r.cells->>'${colKey}' ${sort.direction.toUpperCase()}`
+            `r.cells->>'${colKey}' ${sort.direction.toUpperCase()}`,
           );
         } else {
           orderByParts.push(
-            `(r.cells->>'${colKey}')::float ${sort.direction.toUpperCase()}`
+            `(r.cells->>'${colKey}')::float ${sort.direction.toUpperCase()}`,
           );
         }
       });
@@ -426,7 +437,8 @@ export const viewRouter = createTRPCRouter({
       orderByParts.push('r."order" ASC');
       orderByParts.push("r.id ASC");
 
-      const isFirstPage = !input.cursor && (!input.offset || input.offset === 0);
+      const isFirstPage =
+        !input.cursor && (!input.offset || input.offset === 0);
 
       // Build WHERE clause
       const whereClauses: string[] = [`r."tableId" = ${view.tableId}`];
@@ -446,7 +458,8 @@ export const viewRouter = createTRPCRouter({
 
       const whereClause = whereClauses.join(" AND ");
       const orderByClause = orderByParts.join(", ");
-      const offsetClause = (input.offset && input.offset > 0) ? `OFFSET ${input.offset}` : "";
+      const offsetClause =
+        input.offset && input.offset > 0 ? `OFFSET ${input.offset}` : "";
 
       // Build count WHERE clause (without cursor/offset conditions)
       const countWhereClauses: string[] = [`r."tableId" = ${view.tableId}`];
@@ -466,7 +479,7 @@ export const viewRouter = createTRPCRouter({
         isFirstPage
           ? ctx.db.$queryRawUnsafe<Array<{ count: bigint }>>(
               `SELECT COUNT(*) as count FROM "Row" r WHERE ${countWhereClause}`,
-              ...filterParams
+              ...filterParams,
             )
           : Promise.resolve(undefined),
         ctx.db.$queryRawUnsafe<Array<{ id: number; cells: unknown }>>(
@@ -478,12 +491,14 @@ export const viewRouter = createTRPCRouter({
           LIMIT ${input.limit + 1}
           ${offsetClause}
           `,
-          ...filterParams
+          ...filterParams,
         ),
       ]);
       const sqlMs = Date.now() - sqlStart;
 
-      const totalCount = countResult ? Number(countResult[0]?.count ?? 0) : undefined;
+      const totalCount = countResult
+        ? Number(countResult[0]?.count ?? 0)
+        : undefined;
 
       // Check if there are more rows
       let nextCursor: number | undefined;
@@ -506,7 +521,7 @@ export const viewRouter = createTRPCRouter({
       z.object({
         tableId: z.number().int(),
         viewIds: z.array(z.number().int()),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
@@ -523,7 +538,9 @@ export const viewRouter = createTRPCRouter({
         // Update order for each view using LexoRank-like spacing
         // Generate equally spaced order values
         const updates = input.viewIds.map((viewId, index) => {
-          const order = String.fromCharCode(97 + Math.floor(index / 26)) + String.fromCharCode(97 + (index % 26));
+          const order =
+            String.fromCharCode(97 + Math.floor(index / 26)) +
+            String.fromCharCode(97 + (index % 26));
           return tx.view.update({
             where: { id: viewId },
             data: { order },

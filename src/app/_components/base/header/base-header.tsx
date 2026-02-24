@@ -44,8 +44,11 @@ export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
 Start by outlining your goal.
 
 Next, share details about key information in your base:
+
 This table contains…
+
 This view shows…
+
 This link contains…
 
 Teammates will see this guide when they first open the base and can find it anytime by clicking the down arrow on the top of their screen.`,
@@ -88,67 +91,24 @@ Teammates will see this guide when they first open the base and can find it anyt
       <header className="shrink-0 bg-white">
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           <div className="relative flex items-center gap-2">
-            {isRenamingBase ? (
-              <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
-                <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}
-                >
-                  <Image
-                    src="/airtable-black.svg"
-                    alt="Base icon"
-                    width={16}
-                    height={16}
-                    className="brightness-0 invert"
-                  />
-                </div>
-                <input
-                  type="text"
-                  value={baseNameValue}
-                  onChange={(e) => setBaseNameValue(e.target.value)}
-                  onBlur={() => {
-                    if (baseNameValue.trim() && baseNameValue !== base.name) {
-                      baseMutations.handleRename(base.id, baseNameValue.trim());
-                    }
-                    setIsRenamingBase(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      if (baseNameValue.trim() && baseNameValue !== base.name) {
-                        baseMutations.handleRename(
-                          base.id,
-                          baseNameValue.trim(),
-                        );
-                      }
-                      setIsRenamingBase(false);
-                    } else if (e.key === "Escape") {
-                      setBaseNameValue(base.name);
-                      setIsRenamingBase(false);
-                    }
-                  }}
-                  className="rounded border border-blue-500 px-2 py-0.5 text-sm font-semibold text-gray-900 ring-1 ring-blue-500 outline-none"
-                  autoFocus
+            <button
+              onClick={() => setShowBaseMenu(!showBaseMenu)}
+              className="text-md flex items-center gap-2 rounded-md px-2 py-1 font-semibold text-gray-900"
+            >
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded ${iconColor}`}
+              >
+                <Image
+                  src="/airtable-black.svg"
+                  alt="Base icon"
+                  width={22}
+                  height={22}
+                  className="brightness-0 invert"
                 />
               </div>
-            ) : (
-              <button
-                onClick={() => setShowBaseMenu(!showBaseMenu)}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100"
-              >
-                <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${iconColor}`}
-                >
-                  <Image
-                    src="/airtable-black.svg"
-                    alt="Base icon"
-                    width={16}
-                    height={16}
-                    className="brightness-0 invert"
-                  />
-                </div>
-                {base.name}
-                <ChevronDownIcon className="h-3 w-3 text-gray-500" />
-              </button>
-            )}
+              {base.name}
+              <ChevronDownIcon className="h-3 w-3 text-gray-500" />
+            </button>
 
             {showBaseMenu && !isRenamingBase && (
               <>
@@ -159,7 +119,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                     setShowBaseSubMenu(false);
                   }}
                 />
-                <div className="absolute top-full left-0 z-100 mt-1 w-100 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                <div className="absolute top-full left-0 z-100 mt-1 w-100 rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <input
                       type="text"
@@ -189,7 +149,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                           }
                         }
                       }}
-                      className="w-full rounded-md px-3 py-1.5 text-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      className="w-full rounded-md px-3 py-1.5 text-xl hover:bg-gray-100 focus:border-blue-500 focus:bg-gray-100 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                     />
                     <button
                       onClick={handleStarClick}
@@ -226,7 +186,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div className="mb-2">
                       <button
                         onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}
-                        className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-700 hover:bg-gray-50"
+                        className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-900 hover:bg-gray-50"
                       >
                         <ChevronRightIcon
                           className={`h-4 w-4 transition-transform ${
@@ -292,7 +252,7 @@ Teammates will see this guide when they first open the base and can find it anyt
                     <div>
                       <button
                         onClick={() => setIsBaseGuideOpen(!isBaseGuideOpen)}
-                        className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-700 hover:bg-gray-50"
+                        className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-lg text-gray-900 hover:bg-gray-50"
                       >
                         <ChevronRightIcon
                           className={`h-4 w-4 transition-transform ${
@@ -306,8 +266,8 @@ Teammates will see this guide when they first open the base and can find it anyt
                           <textarea
                             value={baseGuideValue}
                             onChange={(e) => setBaseGuideValue(e.target.value)}
-                            className="w-full resize-none rounded-md px-2 py-1.5 text-xs focus:border-blue-300 focus:ring-1 focus:ring-blue-300 focus:outline-none"
-                            rows={13}
+                            className="w-full resize-none rounded-md px-2 py-1.5 text-[13px] text-gray-600 focus:border-blue-300 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                            rows={16}
                           />
                         </div>
                       )}
@@ -355,13 +315,13 @@ Teammates will see this guide when they first open the base and can find it anyt
               <ClockIcon className="h-4 w-4" />
             </button>
 
-            <button className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <button className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
               <RocketIcon className="h-4 w-4" />
               Launch
             </button>
 
             <button
-              className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${iconColor} hover:opacity-90`}
+              className={`rounded-md px-3 py-1.5 text-xs text-white ${iconColor} hover:opacity-90`}
             >
               Share
             </button>

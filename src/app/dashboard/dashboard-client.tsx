@@ -32,7 +32,7 @@ export function DashboardClient({ user, initialBases }: DashboardClientProps) {
     <DashboardLayout user={user} currentPage="home">
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto">
           {/* Page Title */}
           <h1 className="mb-5 text-2xl font-medium text-gray-900">Home</h1>
 

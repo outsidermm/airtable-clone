@@ -39,6 +39,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
   const [tableSearchQuery, setTableSearchQuery] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
   const tableSearchRef = useRef<HTMLInputElement>(null);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isTableSearchOpen && tableSearchRef.current) {
@@ -65,10 +66,38 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
     }
   }, [renamingTableId]);
 
+  // Clean up the timeout when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    };
+  }, []);
+
   const closeMenu = useCallback(() => {
     setTableMenuId(null);
     setIsImportSubOpen(false);
   }, []);
+
+  const handleTableClick = useCallback(
+    (e: React.MouseEvent, tableId: number) => {
+      if (e.detail === 1) {
+        clickTimeoutRef.current = setTimeout(() => {
+          if (activeTableId !== tableId) {
+            setActiveTableId(tableId);
+          } else {
+            setTableMenuId(tableId);
+          }
+        }, 200);
+      } else if (e.detail === 2) {
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+          clickTimeoutRef.current = null;
+        }
+        setRenamingTableId(tableId);
+      }
+    },
+    [activeTableId, setActiveTableId, setRenamingTableId],
+  );
 
   return (
     <div className={`flex items-end ${getLightColorClass(iconColor)}`}>
@@ -98,9 +127,12 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
                 }
               >
                 <button
-                  onClick={() => setActiveTableId(table.id)}
-                  onDoubleClick={() => {
-                    setRenamingTableId(table.id);
+                  onClick={(e) => {
+                    handleTableClick(e, table.id);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setTableMenuId(table.id);
                   }}
                   className="flex-1 text-left"
                 >
@@ -193,7 +225,7 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
               setIsTableSearchOpen(!isTableSearchOpen);
               setTableSearchQuery("");
             }}
-            className="mb-1 flex items-center gap-1 rounded-md px-2 py-1.5 text-gray-400 hover:text-gray-600"
+            className="mb-1 flex items-center gap-1 rounded-md px-2 py-2 text-gray-400 hover:text-gray-600"
           >
             <ChevronDownIcon className="h-3.5 w-3.5" />
           </button>
@@ -217,15 +249,16 @@ export function TableTabs({ base, tables, iconColor }: TableTabsProps) {
           onClick={(e) => {
             openModal("add-table", e.currentTarget);
           }}
-          className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
         >
           <PlusIcon className="h-4 w-4" />
+          Add or import
         </button>
       </div>
 
       {/* Right: Tools */}
       <div className="mb-0 ml-auto flex items-center py-1.5">
-        <button className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-200/70 hover:text-gray-700">
+        <button className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
           Tools
           <ChevronDownIcon className="h-3 w-3" />
         </button>

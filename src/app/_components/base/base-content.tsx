@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
 import { GridTable } from "./table/grid-table";
-import type { GridTableHandle } from "~/types/table";
+import type { GridTableHandle, Table } from "~/types/table";
 import { ViewSidebar } from "./sidebar/view-sidebar";
 import { BaseHeader } from "./header/base-header";
 import { BaseToolbar } from "./toolbar/base-toolbar";
@@ -22,14 +22,11 @@ import type { Base } from "~/types/base";
 import { useBase } from "./base-context";
 import { PAGE_SIZE } from "./constants";
 import { useRowStore } from "./hooks/useRowStore";
+import { useOptimisticGrid } from "./hooks/useOptimisticGrid";
 import { useSidebarHover } from "./hooks/useSidebarHover";
 import { useCellMutations } from "../hooks/use-cell-mutations";
-
-interface Table {
-  id: number;
-  name: string;
-  baseId: string;
-}
+import { AIIcon, PlusIcon, SpinnerIcon } from "../ui/icons";
+import React from "react";
 
 interface BaseContentProps {
   baseId: string;
@@ -43,6 +40,7 @@ const DEFAULT_VIEW_CONFIG: ViewConfig = {
   filterGroupLogic: "AND",
   hiddenColumns: [],
   rowHeight: "short",
+  frozenColumns: 0,
 };
 
 export function BaseContent({
@@ -59,12 +57,10 @@ export function BaseContent({
     contextMenu,
     setContextMenu,
     registerRefetchRows,
-    registerOptimisticAddRow,
-    registerOptimisticDeleteRow,
-    registerOptimisticInsertRowNear,
     registerOnRowCreated,
     notifyRowIdSwap,
     registerOnColumnCreated,
+    editingColumnId,
   } = useBase();
 
   const gridTableRef = useRef<GridTableHandle>(null);
@@ -138,6 +134,7 @@ export function BaseContent({
       hiddenColumns: cfg.hiddenColumns ?? [],
       rowHeight: cfg.rowHeight ?? "short",
       columnOrder: cfg.columnOrder,
+      frozenColumns: cfg.frozenColumns,
     };
   }, [viewQuery.data?.config]);
 
@@ -153,6 +150,16 @@ export function BaseContent({
     return new Set(viewConfig.sorts.map((s) => s.columnId));
   }, [viewConfig.sorts]);
 
+  // --- Row ordering override (shared between useRowStore and useOptimisticGrid) ---
+  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
+    null,
+  );
+  const rowOrderOverrideRef = useRef<number[] | null>(null);
+
+  useEffect(() => {
+    rowOrderOverrideRef.current = rowOrderOverride;
+  }, [rowOrderOverride]);
+
   // --- Rows: random-access page store ---
   const pendingOptimisticEditsRef = useRef<
     Map<number, Record<string, string | number | null>>
@@ -160,9 +167,6 @@ export function BaseContent({
   const pendingColumnEditsRef = useRef<
     Map<number, Map<number, string | number | null>>
   >(new Map());
-  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
-    null,
-  );
 
   const {
     pageStore,
@@ -178,187 +182,15 @@ export function BaseContent({
     registerRefetchRows,
   });
 
-  const rowOrderOverrideRef = useRef<number[] | null>(null);
-
-  useEffect(() => {
-    rowOrderOverrideRef.current = rowOrderOverride;
-  }, [rowOrderOverride]);
-
   // --- Optimistic row mutations ---
-  const optimisticAddRowImpl = useCallback((): {
-    tempId: number;
-    revert: () => void;
-  } => {
-    const tempId = -Date.now();
-    const tempRow: GridRow = { id: tempId, cells: {} };
-
-    const prevCount = totalRowCountRef.current;
-    const newCount = prevCount + 1;
-    const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
-
-    totalRowCountRef.current = newCount;
-
-    const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
-    pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
-    setPageStore(new Map(pageStoreRef.current));
-    setTotalRowCount(newCount);
-
-    return {
-      tempId,
-      revert: () => {
-        pendingOptimisticEditsRef.current.delete(tempId);
-        totalRowCountRef.current = prevCount;
-        const page = pageStoreRef.current.get(lastPageIndex);
-        if (page) {
-          const filtered = page.filter((r) => r.id !== tempId);
-          if (filtered.length === 0) {
-            pageStoreRef.current.delete(lastPageIndex);
-          } else {
-            pageStoreRef.current.set(lastPageIndex, filtered);
-          }
-        }
-        setPageStore(new Map(pageStoreRef.current));
-        setTotalRowCount(prevCount);
-      },
-    };
-  }, [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef]);
-
-  const optimisticDeleteRowImpl = useCallback(
-    (rowId: number): { revert: () => void } => {
-      let foundPageIndex = -1;
-      let foundPosition = -1;
-      let foundRow: GridRow | undefined;
-
-      for (const [pageIndex, pageRows] of pageStoreRef.current) {
-        const pos = pageRows.findIndex((r) => r.id === rowId);
-        if (pos !== -1) {
-          foundPageIndex = pageIndex;
-          foundPosition = pos;
-          foundRow = pageRows[pos];
-          break;
-        }
-      }
-
-      const prevCount = totalRowCountRef.current;
-      const newCount = Math.max(0, prevCount - 1);
-      totalRowCountRef.current = newCount;
-      setTotalRowCount(newCount);
-
-      if (foundPageIndex === -1 || !foundRow) {
-        return {
-          revert: () => {
-            totalRowCountRef.current = prevCount;
-            setTotalRowCount(prevCount);
-          },
-        };
-      }
-
-      const page = [...(pageStoreRef.current.get(foundPageIndex) ?? [])];
-      page.splice(foundPosition, 1);
-      pageStoreRef.current.set(foundPageIndex, page);
-      setPageStore(new Map(pageStoreRef.current));
-
-      const capturedRow = foundRow;
-      const capturedPageIndex = foundPageIndex;
-      const capturedPosition = foundPosition;
-      return {
-        revert: () => {
-          totalRowCountRef.current = prevCount;
-          setTotalRowCount(prevCount);
-          const currentPage = [
-            ...(pageStoreRef.current.get(capturedPageIndex) ?? []),
-          ];
-          currentPage.splice(capturedPosition, 0, capturedRow);
-          pageStoreRef.current.set(capturedPageIndex, currentPage);
-          setPageStore(new Map(pageStoreRef.current));
-        },
-      };
-    },
-    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
-  );
-
-  const optimisticInsertRowNearImpl = useCallback(
-    (
-      tableId: number,
-      beforeRowId?: number | null,
-      afterRowId?: number | null,
-    ): { tempId: number; revert: () => void } => {
-      const tempId = -Date.now();
-      const tempRow: GridRow = { id: tempId, cells: {} };
-
-      const prevCount = totalRowCountRef.current;
-      const newCount = prevCount + 1;
-      totalRowCountRef.current = newCount;
-
-      const preInsertFlatOrder: number[] = (() => {
-        const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
-          (a, b) => a - b,
-        );
-        const flat: GridRow[] = [];
-        for (const pi of sortedPageIndices)
-          flat.push(...(pageStoreRef.current.get(pi) ?? []));
-        return flat.map((r) => r.id);
-      })();
-
-      const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
-      const existingPage = pageStoreRef.current.get(lastPageIndex) ?? [];
-      pageStoreRef.current.set(lastPageIndex, [...existingPage, tempRow]);
-      setPageStore(new Map(pageStoreRef.current));
-      setTotalRowCount(newCount);
-
-      setRowOrderOverride((prev) => {
-        const currentOrder = prev ?? preInsertFlatOrder;
-        let insertIdx = -1;
-
-        if (beforeRowId != null) {
-          const targetIdx = currentOrder.indexOf(beforeRowId);
-          if (targetIdx !== -1) insertIdx = targetIdx;
-        } else if (afterRowId != null) {
-          const targetIdx = currentOrder.indexOf(afterRowId);
-          if (targetIdx !== -1) insertIdx = targetIdx + 1;
-        }
-
-        const newOrder = [...currentOrder];
-        if (insertIdx >= 0 && insertIdx <= newOrder.length) {
-          newOrder.splice(insertIdx, 0, tempId);
-        } else {
-          newOrder.push(tempId);
-        }
-        return newOrder;
-      });
-
-      return {
-        tempId,
-        revert: () => {
-          pendingOptimisticEditsRef.current.delete(tempId);
-          totalRowCountRef.current = prevCount;
-          const page = pageStoreRef.current.get(lastPageIndex);
-          if (page) {
-            const filtered = page.filter((r) => r.id !== tempId);
-            if (filtered.length === 0)
-              pageStoreRef.current.delete(lastPageIndex);
-            else pageStoreRef.current.set(lastPageIndex, filtered);
-          }
-          setPageStore(new Map(pageStoreRef.current));
-          setTotalRowCount(prevCount);
-          setRowOrderOverride(null);
-        },
-      };
-    },
-    [setPageStore, totalRowCountRef, setTotalRowCount, pageStoreRef],
-  );
-
-  useEffect(() => {
-    registerOptimisticAddRow(optimisticAddRowImpl);
-  }, [registerOptimisticAddRow, optimisticAddRowImpl]);
-
-  useEffect(() => {
-    registerOptimisticDeleteRow(optimisticDeleteRowImpl);
-  }, [registerOptimisticDeleteRow, optimisticDeleteRowImpl]);
-
-  useEffect(() => {
-    registerOptimisticInsertRowNear(optimisticInsertRowNearImpl);
-  }, [registerOptimisticInsertRowNear, optimisticInsertRowNearImpl]);
+  useOptimisticGrid({
+    pageStoreRef,
+    setPageStore,
+    totalRowCountRef,
+    setTotalRowCount,
+    pendingOptimisticEditsRef,
+    setRowOrderOverride,
+  });
 
   // --- Columns ---
   const allColumns = useMemo<GridColumn[]>(() => {
@@ -404,6 +236,17 @@ export function BaseContent({
       updateViewConfigMutation.mutate({
         id: activeViewId,
         config: { ...viewConfig, columnOrder: newOrder },
+      });
+    },
+    [activeViewId, viewConfig, updateViewConfigMutation],
+  );
+
+  const handleFrozenColumnsChange = useCallback(
+    (count: number) => {
+      if (!activeViewId) return;
+      updateViewConfigMutation.mutate({
+        id: activeViewId,
+        config: { ...viewConfig, frozenColumns: count },
       });
     },
     [activeViewId, viewConfig, updateViewConfigMutation],
@@ -544,10 +387,13 @@ export function BaseContent({
           onMouseEnter={handleSidebarHoverEnter}
           onMouseLeave={handleSidebarHoverLeave}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="relative flex flex-1 flex-col overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-sm text-gray-500">Loading...</div>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" />
+              <div className="text-sm font-medium text-gray-500">
+                Loading table data...
+              </div>
             </div>
           ) : (
             <GridTable
@@ -557,18 +403,45 @@ export function BaseContent({
               onCellUpdate={handleCellUpdate}
               onReorderRow={handleReorderRow}
               onReorderColumns={handleReorderColumns}
+              onFrozenColumnsChange={handleFrozenColumnsChange}
+              initialFrozenColumns={viewConfig.frozenColumns}
               onRequestPage={fetchPage}
-              sorts={viewConfig.sorts ?? []}
               rowHeight={viewConfig.rowHeight ?? "short"}
               filteredColumnIds={filteredColumnIds}
               sortedColumnIds={sortedColumnIds}
             />
           )}
+
+          {/* Floating Actions Tab */}
+          <div className="absolute bottom-10 left-4 z-60 flex items-center rounded-full border border-gray-300 bg-white">
+            <button
+              className="flex items-center justify-center rounded-l-full px-2.5 py-1.5 transition-colors hover:bg-gray-100"
+              title="Add record"
+            >
+              <PlusIcon className="h-4 w-4 text-gray-600" />
+            </button>
+            <div className="h-8 w-px bg-gray-300" />
+            <button
+              className="flex items-center justify-center rounded-r-full px-3 py-1.5 transition-colors hover:bg-gray-100"
+              title="Add more"
+            >
+              <AIIcon className="h-4 w-4 text-green-700" />
+              <span className="mx-1 text-xs text-gray-700">Add...</span>
+            </button>
+          </div>
+
           <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
-            <span className="text-xs text-gray-500">
-              {totalRowCount != null
-                ? `${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`
-                : "Loading..."}
+            <span className="flex items-center gap-2 text-xs text-gray-500">
+              {totalRowCount != null ? (
+                <React.Fragment>
+                  {`${totalRowCount} ${totalRowCount === 1 ? "record" : "records"}`}
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" />
+                  Loading records...
+                </React.Fragment>
+              )}
             </span>
           </div>
         </div>
@@ -605,6 +478,13 @@ export function BaseContent({
       )}
       {activeModal === "add-column" && (
         <AddColumnModal anchorEl={modalAnchor} />
+      )}
+      {activeModal === "edit-column" && (
+        <AddColumnModal
+          anchorEl={modalAnchor}
+          editColumnId={editingColumnId}
+          columns={allColumns}
+        />
       )}
     </div>
   );

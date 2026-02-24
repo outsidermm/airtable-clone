@@ -43,11 +43,30 @@ export function useCellMutations({
   const cellUpdateStartRef = useRef<Map<string, number>>(new Map());
 
   const updateCell = api.cell.update.useMutation({
-    onMutate: (variables) => {
-      cellUpdateStartRef.current.set(
-        `${variables.rowId}:${variables.columnId}`,
-        Date.now(),
-      );
+    onMutate: async (variables) => {
+      const key = `${variables.rowId}:${variables.columnId}`;
+      cellUpdateStartRef.current.set(key, Date.now());
+
+      const colKey = String(variables.columnId);
+      let previousValue: string | number | null | undefined = undefined;
+
+      // Optimistically update the store immediately
+      for (const [pageIndex, pageRows] of pageStoreRef.current) {
+        const rowIdx = pageRows.findIndex((r) => r.id === variables.rowId);
+        if (rowIdx !== -1) {
+          previousValue = pageRows[rowIdx]!.cells[colKey];
+          const newRows = [...pageRows];
+          newRows[rowIdx] = {
+            ...newRows[rowIdx]!,
+            cells: { ...newRows[rowIdx]!.cells, [colKey]: variables.value },
+          };
+          pageStoreRef.current.set(pageIndex, newRows);
+          setPageStore(new Map(pageStoreRef.current));
+          break;
+        }
+      }
+
+      return { previousValue };
     },
     onSuccess: (data, variables) => {
       const key = `${variables.rowId}:${variables.columnId}`;
@@ -60,24 +79,32 @@ export function useCellMutations({
         totalMs: startTime !== undefined ? Date.now() - startTime : 0,
       });
 
-      const colKey = String(variables.columnId);
-      const savedValue = variables.value;
-      for (const [pageIndex, pageRows] of pageStoreRef.current) {
-        const rowIdx = pageRows.findIndex((r) => r.id === variables.rowId);
-        if (rowIdx !== -1) {
-          const newRows = [...pageRows];
-          newRows[rowIdx] = {
-            ...newRows[rowIdx]!,
-            cells: { ...newRows[rowIdx]!.cells, [colKey]: savedValue },
-          };
-          pageStoreRef.current.set(pageIndex, newRows);
-          setPageStore(new Map(pageStoreRef.current));
-          break;
+      // The local cache was already optimistically updated in onMutate,
+      // so we don't need to overwrite it here unless it differs from the server.
+    },
+    onError: (error, variables, context) => {
+      toast.error(error.message);
+
+      // Rollback to the previous value if the mutation fails
+      if (context?.previousValue !== undefined) {
+        const colKey = String(variables.columnId);
+        for (const [pageIndex, pageRows] of pageStoreRef.current) {
+          const rowIdx = pageRows.findIndex((r) => r.id === variables.rowId);
+          if (rowIdx !== -1) {
+            const newRows = [...pageRows];
+            newRows[rowIdx] = {
+              ...newRows[rowIdx]!,
+              cells: {
+                ...newRows[rowIdx]!.cells,
+                [colKey]: context.previousValue,
+              },
+            };
+            pageStoreRef.current.set(pageIndex, newRows);
+            setPageStore(new Map(pageStoreRef.current));
+            break;
+          }
         }
       }
-    },
-    onError: (error: { message: string }) => {
-      toast.error(error.message);
     },
   });
 
@@ -97,6 +124,8 @@ export function useCellMutations({
       const isTempRow = rowId < 0;
       const isTempCol = columnId < 0;
 
+      // Temporary rows/columns cannot be saved immediately;
+      // we only save them in state until their real IDs return.
       if (isTempRow || isTempCol) {
         for (const [pageIndex, pageRows] of pageStoreRef.current) {
           const rowIdx = pageRows.findIndex((r) => r.id === rowId);
@@ -128,6 +157,7 @@ export function useCellMutations({
         return;
       }
 
+      // Execute standard mutation (which will run our optimistic onMutate update)
       updateCell.mutate({ rowId, columnId, value: convertedValue });
     },
     [

@@ -2,20 +2,30 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { FieldType } from "~/types/field";
+import type { GridColumn } from "~/types/grid";
 import { FIELD_TYPES } from "../constants";
 import {
   QuestionIcon,
   SearchIcon,
   ChevronDownIcon,
+  PlusIcon,
+  AIIcon,
+  InfoIcon,
 } from "~/app/_components/ui/icons";
 import { useBase } from "../base-context";
 import { useColumnMutations } from "../../hooks/use-column-mutations";
 
 interface AddColumnModalProps {
   anchorEl?: HTMLElement | null;
+  editColumnId?: number | null;
+  columns?: GridColumn[];
 }
 
-export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
+export function AddColumnModal({
+  anchorEl,
+  editColumnId,
+  columns,
+}: AddColumnModalProps) {
   const {
     activeTableId,
     openModal,
@@ -24,12 +34,19 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
   } = useBase();
   const columnMutations = useColumnMutations(activeTableId);
 
+  const editColumn = columns?.find((c) => c.id === editColumnId);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(
-    null,
+    editColumn
+      ? (FIELD_TYPES.find((f) => f.type === editColumn.type) ?? null)
+      : null,
   );
-  const [columnName, setColumnName] = useState("");
-  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [columnName, setColumnName] = useState(
+    editColumn ? editColumn.name : "",
+  );
+  const [isConfiguring, setIsConfiguring] = useState(!!editColumn);
+
   const [position, setPosition] = useState<{
     top: number;
     left: number;
@@ -83,18 +100,26 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
   const handleConfirm = () => {
     if (selectedFieldType) {
-      const commonPayload = {
-        type: selectedFieldType.type,
-        afterColumnId: insertAfterColumnId ?? undefined,
-        beforeColumnId: insertBeforeColumnId ?? undefined,
-      };
-      if (columnName.trim() === "") {
-        columnMutations.handleAddColumn(commonPayload);
+      if (editColumnId) {
+        columnMutations.handleUpdateColumn(
+          editColumnId,
+          columnName.trim() || (editColumn?.name ?? ""),
+          selectedFieldType.type,
+        );
       } else {
-        columnMutations.handleAddColumn({
-          ...commonPayload,
-          name: columnName.trim(),
-        });
+        const commonPayload = {
+          type: selectedFieldType.type,
+          afterColumnId: insertAfterColumnId ?? undefined,
+          beforeColumnId: insertBeforeColumnId ?? undefined,
+        };
+        if (columnName.trim() === "") {
+          columnMutations.handleAddColumn(commonPayload);
+        } else {
+          columnMutations.handleAddColumn({
+            ...commonPayload,
+            name: columnName.trim(),
+          });
+        }
       }
       openModal(null);
     }
@@ -113,7 +138,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
       <div
         ref={modalRef}
-        className="z-50 w-120 overflow-hidden rounded-xl border bg-white border-gray-200 shadow-2xl fixed"
+        className="fixed z-50 w-116 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl"
         style={
           isDropdown ? { top: position.top, left: position.left } : undefined
         }
@@ -121,8 +146,8 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
         {!isConfiguring ? (
           /* PAGE 1: SELECTION VIEW */
           <div className="flex flex-col">
-            <div className="flex items-center gap-3 border-b border-gray-100 p-3">
-              <div className="flex w-full items-center gap-3 rounded-lg border border-transparent bg-gray-100 px-3 py-2 transition-all focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
+            <div className="flex items-center gap-2 border-b border-gray-100 p-2">
+              <div className="flex w-full items-center gap-3 rounded border border-transparent bg-gray-100 px-3 py-2 transition-all focus-within:border-blue-600 focus-within:bg-white focus-within:ring-1 focus-within:ring-blue-600">
                 <SearchIcon className="h-4 w-4 text-gray-500" />
                 <input
                   ref={searchInputRef}
@@ -136,12 +161,12 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
               <QuestionIcon className="h-4 w-8 cursor-help text-gray-400 hover:text-gray-600" />
             </div>
 
-            <div className="max-h-100 overflow-y-auto p-2">
+            <div className="max-h-180 overflow-y-auto p-2">
               {filteredFields.length > 0 ? (
                 <>
                   {agentFields.length > 0 && (
                     <div className="mb-4">
-                      <h3 className="mb-2 px-3 text-[11px] font-bold tracking-widest text-gray-400 uppercase">
+                      <h3 className="mb-2 px-3 text-xs text-gray-500">
                         Field Agents
                       </h3>
                       <div
@@ -151,14 +176,12 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                           <button
                             key={field.id}
                             onClick={() => handleSelectField(field)}
-                            className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-sm transition-all hover:border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                            className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-all hover:border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
                           >
                             <span className="text-purple-500">
                               {field.icon}
                             </span>
-                            <span className="font-medium text-gray-700">
-                              {field.name}
-                            </span>
+                            <span className="text-gray-700">{field.name}</span>
                           </button>
                         ))}
                       </div>
@@ -167,7 +190,7 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
 
                   {standardFields.length > 0 && (
                     <div>
-                      <h3 className="mb-2 px-3 text-[11px] font-bold tracking-widest text-gray-400 uppercase">
+                      <h3 className="mb-2 px-3 text-xs text-gray-500">
                         Standard fields
                       </h3>
                       <div className="space-y-0.5">
@@ -204,15 +227,16 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
           </div>
         ) : (
           /* PAGE 2: CONFIGURATION VIEW */
-          <div className="flex flex-col p-5">
-            <div className="space-y-5">
+          <div className="flex flex-col">
+            <div className="space-y-3 px-4 py-2">
               <div>
                 <input
                   autoFocus
                   type="text"
+                  value={columnName}
                   onChange={(e) => setColumnName(e.target.value)}
                   placeholder="Field name (optional)"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm transition-all focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -221,7 +245,8 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                   onClick={() => {
                     setIsConfiguring(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all hover:bg-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                  className="flex w-full items-center justify-between rounded border border-gray-300 px-3 py-2 text-sm transition-all hover:bg-gray-100 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+                  disabled={editColumn?.primary} // Do not allow primary field type change natively
                 >
                   <div className="flex items-center gap-2.5">
                     <span
@@ -233,41 +258,60 @@ export function AddColumnModal({ anchorEl }: AddColumnModalProps) {
                     >
                       {selectedFieldType?.icon}
                     </span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-gray-900">
                       {selectedFieldType?.name}
                     </span>
                   </div>
                   <ChevronDownIcon className="h-4 w-4 text-gray-500" />
                 </button>
               </div>
-              <p className="text-gray-600">
+              <p className="text-[13.5px] text-gray-500">
                 Enter text, or prefill each new cell with a default value.
               </p>
 
               <div>
-                <label className="my-4 text-sm">Default</label>
+                <label className="my-4 text-xs text-gray-600">Default</label>
                 <input
-                  autoFocus
                   type="text"
                   placeholder="Enter default value (optional)"
-                  className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                  className="mt-3 w-full rounded border border-gray-300 px-3 py-2 text-sm shadow transition-all focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
+              <div className="mt-4 mb-2 flex items-center justify-between">
+                <button
+                  onClick={() => openModal(null)}
+                  className="flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                >
+                  <PlusIcon className="inline h-4 w-4" />
+                  Add description
+                </button>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => openModal(null)}
+                    className="rounded-md px-3 py-1.5 text-[13px] text-gray-600 transition-colors hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={!selectedFieldType}
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-[13px] text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {editColumnId ? "Save" : "Create field"}
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div className="mt-4 flex items-center justify-end gap-3 border-t border-gray-100 pt-5">
-              <button
-                onClick={() => openModal(null)}
-                className="rounded-md px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={!selectedFieldType}
-                className="rounded-md bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Create field
+            <div className="m-0.5 flex items-center justify-between bg-gray-100 px-4 py-3">
+              <div className="flex items-center gap-1">
+                <AIIcon className="h-4 w-4 text-green-800" />
+                <span className="ml-2 text-sm text-gray-600">
+                  Automate this field with an agent
+                </span>
+                <InfoIcon className="ml-1 h-3 w-3 text-gray-600" />
+              </div>
+              <button className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600">
+                Convert
               </button>
             </div>
           </div>

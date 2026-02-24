@@ -7,6 +7,8 @@
 
 # testing
 /coverage
+/playwright-report
+/playwright/.auth
 
 # database
 /prisma/db.sqlite
@@ -46,3 +48,4 @@ yarn-error.log*
 
 # idea files
 .idea
+test-results

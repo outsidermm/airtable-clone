@@ -2,12 +2,14 @@
 
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import type { CellAddress } from "~/types/cell";
+import type { ColumnType } from "generated/prisma/enums";
 
 interface GridCellProps {
   rowId: number;
   columnId: number;
   width: number;
   value: string | number | null | undefined;
+  columnType: ColumnType;
   // State
   isSelectedCell: boolean;
   isInMultiSelection: boolean;
@@ -27,6 +29,7 @@ export const GridCell = memo(function GridCell({
   columnId,
   width,
   value,
+  columnType,
   isSelectedCell,
   isInMultiSelection,
   isEditing,
@@ -47,6 +50,7 @@ export const GridCell = memo(function GridCell({
 
   // Local State for Instant Feedback
   const [localValue, setLocalValue] = useState(displayValue);
+  const [showNumberWarning, setShowNumberWarning] = useState(false);
 
   useEffect(() => {
     setLocalValue(displayValue);
@@ -55,6 +59,14 @@ export const GridCell = memo(function GridCell({
   // Optimized Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextValue = e.target.value;
+
+    // Block non-numeric characters (allowing digits, negative signs, and decimals)
+    if (columnType === "NUMBER" && /[^\d.-]/.test(nextValue)) {
+      setShowNumberWarning(true);
+      return;
+    } else {
+      setShowNumberWarning(false);
+    }
 
     // Priority 1: Update the input immediately (0ms latency)
     setLocalValue(nextValue);
@@ -99,10 +111,17 @@ export const GridCell = memo(function GridCell({
         onBlur={onBlur}
       />
 
-      {showLastRowTooltip && isEditing && (
-        <div className="absolute bottom-full left-0 z-50 mb-1 rounded bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
+      {/* Number Warning Tooltip */}
+      {showNumberWarning && isEditing && (
+        <div className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500">
+          Please enter a number
+        </div>
+      )}
+
+      {/* Existing Shift+Enter Tooltip */}
+      {showLastRowTooltip && isEditing && !showNumberWarning && (
+        <div className="absolute right-1 bottom-0.5 z-50 mb-1 px-2 py-1 text-[10px] whitespace-nowrap text-gray-500">
           Shift+Enter to create new row
-          <div className="absolute top-full left-4 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-gray-900" />
         </div>
       )}
     </div>

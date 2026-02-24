@@ -68,7 +68,30 @@ export function FilterDropdown({
   onUpdateFilters,
   onClose,
 }: FilterDropdownProps) {
-  const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
+  // Initialize state with formatted values for number columns (e.g. 5 -> "5.0")
+  const [localFilters, setLocalFilters] = useState<FilterConfig[]>(() => {
+    return filters.map((f) => {
+      const col = columns.find((c) => c.id === f.columnId);
+      if (col?.type === "NUMBER") {
+        const val = f.value;
+        if (typeof val === "number") {
+          // Format integers to xx.0, otherwise keep precision
+          return {
+            ...f,
+            value: Number.isInteger(val) ? val.toFixed(1) : String(val),
+          };
+        } else if (val && !isNaN(Number(val))) {
+          // Ensure string values are also formatted if they look like integers
+          const num = Number(val);
+          if (Number.isInteger(num) && !String(val).includes(".")) {
+            return { ...f, value: num.toFixed(1) };
+          }
+        }
+      }
+      return f;
+    });
+  });
+
   const [conjunction, setConjunction] = useState<"and" | "or">(
     filterGroupLogic === "OR" ? "or" : "and",
   );
@@ -78,7 +101,9 @@ export function FilterDropdown({
     type: "column" | "operator" | "conjunction";
   } | null>(null);
 
-  const valueDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -86,6 +111,31 @@ export function FilterDropdown({
 
   const conjunctionLogic = (c: "and" | "or"): "AND" | "OR" =>
     c === "or" ? "OR" : "AND";
+
+  // Debounced execution to submit updates to the backend
+  const updateBackend = useCallback(
+    (newFilters: FilterConfig[], logic: "AND" | "OR") => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        // Sanitize values before sending to backend
+        const sanitizedFilters = newFilters.map((f) => {
+          const col = columns.find((c) => c.id === f.columnId);
+          if (col?.type === "NUMBER") {
+            // If value is empty string, we can't parse it to number effectively for DB if DB expects number.
+            // But if the operator requires a value and it's empty, it's an incomplete filter.
+            if (f.value === "" || f.value === undefined) {
+              return { ...f, value: "" };
+            }
+            const num = parseFloat(String(f.value));
+            return { ...f, value: isNaN(num) ? "" : num };
+          }
+          return f;
+        });
+        onUpdateFilters(sanitizedFilters, logic);
+      }, 300);
+    },
+    [onUpdateFilters, columns],
+  );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -95,62 +145,113 @@ export function FilterDropdown({
       const oldIndex = Number(active.id);
       const newIndex = Number(over.id);
 
-      const updated = arrayMove(localFilters, oldIndex, newIndex);
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = arrayMove(prev, oldIndex, newIndex);
+        updateBackend(updated, conjunctionLogic(conjunction));
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const addFilter = useCallback(() => {
-    const firstCol = columns[0];
-    if (!firstCol) return;
+    const targetCol = columns.find((c) => c.primary) ?? columns[0];
+    if (!targetCol) return;
+
     const newFilter: FilterConfig = {
-      columnId: firstCol.id,
-      operator: firstCol.type === "NUMBER" ? "equals" : "contains",
+      columnId: targetCol.id,
+      operator: targetCol.type === "NUMBER" ? "equals" : "contains",
       value: "",
     };
-    const updated = [...localFilters, newFilter];
-    setLocalFilters(updated);
-    onUpdateFilters(updated, conjunctionLogic(conjunction));
 
-    // Automatically open the column picker for the new filter
-    setOpenMenu({ index: updated.length - 1, type: "column" });
-  }, [columns, localFilters, onUpdateFilters, conjunction]);
+    setLocalFilters((prev) => [...prev, newFilter]);
+    // Note: Deliberately avoiding updateBackend here so it does not send
+    // incomplete queries without a value on initial load.
+  }, [columns]);
 
   const updateFilter = useCallback(
     (index: number, patch: Partial<FilterConfig>) => {
-      const updated = localFilters.map((f, i) =>
-        i === index ? { ...f, ...patch } : f,
-      );
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = prev.map((f, i) =>
+          i === index ? { ...f, ...patch } : f,
+        );
+
+        const filter = updated[index]!;
+        const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+        if (
+          !needsValue ||
+          (filter.value !== "" && filter.value !== undefined)
+        ) {
+          updateBackend(updated, conjunctionLogic(conjunction));
+        }
+
+        return updated;
+      });
       setOpenMenu(null);
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const updateFilterValue = useCallback(
     (index: number, value: string | number) => {
-      const updated = localFilters.map((f, i) =>
-        i === index ? { ...f, value } : f,
-      );
-      setLocalFilters(updated);
-      if (valueDebounceRef.current) clearTimeout(valueDebounceRef.current);
-      valueDebounceRef.current = setTimeout(() => {
-        onUpdateFilters(updated, conjunctionLogic(conjunction));
-      }, 300);
+      setLocalFilters((prev) => {
+        const updated = prev.map((f, i) => (i === index ? { ...f, value } : f));
+
+        const filter = updated[index]!;
+        const needsValue = !NO_VALUE_OPERATORS.has(filter.operator);
+
+        // Only schedule an update if it either requires no value or has an active value
+        if (
+          !needsValue ||
+          (filter.value !== "" && filter.value !== undefined)
+        ) {
+          updateBackend(updated, conjunctionLogic(conjunction));
+        }
+
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
+
+  const handleBlur = (index: number, columnType?: string) => {
+    if (columnType !== "NUMBER") return;
+
+    setLocalFilters((prev) => {
+      const filter = prev[index];
+      if (!filter) return prev;
+
+      const valStr = String(filter.value);
+      if (valStr === "" || valStr === undefined) return prev;
+
+      const num = parseFloat(valStr);
+      if (isNaN(num)) return prev;
+
+      // Format to xx.0 if it's an integer, or preserve float precision but strip leading zeros
+      // The requirement "all number field should be xx.0" implies strict formatting for integers.
+      const formatted = Number.isInteger(num) ? num.toFixed(1) : String(num);
+
+      if (formatted === valStr) return prev;
+
+      const updated = prev.map((item, i) =>
+        i === index ? { ...item, value: formatted } : item,
+      );
+
+      // Ensure backend logic receives the clean number (via updateBackend sanitization)
+      updateBackend(updated, conjunctionLogic(conjunction));
+      return updated;
+    });
+  };
 
   const removeFilter = useCallback(
     (index: number) => {
-      const updated = localFilters.filter((_, i) => i !== index);
-      setLocalFilters(updated);
-      onUpdateFilters(updated, conjunctionLogic(conjunction));
+      setLocalFilters((prev) => {
+        const updated = prev.filter((_, i) => i !== index);
+        updateBackend(updated, conjunctionLogic(conjunction));
+        return updated;
+      });
     },
-    [localFilters, onUpdateFilters, conjunction],
+    [conjunction, updateBackend],
   );
 
   const getOperators = (col: GridColumn | undefined) => {
@@ -158,8 +259,7 @@ export function FilterDropdown({
     return col.type === "NUMBER" ? NUMBER_OPERATORS : TEXT_OPERATORS;
   };
 
-  const containerWidthClass =
-    localFilters.length === 0 ? "w-80" : "w-[44rem] max-w-[90vw]";
+  const containerWidthClass = localFilters.length === 0 ? "w-84" : "w-148";
 
   return (
     <>
@@ -169,10 +269,10 @@ export function FilterDropdown({
         className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-lg transition-all ${containerWidthClass}`}
       >
         <div className="pb-2">
-          <h3 className="pb-2 text-sm font-medium text-gray-900">Filter</h3>
+          <h3 className="pb-2 text-[13px] text-gray-600">Filter</h3>
           <div className="flex items-center gap-2 rounded border border-gray-100 p-2">
             <AIIcon className="h-4 w-4 text-green-800" />
-            <span className="text-xs text-gray-400">
+            <span className="text-[13px] text-gray-400">
               Describe what you want to see
             </span>
           </div>
@@ -242,7 +342,10 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("and");
                                         setOpenMenu(null);
-                                        onUpdateFilters(localFilters, "AND");
+                                        setLocalFilters((prev) => {
+                                          updateBackend(prev, "AND");
+                                          return prev;
+                                        });
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >
@@ -252,7 +355,10 @@ export function FilterDropdown({
                                       onClick={() => {
                                         setConjunction("or");
                                         setOpenMenu(null);
-                                        onUpdateFilters(localFilters, "OR");
+                                        setLocalFilters((prev) => {
+                                          updateBackend(prev, "OR");
+                                          return prev;
+                                        });
                                       }}
                                       className="block w-full rounded px-2 py-1 text-left text-xs"
                                     >
@@ -343,7 +449,6 @@ export function FilterDropdown({
                               <SearchableSelect
                                 widthClass="w-48"
                                 searchPlaceholder="Find an operator"
-                                // Use showSearch={false} if you want it to feel more like a standard dropdown
                                 options={operators.map((op) => ({
                                   id: op.value,
                                   label: op.label,
@@ -367,17 +472,14 @@ export function FilterDropdown({
                           {needsValue ? (
                             <input
                               type={col?.type === "NUMBER" ? "number" : "text"}
+                              step="any"
                               value={filter.value ?? ""}
                               onChange={(e) =>
-                                updateFilterValue(
-                                  index,
-                                  col?.type === "NUMBER"
-                                    ? Number(e.target.value)
-                                    : e.target.value,
-                                )
+                                updateFilterValue(index, e.target.value)
                               }
+                              onBlur={() => handleBlur(index, col?.type)}
                               placeholder="Enter a value"
-                              className="w-full border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-400"
+                              className="w-full [appearance:textfield] border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none placeholder:text-gray-400 invalid:border-red-600 focus:border-blue-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                           ) : (
                             <div className="h-7" />
@@ -403,21 +505,17 @@ export function FilterDropdown({
           </DndContext>
         )}
 
-        <div
-          className={`mt-2 flex items-start gap-4 border-t border-gray-100 pt-3 ${
-            localFilters.length === 0 ? "flex-col gap-2" : "flex-row"
-          }`}
-        >
+        <div className="flex flex-row items-start gap-4 pt-3">
           <button
             onClick={addFilter}
-            className="flex items-center text-xs text-gray-600 hover:font-medium hover:text-gray-900"
+            className="flex items-center text-xs text-gray-600 hover:text-gray-900"
           >
             <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
             Add condition
           </button>
           <button
             onClick={addFilter}
-            className="flex items-center text-xs text-gray-600 hover:font-medium hover:text-gray-900"
+            className="flex items-center text-xs text-gray-600 hover:text-gray-900"
           >
             <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
             Add condition group
