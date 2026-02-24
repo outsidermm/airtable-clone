@@ -116,7 +116,7 @@ export function useCellMutations({
       // The local cache was already optimistically updated in onMutate,
       // so we don't need to overwrite it here unless it differs from the server.
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       toast.error("Couldn't save your changes. Please try again.");
 
       // Rollback to the previous value if the mutation fails

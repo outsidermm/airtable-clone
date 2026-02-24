@@ -20,7 +20,7 @@ export function useTableMutations(baseId: string, tables: Table[]) {
       setActiveTableId(newTable.id);
       setRenamingTableId(newTable.id);
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Couldn't create the table. Please try again."),
   });
 
   const renameTable = api.table.rename.useMutation({
@@ -37,11 +37,11 @@ export function useTableMutations(baseId: string, tables: Table[]) {
       }
       return { previousTables };
     },
-    onError: (err, _vars, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previousTables) {
         utils.table.getAllByBase.setData({ baseId }, context.previousTables);
       }
-      toast.error(err.message);
+      toast.error("Couldn't rename the table. Please try again.");
     },
     onSettled: () => {
       void utils.table.getAllByBase.invalidate({ baseId });
@@ -67,12 +67,12 @@ export function useTableMutations(baseId: string, tables: Table[]) {
     onSuccess: () => {
       toast.success("Table deleted");
     },
-    onError: (err, _vars, context) => {
+    onError: (_err, _vars, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousTables) {
         utils.table.getAllByBase.setData({ baseId }, context.previousTables);
       }
-      toast.error(err.message);
+      toast.error("Couldn't delete the table. Please try again.");
     },
     onSettled: () => {
       // Always refetch after error or success to ensure server sync
