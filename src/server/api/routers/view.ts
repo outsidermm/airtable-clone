@@ -55,6 +55,7 @@ export const viewRouter = createTRPCRouter({
     .input(
       z.object({
         tableId: z.number().int(),
+        name: z.string().min(1).max(255).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -73,7 +74,7 @@ export const viewRouter = createTRPCRouter({
         const viewCount = await tx.view.count({
           where: { tableId: input.tableId },
         });
-        const viewName = `Grid ${viewCount + 1}`;
+        const viewName = input.name ?? `Grid ${viewCount + 1}`;
 
         // Create view with empty config
         return tx.view.create({

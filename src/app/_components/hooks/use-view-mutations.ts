@@ -160,9 +160,12 @@ export function useViewMutations(
     },
   });
 
-  const handleAddView = useCallback(() => {
-    createView.mutate({ tableId: activeTableId });
-  }, [activeTableId, createView]);
+  const handleAddView = useCallback(
+    (name?: string) => {
+      createView.mutate({ tableId: activeTableId, name });
+    },
+    [activeTableId, createView],
+  );
 
   const handleRenameView = useCallback(
     (viewId: number, name: string) => {
