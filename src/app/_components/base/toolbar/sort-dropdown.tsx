@@ -153,7 +153,7 @@ export function SortDropdown({
     return dir === "asc" ? "A → Z" : "Z → A";
   };
 
-  const containerWidthClass = localSorts.length === 0 ? "w-80" : "w-114";
+  const containerWidthClass = localSorts.length === 0 ? "w-80" : "w-110";
 
   return (
     <>
@@ -161,7 +161,7 @@ export function SortDropdown({
       <div className="fixed inset-0 z-50" onClick={onClose} />
 
       <div
-        className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white pt-3 shadow-lg transition-all ${containerWidthClass}`}
+        className={`absolute top-full right-0 z-50 mt-1 rounded-lg border border-gray-200 bg-white pt-3 shadow-xl transition-all ${containerWidthClass}`}
       >
         {/* Header */}
         <div className="mx-4 flex flex-row items-center gap-1 border-b border-gray-200 pb-2">
@@ -173,8 +173,8 @@ export function SortDropdown({
         {localSorts.length === 0 ? (
           <div className="px-3 text-sm text-gray-500">
             <div className="mt-1 flex max-h-3/4 flex-col items-start justify-center gap-1 overflow-y-visible rounded px-1 py-1.5">
-              <div className="mb-1 flex w-full flex-row items-center gap-2 px-1">
-                <SearchIcon className="h-3.5 w-3.5 text-gray-300" />
+              <div className="group mb-1 flex w-full flex-row items-center gap-2 px-1 focus-within:text-blue-500">
+                <SearchIcon className="h-3.5 w-3.5 text-gray-300 group-focus-within:text-blue-500" />
                 <input
                   type="text"
                   value={globalSearch}
@@ -183,6 +183,14 @@ export function SortDropdown({
                   className="w-full bg-transparent text-[13px] text-gray-700 outline-none placeholder:text-gray-400"
                   autoFocus
                 />
+                {globalSearch && (
+                  <button
+                    onClick={() => setGlobalSearch("")}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               {filteredGlobalColumns.map((col) => (
                 <button
@@ -199,8 +207,8 @@ export function SortDropdown({
                 </button>
               ))}
               {filteredGlobalColumns.length === 0 && (
-                <span className="py-2 text-xs text-gray-400">
-                  No fields found
+                <span className="flex h-28 w-full items-center justify-center text-[13px] text-gray-500">
+                  No Results
                 </span>
               )}
             </div>
@@ -254,7 +262,8 @@ export function SortDropdown({
                               {openMenu?.index === index &&
                                 openMenu.type === "column" && (
                                   <SearchableSelect
-                                    widthClass="w-56"
+                                    searchPlaceholder="Find a field"
+                                    widthClass={`${sort.columnId === null ? "w-94" : "w-64"}`}
                                     options={columns
                                       .filter((c) =>
                                         localSorts.every(
@@ -282,7 +291,7 @@ export function SortDropdown({
                             </div>
 
                             {sort.columnId !== null && (
-                              <div className="relative w-24 shrink-0">
+                              <div className="relative w-30 shrink-0">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -355,10 +364,9 @@ export function SortDropdown({
                   })}
                 </div>
 
-                <div className="mt-2 flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 py-2">
                   <button
                     onClick={() => addSort(undefined)}
-                    disabled={localSorts.length >= columns.length}
                     className="flex items-center rounded px-1 py-1 text-[13px] text-gray-500 hover:text-gray-700 disabled:opacity-50"
                   >
                     <PlusIcon className="mr-1 h-3.5 w-3.5" />
@@ -370,7 +378,7 @@ export function SortDropdown({
           </DndContext>
         )}
         {localSorts.length >= 1 && (
-          <div className="flex items-center justify-between bg-gray-100 px-5 py-3">
+          <div className="flex items-center justify-between bg-gray-100 px-5 py-2">
             <div className="flex items-center gap-3">
               <button
                 onClick={onToggle}
@@ -384,7 +392,7 @@ export function SortDropdown({
                   }`}
                 />
               </button>
-              <span className="text-[13px] text-gray-700">
+              <span className="py-1.5 text-[13px] text-gray-700">
                 Automatically sort records
               </span>
             </div>
@@ -393,7 +401,7 @@ export function SortDropdown({
                 <button className="flex items-center text-xs text-gray-600 hover:text-gray-900">
                   Cancel
                 </button>
-                <button className="flex items-center rounded bg-blue-600 px-3 py-2 text-xs text-white">
+                <button className="flex items-center rounded-md bg-blue-600 px-2.5 py-1.25 text-xs text-white">
                   Sort
                 </button>
               </div>
