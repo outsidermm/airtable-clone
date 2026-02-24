@@ -155,7 +155,7 @@ test("double-clicking a column header opens the Edit Column modal", async ({
 test("clicking the + tab button opens the Add Table menu", async ({ page }) => {
   // The "+" button in the table tab bar
   const addTableBtn = page
-    .getByRole("button", { name: /add table|new table|\+/i })
+    .getByRole("button", { name: /add or import|\+/i })
     .or(
       page.locator("button[title*='table' i]"),
     )
@@ -179,7 +179,7 @@ test("creating a blank table from the Add Table menu adds a new table tab", asyn
   page,
 }) => {
   const addTableBtn = page
-    .getByRole("button", { name: /add table|new table|\+/i })
+    .getByRole("button", { name: /add or import|\+/i })
     .or(page.locator("button[title*='table' i]"))
     .first();
 
