@@ -80,7 +80,21 @@ export function useTableVirtualizer({
       ) => {
         const el = instance.scrollElement as HTMLElement | null;
         if (!el) return;
-        const onScroll = () => cb(el.scrollTop / scrollScaleRef.current, false);
+        const onScroll = () => {
+          // 1. Calculate the raw unscaled offset
+          let unscaledOffset = el.scrollTop / scrollScaleRef.current;
+
+          // 2. Calculate the absolute maximum possible scroll offset
+          const maxUnscaledOffset = totalVirtualHeight - el.clientHeight;
+
+          // 3. Clamp the value to prevent floating-point overshoot flickering
+          if (maxUnscaledOffset > 0 && unscaledOffset > maxUnscaledOffset) {
+            unscaledOffset = maxUnscaledOffset;
+          }
+
+          cb(unscaledOffset, false);
+        };
+
         onScroll();
         el.addEventListener("scroll", onScroll, { passive: true });
         return () => el.removeEventListener("scroll", onScroll);
