@@ -1,332 +1,356 @@
-# Airtable Clone
+# 🗂️ Airtable Clone
 
-**README & Implementation Guide**
-
-A full-featured Airtable clone built with the T3 stack (Next.js, tRPC, Prisma ORM, Tailwind CSS) with PostgreSQL, TanStack Table + Virtual, and deployed on Vercel.
+A high-performance Airtable clone built with the T3 stack, targeting smooth handling of 1M+ rows using PostgreSQL with a JSONB-on-Row storage pattern, virtualized infinite scroll, and full view management.
 
 ---
 
-## 📋 Project Overview
+## 🚀 What It Does
 
-This application allows authenticated users to create bases, manage tables with dynamic columns, edit cells inline, and handle datasets of 1M+ rows with zero-lag scrolling. All search, filter, and sort operations are executed at the database level for optimal performance.
+- Create and manage **Bases** (workspaces) and **Tables** within them
+- Define typed **Columns** (Text, Number) with drag-to-reorder support
+- Edit **Cells** inline with keyboard navigation (arrows, Tab, Enter, Escape)
+- Create, delete, duplicate, and bulk-insert **Rows** (up to 100k at a time via Faker.js seed)
+- Configure per-table **Views** with independent filters, sorts, column visibility, row height, column order, and frozen columns
+- Full-text **search** powered by PostgreSQL pg_trgm GIN indexes
+- **Drag-and-drop** reordering for rows, columns, and views (DnD Kit + LexoRank)
+- **Optimistic updates** for cell edits, row creation/deletion, column create/delete, table/view rename, and frozen columns
+- Real-time **performance panel** showing query timing per operation
 
-### 🛠 Tech Stack
+---
+
+## 🛠️ Tech Stack
 
 | Layer | Technology |
-|-------|------------|
-| Framework | Next.js (via create-t3-app) |
-| API | tRPC v11 with React Query v5 |
-| ORM | Prisma ORM (with @prisma/client) |
+|---|---|
+| Framework | Next.js 15 (App Router, Turbo dev) |
+| API | tRPC v11 + React Query v5 |
+| ORM | Prisma v7 (custom output: `generated/prisma/`) |
 | Database | PostgreSQL 15+ |
-| Auth | NextAuth.js v4 (Google OAuth) |
-| Table UI | TanStack Table v8 |
-| Virtualization | TanStack Virtual v3 |
-| Styling | Tailwind CSS |
-| Deployment | Vercel (Serverless Functions) |
-| Fake Data | @faker-js/faker |
-| Validation | Zod |
+| Auth | NextAuth v5 beta (Discord OAuth) |
+| Table UI | TanStack Table v8 + TanStack Virtual v3 |
+| Drag & Drop | DnD Kit |
+| Ordering | LexoRank (rows and columns) |
+| Styling | Tailwind CSS v4 |
+| Seed Data | Faker.js |
+| Package Manager | pnpm |
 
 ---
 
-## 🚀 Getting Started
+## ⚙️ Setup
 
 ### Prerequisites
 
-- Node.js >= 18.x and pnpm
-- PostgreSQL 15+ instance (local, Neon, Supabase, or Railway)
-- Google Cloud Console project with OAuth 2.0 credentials
-- Vercel account for deployment
+- Node.js 20+
+- pnpm (`npm install -g pnpm`)
+- PostgreSQL 15+ instance (local or hosted, e.g. Neon)
+- Discord OAuth app (for authentication)
 
-### Environment Variables (.env)
+### Environment Variables
+
+Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL="postgresql://user:pass@host:5432/dbname?schema=public"
-NEXTAUTH_SECRET="<random-secret>"
+DATABASE_URL="postgresql://user:password@localhost:5432/airtable_clone"
+NEXTAUTH_SECRET="your-random-secret"
 NEXTAUTH_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="<from-google-console>"
-GOOGLE_CLIENT_SECRET="<from-google-console>"
+DISCORD_CLIENT_ID="your-discord-client-id"
+DISCORD_CLIENT_SECRET="your-discord-client-secret"
 ```
 
-### Setup Commands
+### Installation & First Run
 
 ```bash
-git clone <repo-url> && cd airtable-clone
+# Install dependencies
 pnpm install
-npx prisma db push          # push schema to DB
-npx prisma generate         # generate Prisma Client
-npx prisma db seed          # (optional) seed default data
-pnpm dev                    # start dev server on :3000
+
+# Push the schema to your database
+pnpm db:push
+
+# Apply raw SQL migrations (GIN indexes, trgm extension)
+npx prisma db execute --file prisma/migrations/20260220000000_add_gin_index/migration.sql
+
+# Start the dev server (http://localhost:3000)
+pnpm dev
 ```
 
 ---
 
-## ✅ Implementation Checklist
+## 📋 Key Commands
 
-### 🔐 Authentication & User Management
+### Development
 
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Configure NextAuth.js with GoogleProvider | Auth | P0 - Critical |
-| ⬜ | Add Account, Session, User, VerificationToken models to schema.prisma | Auth | P0 - Critical |
-| ⬜ | Create SessionProvider wrapper in _app.tsx or layout.tsx | Auth | P0 - Critical |
-| ⬜ | Build sign-in / sign-out UI components | Auth | P1 - High |
-| ⬜ | Protect tRPC routes with middleware (ctx.session check) | Auth | P0 - Critical |
-| ⬜ | Redirect unauthenticated users from base/table pages | Auth | P1 - High |
+```bash
+pnpm dev              # Start dev server with Turbo (port 3000)
+pnpm build            # Production build
+pnpm start            # Start production server
+pnpm preview          # Build + start production preview
+```
 
-### 🗄 Prisma Schema Design
+### Database
 
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Define Base model (id, name, userId, createdAt, updatedAt) | Schema | P0 - Critical |
-| ⬜ | Define AirtableTable model (id, name, baseId, createdAt) | Schema | P0 - Critical |
-| ⬜ | Define Column model (id, name, type enum [TEXT, NUMBER], tableId, order) | Schema | P0 - Critical |
-| ✅ | Define Row model (id Int autoincrement, tableId, cells Json, createdAt) | Schema | P0 - Critical |
-| ✅ | JSONB-on-Row pattern (no Cell model — cells stored as Row.cells JSONB) | Schema | P0 - Critical |
-| ✅ | Define View model (id, name, tableId, config Json) | Schema | P1 - High |
-| ✅ | Add @@index([tableId, id]) on Row for cursor pagination | Schema | P0 - Critical |
-| ✅ | Add GIN index on Row.cells for JSONB query performance | Schema | P1 - High |
-| ✅ | Use Int autoincrement ID on Row (NOT cuid/uuid) for cursor perf | Schema | P0 - Critical |
-| ✅ | Run npx prisma db push && npx prisma generate, verify in Studio | Schema | P0 - Critical |
+```bash
+pnpm db:push          # Push schema to DB (development)
+pnpm db:generate      # Generate Prisma Client + run migrations
+pnpm db:studio        # Open Prisma Studio GUI
+pnpm db:prod:push     # Push schema to production DB
+pnpm db:prod:generate # Run migrations on production DB
+```
 
-### 🔌 tRPC API Layer (Routers)
+### Code Quality
 
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Create bases router: list, create, rename, delete | API | P0 - Critical |
-| ⬜ | Create tables router: list by base, create (with Faker defaults), rename | API | P0 - Critical |
-| ⬜ | Create columns router: list by table, add column (TEXT/NUMBER), reorder | API | P0 - Critical |
-| ⬜ | Create rows router: infiniteQuery with Prisma cursor-based pagination | API | P0 - Critical |
-| ✅ | Create cells router: update cell via jsonb_set on Row.cells | API | P0 - Critical |
-| ⬜ | Create views router: create, list, update config, delete | API | P1 - High |
-| ⬜ | Implement server-side search: prisma.cell.findMany with contains/ILIKE | API | P1 - High |
-| ⬜ | Implement server-side filters: where clause builders for number + text | API | P1 - High |
-| ⬜ | Implement server-side sort: orderBy on joined cell values | API | P1 - High |
-| ⬜ | Implement bulkInsertRows mutation: batched createMany (1k/batch) | API | P0 - Critical |
-| ⬜ | Use $queryRaw for complex search+filter+sort queries (Prisma limitation) | API | P1 - High |
-| ⬜ | Add input validation with Zod on every procedure | API | P1 - High |
-
-### 🖥 Table UI & Interactions
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Set up TanStack Table with dynamic column definitions from API | UI | P0 - Critical |
-| ⬜ | Match Airtable 1:1 visual design (grid lines, row colors, fonts, spacing) | UI | P0 - Critical |
-| ⬜ | Implement inline cell editing (click to edit, blur/Enter to save) | UI | P0 - Critical |
-| ⬜ | Implement arrow key (Up/Down/Left/Right) navigation across cells | UI | P0 - Critical |
-| ⬜ | Implement Tab key to move right, Shift+Tab to move left | UI | P0 - Critical |
-| ⬜ | Implement Enter to confirm + move down, Escape to cancel edit | UI | P1 - High |
-| ⬜ | Build dynamic "Add Column" button with type selector (Text / Number) | UI | P0 - Critical |
-| ⬜ | Build frozen row-number column (first column, always visible) | UI | P1 - High |
-| ⬜ | Build sticky header row that stays on scroll | UI | P0 - Critical |
-| ⬜ | Build "+ New Row" button at bottom of visible rows | UI | P1 - High |
-| ⬜ | Style active/selected cell with blue border (Airtable style) | UI | P1 - High |
-
-### ⚡ Virtualization & Performance (100k–1M rows)
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Integrate TanStack Virtual useVirtualizer for row virtualization | Perf | P0 - Critical |
-| ⬜ | Set table/thead/tbody to display: grid, rows to display: flex | Perf | P0 - Critical |
-| ⬜ | Set fixed row height (36px) and overscan: 10 in virtualizer config | Perf | P0 - Critical |
-| ⬜ | Wire tRPC useInfiniteQuery to Prisma cursor pagination | Perf | P0 - Critical |
-| ⬜ | Connect virtualizer scroll position to fetchNextPage trigger | Perf | P0 - Critical |
-| ⬜ | Add "Load 100k Rows" button with progress indicator | Perf | P0 - Critical |
-| ⬜ | Implement batched createMany (1k rows/batch) in $transaction | Perf | P0 - Critical |
-| ⬜ | For 100k+ inserts, use $executeRawUnsafe with multi-row VALUES | Perf | P1 - High |
-| ⬜ | Verify 60fps scrolling at 100k rows (Chrome DevTools Performance) | Perf | P1 - High |
-| ⬜ | Test 1M rows: confirm no crash, < 500MB browser memory | Perf | P0 - Critical |
-| ⬜ | Memoize flattened row array with useMemo to prevent re-allocation | Perf | P1 - High |
-| ⬜ | Debounce cell edit mutations (300ms) to reduce API calls | Perf | P2 - Medium |
-
-### 🔍 Search, Filter & Sort
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Build global search bar with debounced input (300ms) | Search | P1 - High |
-| ⬜ | Implement search at DB level: $queryRaw with ILIKE or pg_trgm GIN index | Search | P1 - High |
-| ⬜ | Search result acts as row filter (only matched rows shown) | Search | P1 - High |
-| ⬜ | Build filter builder UI (pick column, pick operator, enter value) | Filter | P1 - High |
-| ⬜ | Number operators: greater than, less than, equals, >=, <= | Filter | P1 - High |
-| ⬜ | Text operators: contains, not contains, is empty, is not empty, equals | Filter | P1 - High |
-| ⬜ | Build sort UI (pick column, toggle ASC/DESC) | Sort | P1 - High |
-| ⬜ | Text sort: A→Z / Z→A via ORDER BY at DB level | Sort | P1 - High |
-| ⬜ | Number sort: increasing / decreasing via ORDER BY at DB level | Sort | P1 - High |
-| ⬜ | Compose search + filter + sort in single $queryRaw (Prisma can't do complex JOINs natively) | Sort | P0 - Critical |
-
-### 👁 Views
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Build "Create View" UI (name input + save) | Views | P1 - High |
-| ⬜ | Save view config as JSON: { filters, sorts, search, hiddenColumnIds } | Views | P1 - High |
-| ⬜ | Load + apply saved view config when user selects a view | Views | P1 - High |
-| ⬜ | Build column visibility toggle (show/hide per view) | Views | P1 - High |
-| ⬜ | Build view switcher tabs/sidebar | Views | P2 - Medium |
-| ⬜ | Support rename and delete views | Views | P2 - Medium |
-
-### 🗂 Bases & Table Management
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Build base dashboard (grid/list of user's bases) | Base | P0 - Critical |
-| ⬜ | Create base → auto-creates one default table | Base | P0 - Critical |
-| ⬜ | Create table → generates default columns + rows with Faker.js | Base | P0 - Critical |
-| ⬜ | Build table tab bar within a base (switch between tables) | Base | P1 - High |
-| ⬜ | Implement rename base / rename table | Base | P2 - Medium |
-
-### 🎨 Loading States & UX Polish
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Skeleton loader for table grid on initial load | UX | P1 - High |
-| ⬜ | Spinner at bottom of table for infinite scroll fetching | UX | P1 - High |
-| ⬜ | Progress bar/counter for bulk 100k row insert | UX | P1 - High |
-| ⬜ | Optimistic cell updates (instant UI, background save) | UX | P2 - Medium |
-| ⬜ | Toast notifications for errors (failed save, network issues) | UX | P2 - Medium |
-| ⬜ | Empty state for new bases / tables (illustration + CTA) | UX | P2 - Medium |
-
-### 🚀 Deployment & DevOps
-
-| Status | Task | Category | Priority |
-|--------|------|----------|----------|
-| ⬜ | Deploy to Vercel, configure env vars in dashboard | Deploy | P0 - Critical |
-| ⬜ | Provision PostgreSQL (Neon recommended for Vercel + connection pooling) | Deploy | P0 - Critical |
-| ⬜ | Add ?pgbouncer=true&connection_limit=1 to DATABASE_URL for serverless | Deploy | P0 - Critical |
-| ⬜ | Run npx prisma migrate deploy in Vercel build step | Deploy | P1 - High |
-| ⬜ | Set up Prisma Accelerate or connection pool for production | Deploy | P1 - High |
-| ⬜ | Performance test: 1M rows on production DB, verify scroll + search perf | Deploy | P0 - Critical |
-| ⬜ | Add README.md with setup instructions to repo | Deploy | P1 - High |
+```bash
+pnpm check            # Run lint + typecheck together
+pnpm lint             # Run ESLint
+pnpm lint:fix         # Auto-fix ESLint issues
+pnpm typecheck        # TypeScript type checking
+pnpm format:write     # Auto-format with Prettier
+pnpm format:check     # Check Prettier formatting
+```
 
 ---
 
-## 🏗 Architecture & Database Design
+## 🏗️ Architecture
 
 ### JSONB-on-Row Pattern
 
-Airtable lets users create columns dynamically. Instead of the traditional EAV pattern (separate Cell table), this project stores cell data as a JSONB column directly on each Row: `{ "columnId": value }`. This eliminates JOINs, reduces storage ~10x, and makes writes dramatically simpler (1 row insert vs N+1).
+Each `Row` has a `cells` JSONB column storing `{ "columnId": value }` — for example `{ "1": "Alice", "2": 42 }`. This allows users to dynamically create and delete columns without `ALTER TABLE` migrations. Prisma's `Json` type maps directly to PostgreSQL JSONB. Cell keys are always column ID strings (never numbers).
 
-### Core Prisma Schema
+### Cursor-Based Pagination
 
-```prisma
-model Row {
-  id        Int            @id @default(autoincrement())
-  tableId   Int
-  table     AirtableTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  cells     Json           @default("{}")
-  createdAt DateTime       @default(now())
+Row IDs are `Int @default(autoincrement())`. Pages of 50 rows are fetched using Prisma cursor pagination (`take`, `skip: 1`, `cursor: { id }`), ordered by `(order ASC, id ASC)`. The first page also returns a total `COUNT(*)` so the virtualizer can render a proportionate scrollbar over the full dataset, with skeleton placeholders for unloaded rows.
 
-  @@index([tableId, id])    // cursor pagination
+### pageStore Pattern
+
+The virtual grid maintains a `pageStore` — a `Map<pageIndex, GridRow[]>` ref — to track which pages of rows have been fetched. This allows the virtualizer to render loaded rows immediately while fetching adjacent pages in the background. The store is merged into a flat array on each render cycle.
+
+### View System
+
+Each View stores a `config` JSONB with all per-view settings:
+
+```typescript
+interface ViewConfig {
+  sorts: { columnId: number; direction: "asc" | "desc" }[];
+  filters: { columnId: number; operator: string; value: string }[];
+  filterGroupLogic: "AND" | "OR";
+  hiddenColumns: number[];
+  rowHeight: "SHORT" | "MEDIUM" | "TALL" | "EXTRA_TALL";
+  columnOrder: number[];
+  frozenColumns: number; // count of frozen non-primary columns
 }
 ```
 
-Cell data format: `{ "1": "Alice", "2": 42, "3": "Some note" }` where keys are column ID strings and values are native JSON types (string, number, null).
+Filters, sorts, and search all execute as a single raw SQL query using JSONB operators (`->>`, `@>`) against `Row.cells`.
 
-### Critical Schema Decisions
+### LexoRank Ordering
 
-- **Use Int @id @default(autoincrement()) on Row model**: Required for cursor pagination performance. UUID/CUID are ~100x slower at deep offsets
-- **JSONB-on-Row pattern**: Cell data stored as `Row.cells` JSONB. Missing keys = empty cells (frontend handles gracefully). No Cell table.
-- **Column delete uses lazy cleanup**: Delete column immediately, strip orphan JSONB keys in background. Orphan keys are harmless.
-- **GIN index on Row.cells**: Required for JSONB query performance
+Both rows and columns use LexoRank strings for their `order` field. All mutations that create or move rows/columns (`create`, `insertNear`, `reorder`, `duplicate`) compute new LexoRank values in the application layer before writing to the database.
 
-### Index Strategy
+### Optimistic Updates
 
-1. **Row(tableId, id)** - Cursor pagination backbone
-2. **GIN(Row.cells jsonb_path_ops)** - JSONB containment and key-exists queries
-3. Column ordering uses LexoRank strings on `Column.order`
+Several mutations apply optimistic updates to avoid perceived latency:
 
-### Performance Considerations
+- **Cell edits**: Updated in `pageStore` ref directly (no re-render triggered until debounced save settles)
+- **Row create/delete**: Grid rows mutated optimistically; invalidated on settle
+- **Column create/delete**: Table schema cache updated immediately via React Query `setQueryData`
+- **Table/View rename**: React Query cache patched before the mutation resolves
+- **Frozen column count**: Debounced 400ms local state, then persisted to DB
 
-#### Frontend (Critical for 1M rows)
-- **F1**: Use CSS Grid layout on table/thead/tbody (required for TanStack Virtual)
-- **F2**: Fixed row height (36px) - dynamic height kills virtualization performance
-- **F3**: Set overscan: 10 for smooth scrolling without blank rows
-- **F4**: Memoize flattened row array to prevent re-renders
-- **F5**: Debounce cell edits (300ms) and search input (300ms)
+### Full-Text Search
 
-#### Backend (Database Level)
-- **B1**: Use Int autoincrement for Row.id (cursor performance)
-- **B2**: Create GIN index with pg_trgm for search (100ms vs 8s)
-- **B3**: Use $queryRaw for complex search+filter+sort (Prisma limitation)
-- **B4**: Batch bulk inserts in 1k chunks to avoid memory limits
+Per-column `pg_trgm` GIN indexes (`idx_row_cells_col{id}_trgm`) are created when a column is created and dropped when it is deleted. The `cell.search` procedure uses these indexes for `ILIKE`-based trigram matching.
 
----
+### Virtualization
 
-## 📊 Performance Targets
+TanStack Virtual renders only the visible rows at a fixed height:
 
-| Metric | Target | Measurement Tool |
-|--------|--------|------------------|
-| Scroll FPS (100k rows) | 60 FPS sustained | Chrome DevTools Performance |
-| Initial page load | < 2s FCP | Lighthouse |
-| Page fetch (50 rows) | < 200ms end-to-end | Network tab |
-| Search (1M rows) | < 300ms with GIN index | EXPLAIN ANALYZE |
-| Bulk insert 100k | < 30s total (batched) | Server logs + UI progress |
-| Cell edit round-trip | < 100ms (optimistic) | Network latency |
-| Browser memory (1M) | < 500MB heap | Chrome Memory profiler |
+| Row Height | px |
+|---|---|
+| SHORT | 36 |
+| MEDIUM | 54 |
+| TALL | 108 |
+| EXTRA_TALL | 162 |
+
+`overscan: 10` is set so rows are pre-rendered just outside the viewport.
 
 ---
 
-## 📅 Suggested Daily Schedule
+## ✅ Implemented Features
 
-| Day | Focus Area |
-|-----|------------|
-| Day 1 | Scaffold T3 app, Prisma schema design, Google OAuth, DB provisioning |
-| Day 2 | Base CRUD, Table CRUD, Faker.js default data on table creation |
-| Day 3 | Column management (dynamic add TEXT/NUMBER), Cell model + upsert mutation |
-| Day 4 | TanStack Table setup, Airtable UI match, inline cell editing |
-| Day 5 | Arrow key + Tab + Enter + Escape keyboard navigation |
-| Day 6 | TanStack Virtual integration, Prisma cursor infinite scroll wiring |
-| Day 7 | 100k bulk insert (batched createMany / $executeRaw), perf testing |
-| Day 8 | DB-level search ($queryRaw ILIKE + pg_trgm GIN), search bar UI |
-| Day 9 | DB-level filter + sort, compose with search in $queryRaw |
-| Day 10 | Views: create, save, load, column visibility toggle |
-| Day 11 | Loading states, error handling, UX polish, optimistic updates |
-| Day 12 | 1M row stress test, EXPLAIN ANALYZE on all queries, fix bottlenecks |
-| Day 13 | Vercel deploy, Neon/Supabase prod DB, connection pooling config |
-| Day 14 | Final QA, README polish, documentation |
+### Authentication
+- Discord OAuth sign-in / sign-out via NextAuth v5
+
+### Base Dashboard
+- Create, rename, delete bases
+- Star / unstar bases
+- Search bases, recent bases list
+
+### Table Management
+- Create, rename (inline), delete tables
+- Tab bar navigation between tables
+
+### Column Management
+- TEXT and NUMBER column types
+- Drag-to-reorder columns (DnD Kit + LexoRank)
+- Rename, delete, duplicate, set primary column
+- Hide/show columns per view
+- Right-click context menu
+
+### Row Management
+- Create rows, insert near (above/below), delete, duplicate
+- Bulk insert 100k rows with Faker.js seed data
+- Drag-to-reorder rows (DnD Kit + LexoRank)
+- Right-click context menu
+
+### Cell Editing
+- Inline editing for all column types
+- Debounced save (300ms)
+- Keyboard navigation: arrows, Tab/Shift+Tab, Enter/Shift+Enter, Escape
+- Multi-cell selection with Shift+click
+
+### Views
+- Create, rename (inline), delete, duplicate, drag-reorder views
+- Per-view: filters (text/number operators, AND/OR group logic)
+- Per-view: sorts (ASC/DESC per column)
+- Per-view: column visibility toggle
+- Per-view: row height (SHORT / MEDIUM / TALL / EXTRA_TALL)
+- Per-view: column order
+- Per-view: frozen columns (draggable border handle, persisted)
+
+### Search
+- Full-text grid search via toolbar (pg_trgm, debounced 300ms)
+
+### UI / UX
+- Virtualized grid with skeleton loading states for unloaded rows
+- Performance panel with per-query SQL timing
+- Toast notifications
 
 ---
 
-## ⚠️ Risk Matrix & Mitigations
+## 📈 Performance Targets
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Prisma createMany OOM at 100k | High | High | Chunk into 1k batches; fall back to $executeRawUnsafe |
-| UUID cursor kills deep-scroll perf | High | Critical | Use Int autoincrement on Row.id ⭐ |
-| Missing GIN index = 8s search | Medium | High | Add pg_trgm GIN index in raw migration |
-| Vercel function timeout on bulk insert | High | Medium | Use Vercel Pro (60s); split into smaller batches |
-| Connection pool exhaustion | High | Critical | pgBouncer + connection_limit=1; Prisma singleton |
-| JSONB key bloat on column delete | Low | Low | Lazy cleanup strips orphan keys in background; orphans are harmless |
+| Metric | Target |
+|---|---|
+| Scroll FPS (100k rows) | 60 FPS |
+| Page fetch (50 rows) | < 200ms |
+| Search (1M rows, GIN index) | < 300ms |
+| Browser memory (1M rows) | < 500MB |
+| Bulk insert (100k rows) | < 30s |
 
 ---
 
-## 🔧 Prisma-Specific Implementation Notes
+## 🗄️ Database Notes
 
-### Cursor Pagination
-Use `findMany` with `take`, `skip: 1`, `cursor: { id: lastId }`, `orderBy: { id: 'asc' }`. The cursor field MUST be unique and sequential. Prefer Int autoincrement over cuid() for performance.
+- **Neon** is the recommended PostgreSQL host for Vercel deployments (built-in connection pooling)
+- For serverless environments, append `?pgbouncer=true&connection_limit=1` to `DATABASE_URL`
+- Prisma Client is generated to `generated/prisma/` (custom output path), not `node_modules/.prisma`
+- Always import from `~/server/db`, not from `@prisma/client` directly
 
-### Bulk Inserts
-Use `prisma.row.createMany({ data: [...] })` in batches of 1,000 rows inside a `$transaction`. Each row includes a `cells` JSONB object. For 100k+ rows, fall back to `$executeRawUnsafe` with multi-row INSERT VALUES.
+---
 
-### Complex Queries
-Prisma cannot natively filter/sort on JSONB keys. Use `$queryRaw` with JSONB operators (`->>`, `jsonb_set`, `?`) for search+filter+sort on cell data.
+## 🧪 Testing
 
-### Indexes
-Create GIN index on Row.cells via raw SQL:
+The project uses **Vitest** for unit tests and **Playwright** for end-to-end (E2E) browser tests.
 
-```sql
-CREATE INDEX idx_row_cells_gin ON "Row" USING GIN (cells jsonb_path_ops);
+---
+
+### Unit Tests (Vitest)
+
+```bash
+pnpm test              # Run all unit tests once
+pnpm test:watch        # Run in watch mode (reruns on file change)
+pnpm test:coverage     # Run with coverage report (enforces 80% on src/lib/**)
+pnpm test:ui           # Open the Vitest browser UI
+```
+
+**What is tested:**
+- `src/lib/` utility functions (`query-log`, `date`, `base-icon-utils`, `base-color-storage`)
+- ViewConfig Zod schema validation (`src/server/api/routers/view`)
+- LexoRank ordering invariants (`src/server/api/utils/row-helpers`)
+
+**Coverage:**
+Coverage is collected for `src/lib/**` and `src/server/api/utils/**`. An 80% threshold is enforced on `src/lib/**`. Server-side tRPC routers require a live database and are covered by E2E tests instead.
+
+To view the HTML coverage report after running `pnpm test:coverage`:
+```bash
+open coverage/index.html    # macOS
+xdg-open coverage/index.html  # Linux
 ```
 
 ---
 
-## 📚 References
+### E2E Tests (Playwright)
 
-- [Prisma Cursor-Based Pagination](https://www.prisma.io/docs/orm/prisma-client/queries/pagination)
-- [TanStack Virtual Documentation](https://tanstack.com/virtual/latest)
-- [TanStack Table Virtualized Examples](https://tanstack.com/table/latest/docs/framework/react/examples/virtualized-infinite-scrolling)
-- [PostgreSQL GIN Index Guide](https://pganalyze.com/blog/gin-index)
-- [pg_trgm Extension Docs](https://www.postgresql.org/docs/current/pgtrgm.html)
+E2E tests run against a **live dev server** (started automatically). They test the full browser interaction including auth, grid navigation, context menus, drag-and-drop, filters, sorts, and modals.
+
+#### Prerequisites
+
+1. **Test database** — the dev server's `DATABASE_URL` must be reachable. The E2E tests create all their data under a dedicated test user (`playwright-test@e2e.internal`) and delete it in teardown. Your own developer data is **never modified**.
+
+2. No additional OAuth credentials are required — the global setup creates a session token directly in the database, bypassing the Google OAuth flow.
+
+#### Running E2E tests
+
+```bash
+# Headless (fastest, suitable for CI)
+pnpm test:e2e
+
+# Headed browser (watch the tests run in a real browser window)
+pnpm test:e2e -- --headed
+
+# Interactive UI mode (step through tests visually in Playwright's debugger)
+pnpm test:e2e:ui
+
+# Run a specific spec file
+pnpm test:e2e -- e2e/grid-navigation.spec.ts
+
+# Debug a single test
+pnpm test:e2e -- --debug e2e/context-menus.spec.ts
+```
+
+#### How the test database is managed
+
+| Step | What happens |
+|---|---|
+| **global-setup** | Creates `playwright-test@e2e.internal` user + a 30-day session token directly in the DB via Prisma |
+| **Each spec** | Calls `base.create` via the tRPC API to get a fresh base with a default table; deletes it in `afterAll` |
+| **global-teardown** | Deletes the test user, cascading to all sessions, bases, tables, rows created during the run |
+
+The session cookie (`authjs.session-token`) is written to `playwright/.auth/user.json` (git-ignored) and loaded by each test via `test.use({ storageState: ... })`.
+
+#### Viewing the Playwright report
+
+After a test run, open the HTML report:
+```bash
+pnpm exec playwright show-report
+# or
+open playwright-report/index.html
+```
+
+#### E2E spec files
+
+| File | Coverage |
+|---|---|
+| `e2e/auth.spec.ts` | Redirect, sign-in page, 401 on unauthenticated API |
+| `e2e/home.spec.ts` | Landing page load, nav bar, sign-in affordance |
+| `e2e/grid-navigation.spec.ts` | Arrow keys, Tab, Enter/Escape, Shift+Enter, Delete |
+| `e2e/toolbar.spec.ts` | Filter (AND/OR), sort, hide fields, bulk seed 1K, view rename, row height |
+| `e2e/context-menus.spec.ts` | Row context menu (insert/delete/duplicate), column header context menu |
+| `e2e/modals.spec.ts` | Add column modal (search, select type, configure, create), add table |
+| `e2e/drag-and-drop.spec.ts` | Column reorder, row reorder, column resize via pointer events |
+| `e2e/frozen-columns.spec.ts` | Frozen column sticky behaviour, drag border, persist across reload, network rollback |
 
 ---
 
-*Mark each checklist item with ✅ as completed and reference in daily progress updates.*
+## 📁 Key Files
+
+```
+src/server/api/routers/         # tRPC routers (base, table, column, row, cell, view)
+src/app/_components/base/
+  base-content.tsx              # Main table view orchestrator (infinite query, view config)
+  table/grid-table.tsx          # Virtualized grid (TanStack Virtual + TanStack Table)
+  hooks/                        # Grid hooks: navigation, selection, resizing, pageStore, optimistic grid
+src/app/_components/hooks/      # Shared mutation hooks
+prisma/schema.prisma            # Database schema
+src/server/db.ts                # Prisma singleton
+src/env.js                      # Environment variable validation (Zod)
+```
