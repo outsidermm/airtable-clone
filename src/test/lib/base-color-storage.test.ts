@@ -51,7 +51,7 @@ describe("base-color-storage", () => {
     });
 
     it("gracefully handles corrupt localStorage JSON", () => {
-      store["baseColors"] = "NOT_VALID_JSON{{{";
+      store.baseColors = "NOT_VALID_JSON{{{";
       // Should not throw; falls back to hash
       expect(() => getStoredBaseColor("any")).not.toThrow();
       const color = getStoredBaseColor("any");
