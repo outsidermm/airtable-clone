@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
+import { useToast } from "~/app/_components/ui/toast";
 
 interface Table {
   id: number;
@@ -10,6 +11,7 @@ interface Table {
 
 export function useTableMutations(baseId: string, tables: Table[]) {
   const utils = api.useUtils();
+  const toast = useToast();
   const { setRenamingTableId, setActiveTableId, activeTableId } = useBase();
 
   const createTable = api.table.create.useMutation({
@@ -18,6 +20,7 @@ export function useTableMutations(baseId: string, tables: Table[]) {
       setActiveTableId(newTable.id);
       setRenamingTableId(newTable.id);
     },
+    onError: () => toast.error("Couldn't create the table. Please try again."),
   });
 
   const renameTable = api.table.rename.useMutation({
@@ -38,6 +41,7 @@ export function useTableMutations(baseId: string, tables: Table[]) {
       if (context?.previousTables) {
         utils.table.getAllByBase.setData({ baseId }, context.previousTables);
       }
+      toast.error("Couldn't rename the table. Please try again.");
     },
     onSettled: () => {
       void utils.table.getAllByBase.invalidate({ baseId });
@@ -47,7 +51,9 @@ export function useTableMutations(baseId: string, tables: Table[]) {
   const deleteTable = api.table.delete.useMutation({
     onSuccess: () => {
       void utils.table.getAllByBase.invalidate({ baseId });
+      toast.success("Table deleted");
     },
+    onError: () => toast.error("Couldn't delete the table. Please try again."),
   });
 
   // const duplicateTable = api.table.duplicate.useMutation({

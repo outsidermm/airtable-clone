@@ -1,8 +1,10 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
+import { useToast } from "~/app/_components/ui/toast";
 
 export function useBaseMutations() {
   const utils = api.useUtils();
+  const toast = useToast();
 
   const toggleStarredMutation = api.base.toggleStarred.useMutation({
     onMutate: async ({ id }) => {
@@ -24,6 +26,7 @@ export function useBaseMutations() {
       if (context?.previousBases) {
         utils.base.getAll.setData(undefined, context.previousBases);
       }
+      toast.error("Failed to update starred status");
     },
     onSettled: (_data, _err, vars) => {
       // Refetch to ensure consistency
@@ -45,6 +48,7 @@ export function useBaseMutations() {
       void utils.base.getAll.invalidate();
       void utils.base.getById.invalidate({ id: vars.id });
     },
+    onError: () => toast.error("Couldn't rename the base. Please try again."),
   });
 
   const handleRename = useCallback(
@@ -58,6 +62,7 @@ export function useBaseMutations() {
     onSuccess: () => {
       void utils.base.getAll.invalidate();
     },
+    onError: () => toast.error("Couldn't delete the base. Please try again."),
   });
 
   const handleDeleteConfirm = useCallback(
@@ -73,6 +78,7 @@ export function useBaseMutations() {
       void utils.base.getById.prefetch({ id: data.id });
       await utils.base.getAll.invalidate();
     },
+    onError: () => toast.error("Couldn't create the base. Please try again."),
   });
   const handleCreateBase = useCallback(async () => {
     const newBase = await createBaseMutation.mutateAsync({});

@@ -117,7 +117,7 @@ export function useCellMutations({
       // so we don't need to overwrite it here unless it differs from the server.
     },
     onError: (error, variables, context) => {
-      toast.error(error.message);
+      toast.error("Couldn't save your changes. Please try again.");
 
       // Rollback to the previous value if the mutation fails
       if (context?.previousValue !== undefined) {

@@ -36,6 +36,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useToast } from "~/app/_components/ui/toast";
 import Image from "next/image";
 import { BASE_COLORS } from "~/lib/base-icon-utils";
 import {
@@ -66,6 +67,7 @@ interface BaseHeaderProps {
 
 export function BaseHeader({ base, tables = [] }: BaseHeaderProps) {
   const baseMutations = useBaseMutations();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("data");
   const [showBaseMenu, setShowBaseMenu] = useState(false);
   const [isRenamingBase, setIsRenamingBase] = useState(false);
@@ -105,7 +107,7 @@ Teammates will see this guide when they first open the base and can find it anyt
 
   const handleDuplicateBase = () => {
     setShowBaseSubMenu(false);
-    alert(
+    toast.info(
       "Base duplication coming soon. This will create a copy of all tables, columns, rows, and views.",
     );
   };
