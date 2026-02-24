@@ -1,4 +1,28 @@
 "use client";
+
+/**
+ * PlaceholderRow — skeleton loading row for virtualizer slots that have not
+ * yet been backed by fetched data.
+ *
+ * Role in the infinite scroll architecture:
+ *   The virtualizer is sized to `totalRowCount` (the full server-side count),
+ *   but only fetched pages exist in `pageStore`. For any virtual index that
+ *   has no corresponding loaded row, `base-content.tsx` renders a
+ *   PlaceholderRow at exactly the same absolute position and height as a real
+ *   SortableRow would occupy. This keeps the scroll thumb proportionate to
+ *   the full dataset and prevents layout shifts when data arrives.
+ *
+ * Layout fidelity:
+ *   Uses the same `frozenWidth` / `totalScrollableWidth` split and per-column
+ *   widths from `columnSizing` as SortableRow. Skeleton pulse divs match
+ *   actual cell widths so the grid dimensions are stable on hydration.
+ *
+ * Prefetch trigger:
+ *   When a PlaceholderRow scrolls into the viewport, `useTableVirtualizer`'s
+ *   debounced prefetch fires `fetchPage` for the corresponding page index,
+ *   replacing the placeholder with real data on the next render cycle.
+ */
+
 import type { VirtualItem } from "@tanstack/react-virtual";
 import type { GridColumn } from "~/types/grid";
 

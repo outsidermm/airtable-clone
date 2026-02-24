@@ -1,5 +1,38 @@
 "use client";
 
+/**
+ * TableTabs — horizontal tab strip for switching between AirtableTables
+ * within a single Base.
+ *
+ * Active table as query key:
+ *   `activeTableId` from BaseContext is the primary query key for all grid
+ *   data (rows, columns, views). Switching the active table invalidates the
+ *   virtualizer, resets `pageStore`, and triggers a fresh data load in
+ *   `useRowStore`. Everything downstream re-renders from scratch.
+ *
+ * Single-click vs double-click disambiguation:
+ *   A 200ms `clickTimeoutRef` guards `handleTableClick`. On first click,
+ *   the timeout fires and either switches the active table (if a different tab
+ *   was clicked) or opens the table options menu (if the active tab). On
+ *   double-click, the pending timeout is cancelled and inline rename mode
+ *   is activated instead. This pattern prevents accidental renames and
+ *   accidental menu opens.
+ *
+ * `renamingTableId` in BaseContext (not local state):
+ *   Stored in context so that external code (e.g. the "Rename" menu item in
+ *   EditTableModal) can programmatically open rename mode for any table.
+ *
+ * Hover prefetch:
+ *   `utils.table.getById.prefetch` on `onMouseEnter` warms the React Query
+ *   cache for the column schema before the user clicks, reducing perceived
+ *   switch latency at zero extra network cost (React Query deduplicates
+ *   in-flight prefetches).
+ *
+ * Table search:
+ *   Client-side filter over the already-fetched `tables` prop — no server
+ *   round-trip needed. `tableSearchRef` is auto-focused when the dropdown opens.
+ */
+
 import { useBase } from "../base-context";
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Base } from "~/types/base";

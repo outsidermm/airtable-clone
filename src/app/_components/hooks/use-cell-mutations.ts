@@ -1,3 +1,36 @@
+/**
+ * useCellMutations — manages the full lifecycle of a cell write, from instant
+ * local feedback through to server confirmation and rollback.
+ *
+ * Optimistic update flow:
+ *   1. handleCellUpdate is called from GridTable's debounced handler (300ms).
+ *   2. For real rows/columns, `updateCell.mutate()` fires.
+ *   3. `onMutate` immediately patches pageStoreRef (the mutable ref) and captures
+ *      the previous value as rollback context — zero re-render cost for the mutation
+ *      itself; `setPageStore(new Map(...))` triggers the render separately.
+ *   4. `onError` restores the captured previousValue into pageStoreRef and triggers
+ *      a render to reflect the rollback.
+ *
+ * Temp ID protocol (race condition between row create and cell edit):
+ *   When a row or column has a negative temp ID, `handleCellUpdate` cannot fire
+ *   a real mutation yet. Instead it:
+ *     - Writes the edit directly into pageStoreRef (instant visual feedback).
+ *     - Parks the value in `pendingOptimisticEditsRef` (keyed by temp rowId + colKey)
+ *       or `pendingColumnEditsRef` (keyed by temp colId + rowId).
+ *   When `onRowCreated` / `onColumnCreatedImpl` are called with the confirmed DB ID,
+ *   the pending edits are flushed as real `updateCell.mutate()` calls. This ensures
+ *   user keystrokes on freshly-created rows are never silently dropped.
+ *
+ * onRowCreated ID swap:
+ *   Beyond flushing pending edits, `onRowCreated` calls `notifyRowIdSwap` so that
+ *   useGridNavigation and useGridSelection can update any CellAddress state that
+ *   still references the now-invalid temp ID.
+ *
+ * TODO: If two concurrent cell edits target the same cell (e.g., rapid paste + type),
+ *   the second onMutate captures the optimistically-updated value as previousValue
+ *   rather than the true server value. A per-cell inflight counter would fix this.
+ */
+
 import { useCallback, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import { pushQueryEntry } from "~/lib/query-log";
@@ -44,6 +77,7 @@ export function useCellMutations({
 
   const updateCell = api.cell.update.useMutation({
     onMutate: async (variables) => {
+      // Track wall-clock start time per cell key for query-log performance telemetry.
       const key = `${variables.rowId}:${variables.columnId}`;
       cellUpdateStartRef.current.set(key, Date.now());
 

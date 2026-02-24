@@ -1,5 +1,36 @@
 "use client";
 
+/**
+ * GridCell — the leaf render unit of the virtualized spreadsheet.
+ *
+ * Responsibility:
+ *   Renders a single cell as either a read-only display chip or an active
+ *   text input, controlled by the `isEditing` prop. Both modes share the same
+ *   <input> element (readOnly toggled) to avoid DOM remounts and preserve
+ *   cursor position on edit entry.
+ *
+ * Local-first input model:
+ *   `localValue` state gives 0ms visual feedback — the input always reflects
+ *   what the user typed, immediately. `onChange` (which triggers the 300ms
+ *   debounce + tRPC mutation in the parent) is wrapped in `startTransition` so
+ *   React can deprioritize the more expensive downstream work while keeping
+ *   input rendering at full priority. A `useEffect` syncs `localValue` back
+ *   from `displayValue` when the parent commits a new server value (e.g. after
+ *   rollback or ID swap), ensuring the cell never drifts from server truth.
+ *
+ * Column-type validation:
+ *   NUMBER columns reject non-numeric characters (letters, symbols) at the
+ *   input boundary — before the value enters the debounce pipeline or tRPC
+ *   mutation. This is a UX guard only; the backend independently validates
+ *   cell values before persisting.
+ *
+ * Memoization contract:
+ *   This component is memo'd. All props must be primitives or stable references
+ *   to avoid defeating memoization. In particular, `onMouseDown`, `onMouseEnter`,
+ *   `onDoubleClick`, `onChange`, and `onBlur` must be wrapped in useCallback in
+ *   the parent (SortableRow / GridTable).
+ */
+
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import type { CellAddress } from "~/types/cell";
 import type { ColumnType } from "generated/prisma/enums";

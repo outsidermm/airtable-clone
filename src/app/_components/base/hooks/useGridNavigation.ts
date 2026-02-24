@@ -1,5 +1,37 @@
 "use client";
 
+/**
+ * useGridNavigation — document-level keyboard controller for the spreadsheet grid.
+ *
+ * Design decision — single capture-phase listener:
+ *   A single `document.addEventListener('keydown', ..., { capture: true })` listener
+ *   is used instead of per-cell handlers. Capture-phase ensures our logic runs before
+ *   the browser's native focus management, preventing Tab from moving DOM focus between
+ *   inputs and preventing Enter from natively submitting forms.
+ *
+ * Two-state selection model:
+ *   `selectedCell` — the cell highlighted with a selection ring (grid cursor).
+ *   `editingCell`  — the cell whose input is currently accepting text input.
+ *   Most keys operate on `selectedCell`; Enter / any character key elevates it to
+ *   `editingCell`. Escape always demotes `editingCell` back to `selectedCell`.
+ *
+ * Edit-mode arrow key override:
+ *   ArrowUp/Down inside an active input moves the cursor to start/end of the string
+ *   (matching standard spreadsheet UX) rather than navigating rows. ArrowLeft/Right
+ *   are passed through unchanged to allow text cursor movement within the cell.
+ *
+ * Shift+Enter:
+ *   Inserts a new row immediately below the current cell and clears edit mode.
+ *   Delegates to useRowMutations.handleInsertRowBelow, which triggers the full
+ *   optimistic insert cycle (temp ID, rowOrderOverride, pending edits flush).
+ *
+ * scrollToCell:
+ *   Must account for the frozen column pane when checking horizontal visibility.
+ *   `containerRect.left + frozenWidth` is the effective left scroll boundary;
+ *   cells behind the frozen pane are hidden and require a negative scrollDeltaX
+ *   to bring them into view.
+ */
+
 import { useEffect } from "react";
 import type { GridRow, GridColumn } from "~/types/grid";
 import type { CellAddress } from "~/types/cell";

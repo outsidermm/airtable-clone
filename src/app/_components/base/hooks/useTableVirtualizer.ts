@@ -1,3 +1,37 @@
+/**
+ * useTableVirtualizer — scroll-scaled TanStack Virtual configuration for 1M-row grids.
+ *
+ * The scroll-scaling problem:
+ *   CSS layout engines cap element heights at ~33.5M pixels (MAX_SAFE_HEIGHT).
+ *   At 36px per row, this limit is hit at ~930k rows. Beyond that, setting the
+ *   container to `rows.length × rowHeight` pixels causes browser layout failure.
+ *   The solution is a scale factor: the DOM height is capped at MAX_SAFE_HEIGHT,
+ *   and a `scrollScaleRef` ratio (MAX_SAFE_HEIGHT / totalVirtualHeight) is applied
+ *   bidirectionally:
+ *     - `observeElementOffset` divides raw scrollTop by the scale, so the virtualizer
+ *       operates in unscaled coordinate space (same as if the DOM were full-height).
+ *     - `scrollToFn` multiplies the requested offset before calling element.scrollTo(),
+ *       mapping virtualizer coordinates back to real CSS pixels.
+ *   correctedVirtualStart in grid-table.tsx anchors to the first rendered item to
+ *   prevent floating-point drift accumulation across large scroll distances.
+ *
+ * Prefetch strategy:
+ *   The effect fires `onRequestPage` for the current viewport window plus one ahead
+ *   (lastPage + 1), debounced 50ms to coalesce rapid scroll events. This one-page
+ *   lookahead ensures data arrives before the user reaches it at typical scroll speed.
+ *
+ * rowToSelectedColumns decomposition:
+ *   Multi-select state is stored as `Set<"rowId-colId">` strings for O(1) membership
+ *   tests. This memoized decomposition into `Map<rowId, Set<colId>>` lets each
+ *   SortableRow receive only its own column selection set, preventing unaffected
+ *   rows from re-rendering during drag-select operations.
+ *
+ * tableRowById:
+ *   Bridges TanStack Table's selection model (which keys rows by string ID) with the
+ *   virtualizer's rendering loop. Without this Map, each virtual item render would
+ *   require an O(n) linear search through the table row model.
+ */
+
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import {
   useMemo,
@@ -37,6 +71,8 @@ export function useTableVirtualizer({
   setRowSelection,
   ref,
 }: UseTableVirtualizerProps) {
+  // Force a re-render after mount so the parentRef is attached and the virtualizer
+  // can read the scroll container's real dimensions on the first layout pass.
   const [, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -44,6 +80,10 @@ export function useTableVirtualizer({
 
   const tableRows = table.getRowModel().rows;
   const totalVirtualHeight = rows.length * currentRowHeight;
+  // scrollScaleRef is written on every render (not in a useEffect) so it is always
+  // current when observeElementOffset / scrollToFn read it during scroll events.
+  // A React ref is used rather than a state variable to avoid scheduling a re-render
+  // every time the scroll position changes.
   const scrollScaleRef = useRef(1);
   scrollScaleRef.current =
     totalVirtualHeight > MAX_SAFE_HEIGHT
@@ -137,6 +177,10 @@ export function useTableVirtualizer({
   const firstVirtualIndex = virtualItems[0]?.index ?? 0;
   const lastVirtualIndex = virtualItems[virtualItems.length - 1]?.index ?? 0;
 
+  // Debounced prefetch: coalesces burst scroll events into a single batch request
+  // window. The +1 lookahead page loads the next page before the user reaches it.
+  // onRequestPage is a no-op for pages already in loadingPagesRef or pageStoreRef,
+  // so over-calling is safe and has no network cost.
   useEffect(() => {
     if (rows.length === 0) return;
     const id = setTimeout(() => {

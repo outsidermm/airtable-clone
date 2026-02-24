@@ -1,5 +1,39 @@
 "use client";
 
+/**
+ * GridHeader — the sticky column header row for the virtualized grid.
+ *
+ * Layout model:
+ *   Mirrors SortableRow's two-section split: a `position: sticky; left: 0;
+ *   z-index: 50` frozen section (checkbox + primary + extra frozen columns)
+ *   and a scrollable section for the remaining columns. The frozen section
+ *   has a higher z-index (50) than rows (30) so it is never obscured by
+ *   in-flight drag transforms.
+ *
+ * Column resize (TanStack Table):
+ *   Resize handles call `header.getResizeHandler()` from TanStack Table's
+ *   column-sizing API. Column sizes are tracked in `columnSizing` state
+ *   in grid-table.tsx and persisted to ViewConfig via a debounced save.
+ *   The primary column has its own `handlePrimaryResizeStart` because it is
+ *   not part of the TanStack Table `headerGroups` array.
+ *
+ * Column drag-reorder (DnD Kit):
+ *   Only the scrollable section is wrapped in `DndContext` + `SortableContext`.
+ *   Primary and frozen non-primary columns are excluded from drag reorder —
+ *   their position is fixed by ViewConfig.frozenColumns + the primary flag.
+ *   `horizontalListSortingStrategy` restricts movement to the X axis.
+ *
+ * Column highlights:
+ *   `filteredColumnIds` (green background) and `sortedColumnIds` (orange
+ *   background) are Sets derived from ViewConfig in base-content.tsx and
+ *   propagated as props — no per-column query needed.
+ *
+ * Context menu:
+ *   Right-clicking a column header or clicking the ChevronDown button both
+ *   call `setContextMenu` from BaseContext, opening the shared column context
+ *   menu at the click coordinates.
+ */
+
 import {
   DndContext,
   closestCenter,

@@ -1,4 +1,40 @@
 "use client";
+
+/**
+ * BaseHeader — top application chrome for a single Base workspace.
+ *
+ * Responsibilities:
+ *   1. Base identity: name, icon color, starred flag.
+ *   2. Base settings popover (rename, appearance, base guide, more options).
+ *   3. Application mode tab bar (Data / Automations / Interfaces / Forms).
+ *   4. Global action buttons (history, launch, share).
+ *   5. Mounts <TableTabs> for the table-level navigation strip.
+ *
+ * Base name persistence:
+ *   `baseNameValue` is local controlled state. Renaming fires on `onBlur` or
+ *   `Enter`, calling `baseMutations.handleRename` which applies an optimistic
+ *   update to the React Query cache and falls back on error. A `useEffect`
+ *   re-syncs `baseNameValue` from `base.name` when the component is not
+ *   actively renaming — guards against the optimistic value being stale if
+ *   another client renamed the base concurrently.
+ *
+ * Icon color:
+ *   `iconColor` is stored in localStorage via `getStoredBaseColor` / `setStoredBaseColor`
+ *   — a pure client preference that does not round-trip to the server. The
+ *   same color token drives the base icon, the active tab underline, the table
+ *   tab strip background tint, and the Share button background.
+ *
+ * Application mode tabs:
+ *   Only "Data" is wired to actual content; "Automations", "Interfaces", and
+ *   "Forms" are display stubs. `activeTab` local state controls which tab
+ *   appears selected, but navigation to those views is not yet implemented.
+ *
+ * Base settings popover:
+ *   Dismissed via a full-viewport click-catcher backdrop (`aria-hidden`).
+ *   The popover is not a true modal — it has no focus trap — so it is marked
+ *   `aria-haspopup="dialog"` on the trigger rather than role="dialog".
+ */
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { BASE_COLORS } from "~/lib/base-icon-utils";

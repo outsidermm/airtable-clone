@@ -1,5 +1,48 @@
 "use client";
 
+/**
+ * GridTable — the virtualized data grid rendering layer.
+ *
+ * Responsibility:
+ *   Receives the sparse `rows` array (GridRow | null)[] from BaseContent and renders
+ *   only the rows currently in the viewport via TanStack Virtual, with PlaceholderRow
+ *   for null slots. Owns all interaction state that lives at the grid boundary:
+ *   cell selection, editing mode, column sizing, frozen column count, and DnD.
+ *
+ * Layout model — two-section rows:
+ *   Each row renders as two absolute siblings: a sticky frozen section and a
+ *   fixed-width scrollable section. This avoids per-cell sticky calculations and
+ *   means frozen column logic is O(1) regardless of row count. The FrozenColumnOverlay
+ *   lives outside the scroll container so it never scrolls horizontally.
+ *
+ * Frozen column persistence:
+ *   `frozenExtraCount` is local state that updates immediately on drag; a 400ms
+ *   debounce timer (`frozenSaveTimerRef`) persists it to ViewConfig. `savedFrozenRef`
+ *   tracks the last-saved value so the effect can distinguish user changes from
+ *   prop-driven resets (e.g., switching views).
+ *
+ * Cell edit focus:
+ *   After `editingCell` is set, a useEffect queries the DOM for `input` inside
+ *   `#cell-{rowId}-{columnId}` and calls focus() + setSelectionRange(). This
+ *   is the only direct DOM manipulation in the grid; it runs after React has
+ *   committed the `readOnly={false}` change to the input.
+ *
+ * Auto-scroll during drag-select:
+ *   A rAF loop runs only while `isSelecting` is true. It reads the last known
+ *   mouse X position and applies proportional scroll deltas near the frozen and
+ *   right edges. Using a ref for mouse position avoids adding mousemove to the
+ *   component's dependency array.
+ *
+ * Performance boundaries:
+ *   - SortableRow and GridCell are both memo'd — DO NOT pass object literals or
+ *     inline functions as props, as this defeats memoization and causes every
+ *     visible row to re-render on each keystroke.
+ *   - handleCellChange is debounced 300ms here before propagating to useCellMutations,
+ *     preventing a tRPC mutation on every character typed.
+ *   - columnDefs are memoized on nonPrimaryColumns identity; avoid rebuilding them
+ *     by ensuring upstream column arrays use stable references.
+ */
+
 import {
   useState,
   useRef,
@@ -247,6 +290,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     );
 
     // --- 5. Helpers ---
+    // Per-cell debounce map: each cell key gets its own timer so rapid edits to
+    // different cells don't reset each other's debounce window. The 300ms delay
+    // balances perceived latency against write amplification for fast typists.
+    // PERF: This callback is passed as a prop to every SortableRow. Wrapping in
+    // useCallback with a stable [onCellUpdate] dep ensures it stays referentially
+    // stable across renders.
     const handleCellChange = useCallback(
       (rowId: number, columnId: number, value: string) => {
         const key = `${rowId}-${columnId}`;

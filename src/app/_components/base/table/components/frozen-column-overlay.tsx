@@ -1,3 +1,34 @@
+/**
+ * FrozenColumnOverlay — interactive drag handle for adjusting the frozen
+ * column boundary.
+ *
+ * Why it lives outside the scroll container:
+ *   If this overlay were inside the horizontally-scrollable div, it would
+ *   scroll away with the content. By positioning it absolutely relative to
+ *   the grid's outer container, it always tracks `frozenWidth` regardless of
+ *   how far the user has scrolled horizontally.
+ *
+ * Drag protocol:
+ *   `mousedown` calls `handleFrozenBorderDragStart` in grid-table.tsx, which
+ *   sets `isDraggingFreezeRef.current = true` and attaches `mousemove` /
+ *   `mouseup` listeners on `document`. The overlay does not manage drag state
+ *   itself — it only starts the drag. `isDraggingFreezeRef` is a ref (not
+ *   state) so the mousemove closure always reads the live value without
+ *   capturing a stale boolean.
+ *
+ * Hover indicator:
+ *   `freezeLineHoverY` is the vertical offset within the overlay where the
+ *   cursor is hovering. It drives a floating dot + tooltip that appear only
+ *   when not dragging and not obscured by an open modal or context menu
+ *   (`activeModal || contextMenu` guard). Both elements are `aria-hidden`
+ *   because they are purely decorative affordances.
+ *
+ * frozenColumns persistence:
+ *   On drag completion, grid-table.tsx debounces a ViewConfig update via
+ *   `handleFrozenColumnsChange`, persisting `frozenColumns` to the database.
+ *   This means the freeze boundary survives page refresh and is per-view.
+ */
+
 import { useBase } from "../../base-context";
 import { HEADER_HEIGHT } from "../../constants";
 

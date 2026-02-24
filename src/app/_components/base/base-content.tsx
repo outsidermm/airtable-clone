@@ -1,5 +1,48 @@
 "use client";
 
+/**
+ * BaseContent — root orchestrator for the table editing experience.
+ *
+ * Responsibility:
+ *   Owns all server-state queries (base, tables, views, rows) and coordinates
+ *   the data pipeline from tRPC → pageStore → GridTable. It does not render any
+ *   grid cells itself; it produces derived props and passes them down.
+ *
+ * State topology:
+ *   ┌─────────────────────────────────────────────────────────────────┐
+ *   │  tRPC queries (React Query cache)                               │
+ *   │    base.getById · table.getAllByBase · table.getById            │
+ *   │    view.getById  →  viewConfig (sorts, filters, hidden cols)    │
+ *   └───────────────┬─────────────────────────────────────────────────┘
+ *                   │ viewConfig
+ *   ┌───────────────▼──────────────────────────┐
+ *   │  useRowStore  →  pageStore + totalRowCount│  row data layer
+ *   │  useOptimisticGrid                        │  add/delete/insert mutations
+ *   │  useCellMutations                         │  cell write + ID-swap protocol
+ *   └───────────────┬──────────────────────────┘
+ *                   │ gridRows (sparse GridRow | null array)
+ *   ┌───────────────▼──────────────────────────┐
+ *   │  GridTable (ref'd via gridTableRef)       │  rendering / keyboard / DnD
+ *   └──────────────────────────────────────────┘
+ *
+ * gridRows construction:
+ *   A sparse array of length `totalRowCount` is built every render from pageStore.
+ *   Null slots are passed to GridTable, which renders PlaceholderRow for them.
+ *   When `rowOrderOverride` is active (drag-reorder / insert-near in progress),
+ *   its sparse index takes precedence; pageStore entries fill only empty slots
+ *   whose IDs are not already in the override set, preventing ghost duplicates.
+ *
+ * View-driven column ordering:
+ *   `visibleColumns` applies two transformations: filter by `hiddenColumns`, then
+ *   re-sort by `columnOrder` from ViewConfig. Both are pure memoized operations —
+ *   the Column model itself is never mutated for ordering.
+ *
+ * frozenColumns / columnOrder persistence:
+ *   Both call `view.update.mutate` with a debounced or settle-triggered payload.
+ *   ViewConfig is the single source of truth for all per-view display state;
+ *   no display preferences are stored on the Column or Row models.
+ */
+
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
@@ -273,6 +316,14 @@ export function BaseContent({
     return map;
   }, [pageStore]);
 
+  // gridRows is the interface between the page store and the virtualizer.
+  // Length equals totalRowCount (the full dataset size), so the virtualizer's
+  // scroll bar is proportionate to the entire table even when only a few pages
+  // are loaded. Null slots render as PlaceholderRow skeleton rows.
+  //
+  // Override path: when rowOrderOverride is active, the two-pass algorithm ensures
+  // newly fetched pages can fill null gaps without displacing already-positioned rows.
+  // overrideSet tracks IDs already placed so the pageStore merge cannot create duplicates.
   const gridRows = useMemo<(GridRow | null)[]>(() => {
     if (!totalRowCount) return [];
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
@@ -319,6 +370,10 @@ export function BaseContent({
     onSettled: () => refetchLoadedPages(),
   });
 
+  // handleReorderRow is called by useGridDnd on DragEnd. It constructs or reuses
+  // rowOrderOverride, applies arrayMove to produce the new visual order, then fires
+  // row.reorder to persist the new LexoRank value. refetchLoadedPages on onSettled
+  // reconciles the server's authoritative order once the mutation completes.
   const handleReorderRow = useCallback(
     (draggedRowIds: number[], targetRowId: number) => {
       const draggedId = draggedRowIds[0]!;
