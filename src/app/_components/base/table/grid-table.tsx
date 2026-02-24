@@ -44,6 +44,7 @@ import { useOptimisticIds } from "../hooks/useOptimisticIds";
 import { useGridDnd } from "../hooks/useGridDnd";
 import { useTableVirtualizer } from "../hooks/useTableVirtualizer";
 import { useGridResizing } from "../hooks/useGridResizing";
+import React from "react";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -204,7 +205,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         onFrozenColumnsChange?.(frozenExtraCount);
       }, 400);
       return () => {
-        if (frozenSaveTimerRef.current) clearTimeout(frozenSaveTimerRef.current);
+        if (frozenSaveTimerRef.current)
+          clearTimeout(frozenSaveTimerRef.current);
       };
     }, [frozenExtraCount, onFrozenColumnsChange]);
 
@@ -457,115 +459,120 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 sortedColumnIds={sortedColumnIds}
               />
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={rowOrder}
-                  strategy={verticalListSortingStrategy}
+              {/* 1. Render Rows (Only if they exist) */}
+              {rows.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div
-                    style={{
-                      height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
-                      position: "relative",
-                      minWidth: "fit-content",
-                    }}
+                  <SortableContext
+                    items={rowOrder}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const rowData = rows[virtualRow.index];
+                    <div
+                      style={{
+                        height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
+                        position: "relative",
+                        minWidth: "fit-content",
+                      }}
+                    >
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const rowData = rows[virtualRow.index];
 
-                      if (!rowData) {
-                        return (
-                          <PlaceholderRow
-                            key={`placeholder-${virtualRow.index}`}
-                            virtualRow={virtualRow}
-                            scrollScaleRef={scrollScaleRef}
-                            currentRowHeight={currentRowHeight}
-                            frozenWidth={frozenWidth}
-                            totalScrollableWidth={totalScrollableWidth}
-                            nonPrimaryColumns={nonPrimaryColumns}
-                            columnSizing={columnSizing}
-                          />
-                        );
-                      }
-
-                      const tableRow = tableRowById.get(rowData.id);
-                      if (!tableRow) return null;
-
-                      const selectedColumnId =
-                        selectedCell?.rowId === rowData.id
-                          ? selectedCell.columnId
-                          : null;
-                      const editingColumnId =
-                        editingCell?.rowId === rowData.id
-                          ? editingCell.columnId
-                          : null;
-                      const multiSelectColumnIds = isMultiSelect
-                        ? (rowToSelectedColumns.get(rowData.id) ?? null)
-                        : null;
-
-                      if (rowData.id < 0) {
-                        if (!stableKeyMapRef.current.has(rowData.id)) {
-                          stableKeyMapRef.current.set(
-                            rowData.id,
-                            `temp-${rowData.id}`,
+                        if (!rowData) {
+                          return (
+                            <PlaceholderRow
+                              key={`placeholder-${virtualRow.index}`}
+                              virtualRow={virtualRow}
+                              scrollScaleRef={scrollScaleRef}
+                              currentRowHeight={currentRowHeight}
+                              frozenWidth={frozenWidth}
+                              totalScrollableWidth={totalScrollableWidth}
+                              nonPrimaryColumns={nonPrimaryColumns}
+                              columnSizing={columnSizing}
+                            />
                           );
                         }
-                      }
-                      const rowKey =
-                        rowData.id < 0
-                          ? stableKeyMapRef.current.get(rowData.id)!
-                          : (stableKeyMapRef.current.get(rowData.id) ??
-                            tableRow.id);
 
-                      return (
-                        <SortableRow
-                          key={rowKey}
-                          rowId={rowData.id}
-                          virtualStart={
-                            virtualRow.start * scrollScaleRef.current
+                        const tableRow = tableRowById.get(rowData.id);
+                        if (!tableRow) return null;
+
+                        const selectedColumnId =
+                          selectedCell?.rowId === rowData.id
+                            ? selectedCell.columnId
+                            : null;
+                        const editingColumnId =
+                          editingCell?.rowId === rowData.id
+                            ? editingCell.columnId
+                            : null;
+                        const multiSelectColumnIds = isMultiSelect
+                          ? (rowToSelectedColumns.get(rowData.id) ?? null)
+                          : null;
+
+                        if (rowData.id < 0) {
+                          if (!stableKeyMapRef.current.has(rowData.id)) {
+                            stableKeyMapRef.current.set(
+                              rowData.id,
+                              `temp-${rowData.id}`,
+                            );
                           }
-                          virtualIndex={virtualRow.index}
-                          currentRowHeight={currentRowHeight}
-                          isRowSelected={selectedRowIds.has(String(rowData.id))}
-                          rowBg={
-                            selectedRowIds.has(String(rowData.id))
-                              ? "bg-blue-50"
-                              : rowData.id === activeRowId ||
-                                  rowData.id === hoveredRowId
-                                ? "bg-gray-50"
-                                : "bg-white"
-                          }
-                          rowData={rowData}
-                          row={tableRow}
-                          frozenWidth={frozenWidth}
-                          primaryColumn={primaryColumn}
-                          primaryColumnWidth={primaryColumnWidth}
-                          nonPrimaryColumns={nonPrimaryColumns}
-                          frozenNonPrimaryCount={clampedFrozenExtraCount}
-                          columnSizing={columnSizing}
-                          selectedColumnId={selectedColumnId}
-                          editingColumnId={editingColumnId}
-                          multiSelectColumnIds={multiSelectColumnIds}
-                          handleMouseDown={handleMouseDown}
-                          handleMouseEnter={handleMouseEnter}
-                          handleCellChange={handleCellChange}
-                          setEditingCell={setEditingCell}
-                          setHoveredRowId={setHoveredRowId}
-                          totalScrollableWidth={totalScrollableWidth}
-                          showLastRowTooltip={showLastRowTooltip}
-                          columnKeyMap={columnKeyMap}
-                          onContextMenu={handleRowContextMenu}
-                          filteredColumnIds={filteredColumnIds}
-                          sortedColumnIds={sortedColumnIds}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                        }
+                        const rowKey =
+                          rowData.id < 0
+                            ? stableKeyMapRef.current.get(rowData.id)!
+                            : (stableKeyMapRef.current.get(rowData.id) ??
+                              tableRow.id);
+
+                        return (
+                          <SortableRow
+                            key={rowKey}
+                            rowId={rowData.id}
+                            virtualStart={
+                              virtualRow.start * scrollScaleRef.current
+                            }
+                            virtualIndex={virtualRow.index}
+                            currentRowHeight={currentRowHeight}
+                            isRowSelected={selectedRowIds.has(
+                              String(rowData.id),
+                            )}
+                            rowBg={
+                              selectedRowIds.has(String(rowData.id))
+                                ? "bg-blue-50"
+                                : rowData.id === activeRowId ||
+                                    rowData.id === hoveredRowId
+                                  ? "bg-gray-50"
+                                  : "bg-white"
+                            }
+                            rowData={rowData}
+                            row={tableRow}
+                            frozenWidth={frozenWidth}
+                            primaryColumn={primaryColumn}
+                            primaryColumnWidth={primaryColumnWidth}
+                            nonPrimaryColumns={nonPrimaryColumns}
+                            frozenNonPrimaryCount={clampedFrozenExtraCount}
+                            columnSizing={columnSizing}
+                            selectedColumnId={selectedColumnId}
+                            editingColumnId={editingColumnId}
+                            multiSelectColumnIds={multiSelectColumnIds}
+                            handleMouseDown={handleMouseDown}
+                            handleMouseEnter={handleMouseEnter}
+                            handleCellChange={handleCellChange}
+                            setEditingCell={setEditingCell}
+                            setHoveredRowId={setHoveredRowId}
+                            totalScrollableWidth={totalScrollableWidth}
+                            showLastRowTooltip={showLastRowTooltip}
+                            columnKeyMap={columnKeyMap}
+                            onContextMenu={handleRowContextMenu}
+                            filteredColumnIds={filteredColumnIds}
+                            sortedColumnIds={sortedColumnIds}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
 
               <div
                 className="flex shrink-0 bg-gray-100"
@@ -592,19 +599,33 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 />
               </div>
 
-              <div
-                className="flex flex-1 bg-gray-100"
-                style={{ minWidth: "fit-content", minHeight: 125 }}
-              >
+              {rows.length === 0 ? (
                 <div
-                  className="sticky left-0"
+                  className="flex flex-1 items-center py-20 text-gray-400"
                   style={{
-                    width: frozenWidth,
-                    borderRight: "2px solid rgb(209, 213, 219)",
+                    width: frozenWidth + totalScrollableWidth,
+                    minWidth: "100%",
                   }}
-                />
-                <div className="flex-1" />
-              </div>
+                >
+                  <div className="text-md sticky left-1/2 w-max -translate-x-1/2">
+                    All records are filtered
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-1 bg-gray-100"
+                  style={{ minWidth: "fit-content", minHeight: 125 }}
+                >
+                  <div
+                    className="sticky left-0"
+                    style={{
+                      width: frozenWidth,
+                      borderRight: "2px solid rgb(209, 213, 219)",
+                    }}
+                  />
+                  <div className="flex-1" />
+                </div>
+              )}
             </div>
           </div>
 
