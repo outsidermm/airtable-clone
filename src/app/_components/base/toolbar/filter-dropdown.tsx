@@ -309,8 +309,7 @@ export function FilterDropdown({
                     <SortableItem
                       key={String(index)}
                       id={String(index)}
-                      dragHandleClassName="border border-gray-200 p-1.5 rounded-r"
-                      hideDragHandle={localFilters.length === 1}
+                      dragHandleClassName="border border-gray-200 p-1.75 rounded-r"
                     >
                       <div className="flex w-full items-center">
                         {/* 1. Conjunction (Where / And / Or) */}
@@ -490,7 +489,7 @@ export function FilterDropdown({
                         <div className="flex shrink-0 items-center border border-gray-200">
                           <button
                             onClick={() => removeFilter(index)}
-                            className="p-1.5 text-gray-400 hover:bg-gray-100"
+                            className="p-1.75 text-gray-400 hover:bg-gray-100"
                             title="Remove condition"
                           >
                             <TrashIcon className="h-3.5 w-3.5" />
