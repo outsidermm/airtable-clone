@@ -16,7 +16,7 @@ interface UseCellMutationsProps {
   registerOnColumnCreated: (
     callback: (tempColId: number, realColId: number) => void,
   ) => void;
-  setRowOrderOverride: React.Dispatch<React.SetStateAction<number[] | null>>;
+  setRowOrderOverride: React.Dispatch<React.SetStateAction<(number | null)[] | null>>;
   notifyRowIdSwap: (tempId: number, realId: number) => void;
   pageStoreRef: React.RefObject<Map<number, GridRow[]>>;
   setPageStore: React.Dispatch<React.SetStateAction<Map<number, GridRow[]>>>;

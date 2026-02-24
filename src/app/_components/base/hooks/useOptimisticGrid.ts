@@ -11,7 +11,7 @@ interface UseOptimisticGridProps {
   pendingOptimisticEditsRef: React.RefObject<
     Map<number, Record<string, string | number | null>>
   >;
-  setRowOrderOverride: React.Dispatch<React.SetStateAction<number[] | null>>;
+  setRowOrderOverride: React.Dispatch<React.SetStateAction<(number | null)[] | null>>;
 }
 
 export function useOptimisticGrid({
@@ -147,17 +147,6 @@ export function useOptimisticGrid({
       const newCount = prevCount + 1;
       totalRowCountRef.current = newCount;
 
-      // Compact flat order: only loaded rows in page-index order.
-      // Insert-near always targets a visible (loaded) row, so indexOf will find it.
-      // Rows beyond the override length are filled by the page-store path in gridRows.
-      const preInsertFlatOrder: number[] = [
-        ...(pageStoreRef.current?.keys() ?? []),
-      ]
-        .sort((a, b) => a - b)
-        .flatMap((pi) =>
-          (pageStoreRef.current?.get(pi) ?? []).map((r) => r.id),
-        );
-
       const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
       const existingPage = pageStoreRef.current?.get(lastPageIndex) ?? [];
       pageStoreRef.current?.set(lastPageIndex, [...existingPage, tempRow]);
@@ -165,12 +154,23 @@ export function useOptimisticGrid({
       setTotalRowCount(newCount);
 
       setRowOrderOverride((prev) => {
-        const currentOrder = prev ?? preInsertFlatOrder;
-        let insertIdx = -1;
+        let currentOrder: (number | null)[] = prev ?? [];
 
+        // BUILD A SPARSE ARRAY preserving null gaps
+        if (!prev) {
+          currentOrder = new Array<number | null>(prevCount).fill(null);
+          for (const [pageIndex, pageRows] of pageStoreRef.current?.entries() ??
+            []) {
+            const startIdx = pageIndex * PAGE_SIZE;
+            pageRows.forEach((row, i) => {
+              if (startIdx + i < prevCount) currentOrder[startIdx + i] = row.id;
+            });
+          }
+        }
+
+        let insertIdx = -1;
         if (beforeRowId != null) {
-          const targetIdx = currentOrder.indexOf(beforeRowId);
-          if (targetIdx !== -1) insertIdx = targetIdx;
+          insertIdx = currentOrder.indexOf(beforeRowId);
         } else if (afterRowId != null) {
           const targetIdx = currentOrder.indexOf(afterRowId);
           if (targetIdx !== -1) insertIdx = targetIdx + 1;

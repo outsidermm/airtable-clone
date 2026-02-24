@@ -151,10 +151,10 @@ export function BaseContent({
   }, [viewConfig.sorts]);
 
   // --- Row ordering override (shared between useRowStore and useOptimisticGrid) ---
-  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
-    null,
-  );
-  const rowOrderOverrideRef = useRef<number[] | null>(null);
+  const [rowOrderOverride, setRowOrderOverride] = useState<
+    (number | null)[] | null
+  >(null);
+  const rowOrderOverrideRef = useRef<(number | null)[] | null>(null);
 
   useEffect(() => {
     rowOrderOverrideRef.current = rowOrderOverride;
@@ -278,19 +278,32 @@ export function BaseContent({
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
 
     if (rowOrderOverride !== null) {
+      const overrideSet = new Set<number>();
+
+      // 1. Apply the explicit override mapping
       rowOrderOverride.forEach((id, i) => {
-        if (i < totalRowCount) sparse[i] = rowById.get(id) ?? null;
+        if (i < totalRowCount && id !== null) {
+          sparse[i] = rowById.get(id) ?? null;
+          overrideSet.add(id);
+        }
       });
+
+      // 2. Safely merge pageStore data (e.g. newly fetched pages) without creating ghost rows
       for (const [pageIndex, pageRows] of pageStore) {
         const startIdx = pageIndex * PAGE_SIZE;
         pageRows.forEach((row, i) => {
           const idx = startIdx + i;
-          if (idx >= rowOrderOverride.length && idx < totalRowCount) {
+          if (
+            idx < totalRowCount &&
+            !overrideSet.has(row.id) &&
+            sparse[idx] === null
+          ) {
             sparse[idx] = row;
           }
         });
       }
     } else {
+      // Standard mapping when no drag/insert override is active
       for (const [pageIndex, pageRows] of pageStore) {
         const startIdx = pageIndex * PAGE_SIZE;
         pageRows.forEach((row, i) => {
@@ -311,18 +324,22 @@ export function BaseContent({
       const draggedId = draggedRowIds[0]!;
 
       const prev = rowOrderOverrideRef.current;
-      let currentOrder: number[];
+      let currentOrder: (number | null)[];
+
       if (prev !== null) {
         currentOrder = prev;
       } else {
-        const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
-          (a, b) => a - b,
-        );
-        const flat: GridRow[] = [];
-        for (const pi of sortedPageIndices) {
-          flat.push(...(pageStoreRef.current.get(pi) ?? []));
+        // BUILD A SPARSE ARRAY preserving null gaps
+        currentOrder = new Array<number | null>(
+          totalRowCountRef.current ?? 0,
+        ).fill(null);
+        for (const [pageIndex, pageRows] of pageStoreRef.current.entries()) {
+          const startIdx = pageIndex * PAGE_SIZE;
+          pageRows.forEach((row, i) => {
+            if (startIdx + i < currentOrder.length)
+              currentOrder[startIdx + i] = row.id;
+          });
         }
-        currentOrder = flat.map((r) => r.id);
       }
 
       const oldIdx = currentOrder.indexOf(draggedId);
@@ -342,7 +359,7 @@ export function BaseContent({
           : null;
       reorderRowMutation.mutate({ id: draggedId, prevId, nextId });
     },
-    [reorderRowMutation, pageStoreRef],
+    [reorderRowMutation, pageStoreRef, totalRowCountRef],
   );
 
   const handleColumnRenameFromMenu = useCallback(

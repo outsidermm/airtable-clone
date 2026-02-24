@@ -8,7 +8,7 @@ import { api } from "~/trpc/react";
 import { pushQueryEntry } from "~/lib/query-log";
 
 interface UseRowStoreProps {
-  setRowOrderOverride: (order: number[] | null) => void;
+  setRowOrderOverride: (order: (number | null)[] | null) => void;
   registerRefetchRows: (refetchFn: () => void) => void;
 }
 
