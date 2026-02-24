@@ -28,6 +28,9 @@ jobs:
     # Map the Prisma connection string to the temporary database
     env:
       DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+      AUTH_SECRET: ci-test-secret-not-used-in-production
+      AUTH_GOOGLE_ID: ci-test-google-id
+      AUTH_GOOGLE_SECRET: ci-test-google-secret
 
     steps:
       - name: Checkout Code
