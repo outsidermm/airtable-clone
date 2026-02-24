@@ -1,5 +1,48 @@
 "use client";
 
+/**
+ * GridTable — the virtualized data grid rendering layer.
+ *
+ * Responsibility:
+ *   Receives the sparse `rows` array (GridRow | null)[] from BaseContent and renders
+ *   only the rows currently in the viewport via TanStack Virtual, with PlaceholderRow
+ *   for null slots. Owns all interaction state that lives at the grid boundary:
+ *   cell selection, editing mode, column sizing, frozen column count, and DnD.
+ *
+ * Layout model — two-section rows:
+ *   Each row renders as two absolute siblings: a sticky frozen section and a
+ *   fixed-width scrollable section. This avoids per-cell sticky calculations and
+ *   means frozen column logic is O(1) regardless of row count. The FrozenColumnOverlay
+ *   lives outside the scroll container so it never scrolls horizontally.
+ *
+ * Frozen column persistence:
+ *   `frozenExtraCount` is local state that updates immediately on drag; a 400ms
+ *   debounce timer (`frozenSaveTimerRef`) persists it to ViewConfig. `savedFrozenRef`
+ *   tracks the last-saved value so the effect can distinguish user changes from
+ *   prop-driven resets (e.g., switching views).
+ *
+ * Cell edit focus:
+ *   After `editingCell` is set, a useEffect queries the DOM for `input` inside
+ *   `#cell-{rowId}-{columnId}` and calls focus() + setSelectionRange(). This
+ *   is the only direct DOM manipulation in the grid; it runs after React has
+ *   committed the `readOnly={false}` change to the input.
+ *
+ * Auto-scroll during drag-select:
+ *   A rAF loop runs only while `isSelecting` is true. It reads the last known
+ *   mouse X position and applies proportional scroll deltas near the frozen and
+ *   right edges. Using a ref for mouse position avoids adding mousemove to the
+ *   component's dependency array.
+ *
+ * Performance boundaries:
+ *   - SortableRow and GridCell are both memo'd — DO NOT pass object literals or
+ *     inline functions as props, as this defeats memoization and causes every
+ *     visible row to re-render on each keystroke.
+ *   - handleCellChange is debounced 300ms here before propagating to useCellMutations,
+ *     preventing a tRPC mutation on every character typed.
+ *   - columnDefs are memoized on nonPrimaryColumns identity; avoid rebuilding them
+ *     by ensuring upstream column arrays use stable references.
+ */
+
 import {
   useState,
   useRef,
@@ -44,6 +87,7 @@ import { useOptimisticIds } from "../hooks/useOptimisticIds";
 import { useGridDnd } from "../hooks/useGridDnd";
 import { useTableVirtualizer } from "../hooks/useTableVirtualizer";
 import { useGridResizing } from "../hooks/useGridResizing";
+import React from "react";
 
 interface GridTableProps {
   columns: GridColumn[];
@@ -204,7 +248,8 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
         onFrozenColumnsChange?.(frozenExtraCount);
       }, 400);
       return () => {
-        if (frozenSaveTimerRef.current) clearTimeout(frozenSaveTimerRef.current);
+        if (frozenSaveTimerRef.current)
+          clearTimeout(frozenSaveTimerRef.current);
       };
     }, [frozenExtraCount, onFrozenColumnsChange]);
 
@@ -245,6 +290,12 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
     );
 
     // --- 5. Helpers ---
+    // Per-cell debounce map: each cell key gets its own timer so rapid edits to
+    // different cells don't reset each other's debounce window. The 300ms delay
+    // balances perceived latency against write amplification for fast typists.
+    // PERF: This callback is passed as a prop to every SortableRow. Wrapping in
+    // useCallback with a stable [onCellUpdate] dep ensures it stays referentially
+    // stable across renders.
     const handleCellChange = useCallback(
       (rowId: number, columnId: number, value: string) => {
         const key = `${rowId}-${columnId}`;
@@ -427,12 +478,23 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     const activeRowId = selectedCell?.rowId ?? null;
 
+    // --- Pre-calculate anchor for accurate unscaled rendering
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    const firstItemStart = virtualItems[0]?.start ?? 0;
+    const scaledAnchorStart = firstItemStart * scrollScaleRef.current;
+
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        {/* Added wrapper for the overlay */}
         <div className="relative flex flex-1 overflow-hidden">
+          {/* aria-rowcount reflects the full sparse array size (totalRowCount),
+              not just rendered rows — essential for the virtualizer model where
+              rows.length equals the full dataset even if most slots are null. */}
           <div
             ref={parentRef}
+            role="grid"
+            aria-label="Data table"
+            aria-rowcount={rows.length}
+            aria-colcount={columns.length + 1}
             className="force-scrollbar flex-1 overflow-x-auto overflow-y-scroll"
           >
             <div
@@ -457,115 +519,124 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 sortedColumnIds={sortedColumnIds}
               />
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={rowOrder}
-                  strategy={verticalListSortingStrategy}
+              {rows.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div
-                    style={{
-                      height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
-                      position: "relative",
-                      minWidth: "fit-content",
-                    }}
+                  <SortableContext
+                    items={rowOrder}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const rowData = rows[virtualRow.index];
+                    <div
+                      role="rowgroup"
+                      style={{
+                        height: `${Math.min(rowVirtualizer.getTotalSize(), MAX_SAFE_HEIGHT)}px`,
+                        position: "relative",
+                        minWidth: "fit-content",
+                      }}
+                    >
+                      {virtualItems.map((virtualRow) => {
+                        const rowData = rows[virtualRow.index];
 
-                      if (!rowData) {
-                        return (
-                          <PlaceholderRow
-                            key={`placeholder-${virtualRow.index}`}
-                            virtualRow={virtualRow}
-                            scrollScaleRef={scrollScaleRef}
-                            currentRowHeight={currentRowHeight}
-                            frozenWidth={frozenWidth}
-                            totalScrollableWidth={totalScrollableWidth}
-                            nonPrimaryColumns={nonPrimaryColumns}
-                            columnSizing={columnSizing}
-                          />
-                        );
-                      }
+                        // Apply the unscaled offset to the scaled anchor
+                        const unscaledOffset =
+                          virtualRow.start - firstItemStart;
+                        const correctedVirtualStart =
+                          scaledAnchorStart + unscaledOffset;
 
-                      const tableRow = tableRowById.get(rowData.id);
-                      if (!tableRow) return null;
-
-                      const selectedColumnId =
-                        selectedCell?.rowId === rowData.id
-                          ? selectedCell.columnId
-                          : null;
-                      const editingColumnId =
-                        editingCell?.rowId === rowData.id
-                          ? editingCell.columnId
-                          : null;
-                      const multiSelectColumnIds = isMultiSelect
-                        ? (rowToSelectedColumns.get(rowData.id) ?? null)
-                        : null;
-
-                      if (rowData.id < 0) {
-                        if (!stableKeyMapRef.current.has(rowData.id)) {
-                          stableKeyMapRef.current.set(
-                            rowData.id,
-                            `temp-${rowData.id}`,
+                        if (!rowData) {
+                          return (
+                            <PlaceholderRow
+                              key={`placeholder-${virtualRow.index}`}
+                              virtualRow={virtualRow}
+                              virtualStart={correctedVirtualStart}
+                              currentRowHeight={currentRowHeight}
+                              frozenWidth={frozenWidth}
+                              totalScrollableWidth={totalScrollableWidth}
+                              nonPrimaryColumns={nonPrimaryColumns}
+                              columnSizing={columnSizing}
+                            />
                           );
                         }
-                      }
-                      const rowKey =
-                        rowData.id < 0
-                          ? stableKeyMapRef.current.get(rowData.id)!
-                          : (stableKeyMapRef.current.get(rowData.id) ??
-                            tableRow.id);
 
-                      return (
-                        <SortableRow
-                          key={rowKey}
-                          rowId={rowData.id}
-                          virtualStart={
-                            virtualRow.start * scrollScaleRef.current
+                        const tableRow = tableRowById.get(rowData.id);
+                        if (!tableRow) return null;
+
+                        const selectedColumnId =
+                          selectedCell?.rowId === rowData.id
+                            ? selectedCell.columnId
+                            : null;
+                        const editingColumnId =
+                          editingCell?.rowId === rowData.id
+                            ? editingCell.columnId
+                            : null;
+                        const multiSelectColumnIds = isMultiSelect
+                          ? (rowToSelectedColumns.get(rowData.id) ?? null)
+                          : null;
+
+                        if (rowData.id < 0) {
+                          if (!stableKeyMapRef.current.has(rowData.id)) {
+                            stableKeyMapRef.current.set(
+                              rowData.id,
+                              `temp-${rowData.id}`,
+                            );
                           }
-                          virtualIndex={virtualRow.index}
-                          currentRowHeight={currentRowHeight}
-                          isRowSelected={selectedRowIds.has(String(rowData.id))}
-                          rowBg={
-                            selectedRowIds.has(String(rowData.id))
-                              ? "bg-blue-50"
-                              : rowData.id === activeRowId ||
-                                  rowData.id === hoveredRowId
-                                ? "bg-gray-50"
-                                : "bg-white"
-                          }
-                          rowData={rowData}
-                          row={tableRow}
-                          frozenWidth={frozenWidth}
-                          primaryColumn={primaryColumn}
-                          primaryColumnWidth={primaryColumnWidth}
-                          nonPrimaryColumns={nonPrimaryColumns}
-                          frozenNonPrimaryCount={clampedFrozenExtraCount}
-                          columnSizing={columnSizing}
-                          selectedColumnId={selectedColumnId}
-                          editingColumnId={editingColumnId}
-                          multiSelectColumnIds={multiSelectColumnIds}
-                          handleMouseDown={handleMouseDown}
-                          handleMouseEnter={handleMouseEnter}
-                          handleCellChange={handleCellChange}
-                          setEditingCell={setEditingCell}
-                          setHoveredRowId={setHoveredRowId}
-                          totalScrollableWidth={totalScrollableWidth}
-                          showLastRowTooltip={showLastRowTooltip}
-                          columnKeyMap={columnKeyMap}
-                          onContextMenu={handleRowContextMenu}
-                          filteredColumnIds={filteredColumnIds}
-                          sortedColumnIds={sortedColumnIds}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                        }
+                        const rowKey =
+                          rowData.id < 0
+                            ? stableKeyMapRef.current.get(rowData.id)!
+                            : (stableKeyMapRef.current.get(rowData.id) ??
+                              tableRow.id);
+
+                        return (
+                          <SortableRow
+                            key={rowKey}
+                            rowId={rowData.id}
+                            virtualStart={correctedVirtualStart}
+                            virtualIndex={virtualRow.index}
+                            currentRowHeight={currentRowHeight}
+                            isRowSelected={selectedRowIds.has(
+                              String(rowData.id),
+                            )}
+                            rowBg={
+                              selectedRowIds.has(String(rowData.id))
+                                ? "bg-blue-50"
+                                : rowData.id === activeRowId ||
+                                    rowData.id === hoveredRowId
+                                  ? "bg-gray-50"
+                                  : "bg-white"
+                            }
+                            rowData={rowData}
+                            row={tableRow}
+                            frozenWidth={frozenWidth}
+                            primaryColumn={primaryColumn}
+                            primaryColumnWidth={primaryColumnWidth}
+                            nonPrimaryColumns={nonPrimaryColumns}
+                            frozenNonPrimaryCount={clampedFrozenExtraCount}
+                            columnSizing={columnSizing}
+                            selectedColumnId={selectedColumnId}
+                            editingColumnId={editingColumnId}
+                            multiSelectColumnIds={multiSelectColumnIds}
+                            handleMouseDown={handleMouseDown}
+                            handleMouseEnter={handleMouseEnter}
+                            handleCellChange={handleCellChange}
+                            setEditingCell={setEditingCell}
+                            setHoveredRowId={setHoveredRowId}
+                            totalScrollableWidth={totalScrollableWidth}
+                            showLastRowTooltip={showLastRowTooltip}
+                            columnKeyMap={columnKeyMap}
+                            onContextMenu={handleRowContextMenu}
+                            filteredColumnIds={filteredColumnIds}
+                            sortedColumnIds={sortedColumnIds}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
 
               <div
                 className="flex shrink-0 bg-gray-100"
@@ -581,9 +652,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 >
                   <button
                     onClick={rowMutations.handleAddRow}
+                    aria-label="Add row"
                     className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
                   >
-                    <PlusIcon className="h-4 w-4" />
+                    <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
                 <div
@@ -592,23 +664,37 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 />
               </div>
 
-              <div
-                className="flex flex-1 bg-gray-100"
-                style={{ minWidth: "fit-content", minHeight: 125 }}
-              >
+              {rows.length === 0 ? (
                 <div
-                  className="sticky left-0"
+                  role="status"
+                  className="flex flex-1 items-center py-20 text-gray-400"
                   style={{
-                    width: frozenWidth,
-                    borderRight: "2px solid rgb(209, 213, 219)",
+                    width: frozenWidth + totalScrollableWidth,
+                    minWidth: "100%",
                   }}
-                />
-                <div className="flex-1" />
-              </div>
+                >
+                  <div className="text-md sticky left-1/2 w-max -translate-x-1/2">
+                    All records are filtered
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-1 bg-gray-100"
+                  style={{ minWidth: "fit-content", minHeight: 125 }}
+                >
+                  <div
+                    className="sticky left-0"
+                    style={{
+                      width: frozenWidth,
+                      borderRight: "2px solid rgb(209, 213, 219)",
+                    }}
+                  />
+                  <div className="flex-1" />
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Global full-height overlay freeze drag handler, starting below the header row */}
           <FrozenColumnOverlay
             frozenWidth={frozenWidth}
             handleFrozenBorderDragStart={handleFrozenBorderDragStart}
@@ -618,8 +704,10 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           />
         </div>
 
+        {/* Fixed-position ghost line shown while dragging the frozen-column border */}
         <div
           ref={freezeOverlayRef}
+          aria-hidden="true"
           style={{
             position: "fixed",
             display: "none",

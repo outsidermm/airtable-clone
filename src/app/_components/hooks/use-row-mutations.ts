@@ -1,3 +1,28 @@
+/**
+ * useRowMutations — exposes all row-level mutation handlers with a consistent
+ * three-phase optimistic lifecycle: optimistic write → ID swap → rollback.
+ *
+ * Common pattern for structural mutations (create, delete, insert, duplicate):
+ *   onMutate  → call the relevant optimisticXxx() from BaseContext, which writes
+ *               into pageStoreRef immediately and returns { tempId, revert }.
+ *   onSuccess → call onRowCreated(tempId, realId) to atomically swap the temp ID
+ *               for the confirmed DB ID and flush any pending cell edits.
+ *   onError   → call revert() to restore the pre-mutation pageStore / totalRowCount.
+ *
+ * No onSettled refetch on createRow / deleteRow:
+ *   Immediate refetch after row creation would race against the 300ms debounced
+ *   cell saves that fire if the user starts typing in the new row. The server
+ *   response would return empty cells, overwriting typed values. The refetch is
+ *   deferred to the next natural scroll-triggered page load or to explicit
+ *   bulk operations that call refetchRows() after their own onSuccess.
+ *
+ * duplicateRow cell hydration:
+ *   The server returns the full cloned cells object in the mutation response.
+ *   Passing cells to onRowCreated populates the optimistic row immediately,
+ *   so the duplicate appears fully populated in a single server round-trip with
+ *   no separate fetch or skeleton state.
+ */
+
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";

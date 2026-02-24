@@ -377,18 +377,6 @@ Per README performance targets:
 9. **pageStore is a ref, not state**: Do not setState on pageStore mutations directly; use the flush/trigger mechanism in `useOptimisticGrid`.
 10. **ViewConfig fields**: When adding new per-view settings, add to the `ViewConfig` interface and handle missing keys gracefully (older views will not have the field).
 
-## Future Tasks (NOT YET IMPLEMENTED)
-
-The following are planned improvements to be implemented in future iterations:
-
-1. **Backend Database Optimization**: Use `EXPLAIN ANALYZE` with the query planner to audit indexes on Row, Column, and View tables. Evaluate whether composite indexes, partial indexes, or index-only scans can improve cursor pagination and JSONB filter/sort query performance at scale.
-
-2. **Frontend Performance Optimization**: Profile React re-renders with DevTools Profiler. Investigate memoization gaps, unnecessary context re-renders, and component splitting opportunities. Evaluate whether `React.memo` boundaries and `useDeferredValue` can improve scroll performance at 100k+ rows.
-
-3. **Google OAuth**: Add Google as a second OAuth provider alongside Discord.
-
-4. **Additional Column Types**: Rich text, date, checkbox, select/multi-select.
-
 ## Must not do
 1. Must ask user for permission before drastically changing design architecture in order to fulfill requests
 2. Design choices should be recommended and changed under EXPLICIT permission

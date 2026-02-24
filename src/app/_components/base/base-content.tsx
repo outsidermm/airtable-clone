@@ -1,5 +1,48 @@
 "use client";
 
+/**
+ * BaseContent — root orchestrator for the table editing experience.
+ *
+ * Responsibility:
+ *   Owns all server-state queries (base, tables, views, rows) and coordinates
+ *   the data pipeline from tRPC → pageStore → GridTable. It does not render any
+ *   grid cells itself; it produces derived props and passes them down.
+ *
+ * State topology:
+ *   ┌─────────────────────────────────────────────────────────────────┐
+ *   │  tRPC queries (React Query cache)                               │
+ *   │    base.getById · table.getAllByBase · table.getById            │
+ *   │    view.getById  →  viewConfig (sorts, filters, hidden cols)    │
+ *   └───────────────┬─────────────────────────────────────────────────┘
+ *                   │ viewConfig
+ *   ┌───────────────▼──────────────────────────┐
+ *   │  useRowStore  →  pageStore + totalRowCount│  row data layer
+ *   │  useOptimisticGrid                        │  add/delete/insert mutations
+ *   │  useCellMutations                         │  cell write + ID-swap protocol
+ *   └───────────────┬──────────────────────────┘
+ *                   │ gridRows (sparse GridRow | null array)
+ *   ┌───────────────▼──────────────────────────┐
+ *   │  GridTable (ref'd via gridTableRef)       │  rendering / keyboard / DnD
+ *   └──────────────────────────────────────────┘
+ *
+ * gridRows construction:
+ *   A sparse array of length `totalRowCount` is built every render from pageStore.
+ *   Null slots are passed to GridTable, which renders PlaceholderRow for them.
+ *   When `rowOrderOverride` is active (drag-reorder / insert-near in progress),
+ *   its sparse index takes precedence; pageStore entries fill only empty slots
+ *   whose IDs are not already in the override set, preventing ghost duplicates.
+ *
+ * View-driven column ordering:
+ *   `visibleColumns` applies two transformations: filter by `hiddenColumns`, then
+ *   re-sort by `columnOrder` from ViewConfig. Both are pure memoized operations —
+ *   the Column model itself is never mutated for ordering.
+ *
+ * frozenColumns / columnOrder persistence:
+ *   Both call `view.update.mutate` with a debounced or settle-triggered payload.
+ *   ViewConfig is the single source of truth for all per-view display state;
+ *   no display preferences are stored on the Column or Row models.
+ */
+
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "~/trpc/react";
@@ -151,10 +194,10 @@ export function BaseContent({
   }, [viewConfig.sorts]);
 
   // --- Row ordering override (shared between useRowStore and useOptimisticGrid) ---
-  const [rowOrderOverride, setRowOrderOverride] = useState<number[] | null>(
-    null,
-  );
-  const rowOrderOverrideRef = useRef<number[] | null>(null);
+  const [rowOrderOverride, setRowOrderOverride] = useState<
+    (number | null)[] | null
+  >(null);
+  const rowOrderOverrideRef = useRef<(number | null)[] | null>(null);
 
   useEffect(() => {
     rowOrderOverrideRef.current = rowOrderOverride;
@@ -273,24 +316,45 @@ export function BaseContent({
     return map;
   }, [pageStore]);
 
+  // gridRows is the interface between the page store and the virtualizer.
+  // Length equals totalRowCount (the full dataset size), so the virtualizer's
+  // scroll bar is proportionate to the entire table even when only a few pages
+  // are loaded. Null slots render as PlaceholderRow skeleton rows.
+  //
+  // Override path: when rowOrderOverride is active, the two-pass algorithm ensures
+  // newly fetched pages can fill null gaps without displacing already-positioned rows.
+  // overrideSet tracks IDs already placed so the pageStore merge cannot create duplicates.
   const gridRows = useMemo<(GridRow | null)[]>(() => {
     if (!totalRowCount) return [];
     const sparse = new Array<GridRow | null>(totalRowCount).fill(null);
 
     if (rowOrderOverride !== null) {
+      const overrideSet = new Set<number>();
+
+      // 1. Apply the explicit override mapping
       rowOrderOverride.forEach((id, i) => {
-        if (i < totalRowCount) sparse[i] = rowById.get(id) ?? null;
+        if (i < totalRowCount && id !== null) {
+          sparse[i] = rowById.get(id) ?? null;
+          overrideSet.add(id);
+        }
       });
+
+      // 2. Safely merge pageStore data (e.g. newly fetched pages) without creating ghost rows
       for (const [pageIndex, pageRows] of pageStore) {
         const startIdx = pageIndex * PAGE_SIZE;
         pageRows.forEach((row, i) => {
           const idx = startIdx + i;
-          if (idx >= rowOrderOverride.length && idx < totalRowCount) {
+          if (
+            idx < totalRowCount &&
+            !overrideSet.has(row.id) &&
+            sparse[idx] === null
+          ) {
             sparse[idx] = row;
           }
         });
       }
     } else {
+      // Standard mapping when no drag/insert override is active
       for (const [pageIndex, pageRows] of pageStore) {
         const startIdx = pageIndex * PAGE_SIZE;
         pageRows.forEach((row, i) => {
@@ -306,23 +370,31 @@ export function BaseContent({
     onSettled: () => refetchLoadedPages(),
   });
 
+  // handleReorderRow is called by useGridDnd on DragEnd. It constructs or reuses
+  // rowOrderOverride, applies arrayMove to produce the new visual order, then fires
+  // row.reorder to persist the new LexoRank value. refetchLoadedPages on onSettled
+  // reconciles the server's authoritative order once the mutation completes.
   const handleReorderRow = useCallback(
     (draggedRowIds: number[], targetRowId: number) => {
       const draggedId = draggedRowIds[0]!;
 
       const prev = rowOrderOverrideRef.current;
-      let currentOrder: number[];
+      let currentOrder: (number | null)[];
+
       if (prev !== null) {
         currentOrder = prev;
       } else {
-        const sortedPageIndices = [...pageStoreRef.current.keys()].sort(
-          (a, b) => a - b,
-        );
-        const flat: GridRow[] = [];
-        for (const pi of sortedPageIndices) {
-          flat.push(...(pageStoreRef.current.get(pi) ?? []));
+        // BUILD A SPARSE ARRAY preserving null gaps
+        currentOrder = new Array<number | null>(
+          totalRowCountRef.current ?? 0,
+        ).fill(null);
+        for (const [pageIndex, pageRows] of pageStoreRef.current.entries()) {
+          const startIdx = pageIndex * PAGE_SIZE;
+          pageRows.forEach((row, i) => {
+            if (startIdx + i < currentOrder.length)
+              currentOrder[startIdx + i] = row.id;
+          });
         }
-        currentOrder = flat.map((r) => r.id);
       }
 
       const oldIdx = currentOrder.indexOf(draggedId);
@@ -342,7 +414,7 @@ export function BaseContent({
           : null;
       reorderRowMutation.mutate({ id: draggedId, prevId, nextId });
     },
-    [reorderRowMutation, pageStoreRef],
+    [reorderRowMutation, pageStoreRef, totalRowCountRef],
   );
 
   const handleColumnRenameFromMenu = useCallback(
@@ -389,11 +461,11 @@ export function BaseContent({
         />
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3">
-              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" />
-              <div className="text-sm font-medium text-gray-500">
+            <div role="status" aria-label="Loading table data" className="flex flex-1 flex-col items-center justify-center gap-3">
+              <SpinnerIcon className="h-8 w-8 animate-spin text-blue-500" aria-hidden="true" />
+              <p className="text-sm font-medium text-gray-500">
                 Loading table data...
-              </div>
+              </p>
             </div>
           ) : (
             <GridTable
@@ -417,20 +489,28 @@ export function BaseContent({
             <button
               className="flex items-center justify-center rounded-l-full px-2.5 py-1.5 transition-colors hover:bg-gray-100"
               title="Add record"
+              aria-label="Add record"
             >
-              <PlusIcon className="h-4 w-4 text-gray-600" />
+              <PlusIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
             </button>
-            <div className="h-8 w-px bg-gray-300" />
+            <div className="h-8 w-px bg-gray-300" aria-hidden="true" />
             <button
               className="flex items-center justify-center rounded-r-full px-3 py-1.5 transition-colors hover:bg-gray-100"
               title="Add more"
+              aria-label="Add records with AI"
             >
-              <AIIcon className="h-4 w-4 text-green-700" />
+              <AIIcon className="h-4 w-4 text-green-700" aria-hidden="true" />
               <span className="mx-1 text-xs text-gray-700">Add...</span>
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1">
+          {/* Record count bar — aria-live re-announces when totalRowCount changes
+              after filters/sorts mutate the view query result from view.getData. */}
+          <div
+            className="flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white px-3 py-1"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <span className="flex items-center gap-2 text-xs text-gray-500">
               {totalRowCount != null ? (
                 <React.Fragment>
@@ -438,7 +518,7 @@ export function BaseContent({
                 </React.Fragment>
               ) : (
                 <React.Fragment>
-                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" />
+                  <SpinnerIcon className="h-3 w-3 animate-spin text-gray-400" aria-hidden="true" />
                   Loading records...
                 </React.Fragment>
               )}

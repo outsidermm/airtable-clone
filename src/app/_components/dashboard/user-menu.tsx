@@ -24,9 +24,15 @@ interface UserMenuProps {
     email?: string | null;
     image?: string | null;
   };
+  /**
+   * Controls which direction the dropdown opens relative to the avatar button.
+   * "right" (default): dropdown opens downward, right-aligned — for top-right header usage.
+   * "left": dropdown opens upward and to the right — for bottom-left sidebar usage.
+   */
+  align?: "right" | "left";
 }
 
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu({ user, align = "right" }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -77,7 +83,13 @@ export function UserMenu({ user }: UserMenuProps) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="z-20 absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-gray-200 bg-white shadow-lg focus:outline-none">
+        <div
+          className={`absolute z-65 w-80 rounded-xl border border-gray-200 bg-white shadow-lg focus:outline-none ${
+            align === "left"
+              ? "left-full bottom-0 ml-2 origin-bottom-left"
+              : "right-0 mt-2 origin-top-right"
+          }`}
+        >
           {/* User Info */}
           <div className="border-b border-gray-200 px-1 py-4 mx-4">
             <p className="text-gray-900">{user.name}</p>

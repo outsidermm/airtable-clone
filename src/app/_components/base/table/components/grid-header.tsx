@@ -1,5 +1,39 @@
 "use client";
 
+/**
+ * GridHeader — the sticky column header row for the virtualized grid.
+ *
+ * Layout model:
+ *   Mirrors SortableRow's two-section split: a `position: sticky; left: 0;
+ *   z-index: 50` frozen section (checkbox + primary + extra frozen columns)
+ *   and a scrollable section for the remaining columns. The frozen section
+ *   has a higher z-index (50) than rows (30) so it is never obscured by
+ *   in-flight drag transforms.
+ *
+ * Column resize (TanStack Table):
+ *   Resize handles call `header.getResizeHandler()` from TanStack Table's
+ *   column-sizing API. Column sizes are tracked in `columnSizing` state
+ *   in grid-table.tsx and persisted to ViewConfig via a debounced save.
+ *   The primary column has its own `handlePrimaryResizeStart` because it is
+ *   not part of the TanStack Table `headerGroups` array.
+ *
+ * Column drag-reorder (DnD Kit):
+ *   Only the scrollable section is wrapped in `DndContext` + `SortableContext`.
+ *   Primary and frozen non-primary columns are excluded from drag reorder —
+ *   their position is fixed by ViewConfig.frozenColumns + the primary flag.
+ *   `horizontalListSortingStrategy` restricts movement to the X axis.
+ *
+ * Column highlights:
+ *   `filteredColumnIds` (green background) and `sortedColumnIds` (orange
+ *   background) are Sets derived from ViewConfig in base-content.tsx and
+ *   propagated as props — no per-column query needed.
+ *
+ * Context menu:
+ *   Right-clicking a column header or clicking the ChevronDown button both
+ *   call `setContextMenu` from BaseContext, opening the shared column context
+ *   menu at the click coordinates.
+ */
+
 import {
   DndContext,
   closestCenter,
@@ -67,6 +101,7 @@ export function GridHeader({
 
   return (
     <div
+      role="row"
       className="sticky top-0 z-40 flex shrink-0"
       style={{ minWidth: "fit-content" }}
     >
@@ -78,13 +113,21 @@ export function GridHeader({
           borderRight: "2px solid rgb(209, 213, 219)",
         }}
       >
-        <div className="flex items-center" style={{ width: CHECKBOX_WIDTH }}>
+        {/* Checkbox / row-selection column */}
+        <div
+          role="columnheader"
+          aria-label="Row selection"
+          className="flex items-center"
+          style={{ width: CHECKBOX_WIDTH }}
+        >
           <div className="w-5 shrink-0 pl-1.5" />
           <div className="flex flex-1 justify-center">
             <input
               type="checkbox"
               className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
               checked={isAllSelected}
+              // Explicit label required: this input has no visible text sibling
+              aria-label="Select all rows"
               onChange={onToggleAllSelected}
             />
           </div>
@@ -92,6 +135,8 @@ export function GridHeader({
 
         {primaryColumn && (
           <div
+            role="columnheader"
+            aria-label={primaryColumn.name}
             className={`relative flex items-center border-b border-gray-200 ${
               filteredColumnIds.has(primaryColumn.id)
                 ? "bg-green-100"
@@ -115,13 +160,16 @@ export function GridHeader({
               onDoubleClick={(e) => handleHeaderDoubleClick(primaryColumn, e)}
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
-                <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                <span className="truncate text-xs font-normal text-gray-700">
+                <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
+                <span className="truncate text-xs font-medium text-gray-900">
                   {primaryColumn.name}
                 </span>
               </div>
             </div>
             <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={`Resize ${primaryColumn.name} column`}
               onMouseDown={handlePrimaryResizeStart}
               className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
             />
@@ -135,7 +183,9 @@ export function GridHeader({
           return (
             <div
               key={header.id}
-              className={`relative border-r border-gray-200 ${
+              role="columnheader"
+              aria-label={col.name}
+              className={`relative border border-gray-200 ${
                 filteredColumnIds.has(col.id)
                   ? "bg-green-100"
                   : sortedColumnIds.has(col.id)
@@ -159,13 +209,15 @@ export function GridHeader({
               >
                 <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
                   <div className="flex items-center gap-1.5 overflow-hidden">
-                    <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                    <span className="truncate text-xs text-gray-900">
+                    <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
+                    <span className="truncate text-xs font-medium text-gray-900">
                       {col.name}
                     </span>
                   </div>
                   <button
                     className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
+                    aria-label={`Column options for ${col.name}`}
+                    aria-haspopup="menu"
                     onClick={(e) => {
                       e.preventDefault();
                       setContextMenu({
@@ -176,11 +228,14 @@ export function GridHeader({
                       });
                     }}
                   >
-                    <ChevronDownIcon className="h-3 w-3" />
+                    <ChevronDownIcon className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </div>
               </div>
               <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={`Resize ${col.name} column`}
                 onMouseDown={header.getResizeHandler()}
                 onTouchStart={header.getResizeHandler()}
                 className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
@@ -213,6 +268,8 @@ export function GridHeader({
               return (
                 <div
                   key={header.id}
+                  role="columnheader"
+                  aria-label={col.name}
                   className={`relative border-r border-gray-200 ${
                     filteredColumnIds.has(col.id)
                       ? "bg-green-100"
@@ -238,6 +295,8 @@ export function GridHeader({
                     <SortableHeaderCell column={col} isPrimary={false}>
                       <button
                         className="invisible rounded p-0.5 group-hover:visible hover:text-gray-700"
+                        aria-label={`Column options for ${col.name}`}
+                        aria-haspopup="menu"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -249,11 +308,14 @@ export function GridHeader({
                           });
                         }}
                       >
-                        <ChevronDownIcon className="h-3 w-3" />
+                        <ChevronDownIcon className="h-3 w-3" aria-hidden="true" />
                       </button>
                     </SortableHeaderCell>
                   </div>
                   <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`Resize ${col.name} column`}
                     onMouseDown={header.getResizeHandler()}
                     onTouchStart={header.getResizeHandler()}
                     className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-500"
@@ -267,13 +329,14 @@ export function GridHeader({
 
       <button
         key="_add"
+        aria-label="Add column"
         onClick={(e) => {
           openModal("add-column", e.currentTarget);
         }}
         className="group flex cursor-pointer items-center justify-center border-r border-b border-gray-200 bg-white transition-colors hover:bg-gray-100"
         style={{ width: 80, height: HEADER_HEIGHT }}
       >
-        <PlusIcon className="h-4 w-4 text-gray-400 transition-colors group-hover:text-gray-600" />
+        <PlusIcon className="h-4 w-4 text-gray-400 transition-colors group-hover:text-gray-600" aria-hidden="true" />
       </button>
     </div>
   );

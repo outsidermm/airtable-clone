@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandle } from "../../ui/drag-handle";
+import { DragHandle } from "./drag-handle";
 import type { CSSProperties, ReactNode } from "react";
 
 interface SortableItemProps {
@@ -12,7 +12,7 @@ interface SortableItemProps {
   dragHandleClassName?: string;
 }
 
-export function SortableItem({ 
+export function SortableGeneralItem({ 
   id, 
   children, 
   hideDragHandle = false, 

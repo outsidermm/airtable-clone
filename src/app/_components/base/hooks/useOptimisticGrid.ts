@@ -1,3 +1,28 @@
+/**
+ * useOptimisticGrid — wires concrete optimistic mutation implementations into
+ * the BaseContext callback registry.
+ *
+ * Why this hook exists (instead of living in useRowMutations):
+ *   useRowMutations calls BaseContext callbacks (optimisticAddRow, etc.) but
+ *   cannot own their implementations — those implementations require access to
+ *   `pageStoreRef`, which lives in BaseContent's scope. This hook bridges the two
+ *   via BaseContext's register pattern: BaseContent creates the ref, passes it here,
+ *   and this hook registers closures that capture it.
+ *
+ * Temp ID convention:
+ *   Optimistic rows are assigned negative IDs (`-Date.now()`). Since the Row model
+ *   uses `Int @id @default(autoincrement())` (always positive), negative values are
+ *   impossible in the real DB and require no separate `isPending` flag on GridRow.
+ *
+ * rowOrderOverride interaction:
+ *   - optimisticAddRowImpl: appends to the override only if already active to avoid
+ *     an unnecessary O(n) array copy for the common append-to-end case.
+ *   - optimisticInsertRowNearImpl: always activates the override, building a sparse
+ *     index from the current pageStore entries to place the new row precisely.
+ *   - All revert() closures capture their pre-mutation state, enabling rollback
+ *     without any additional server round-trip.
+ */
+
 import { useCallback, useEffect } from "react";
 import { PAGE_SIZE } from "../constants";
 import type { GridRow } from "~/types/grid";
@@ -11,7 +36,7 @@ interface UseOptimisticGridProps {
   pendingOptimisticEditsRef: React.RefObject<
     Map<number, Record<string, string | number | null>>
   >;
-  setRowOrderOverride: React.Dispatch<React.SetStateAction<number[] | null>>;
+  setRowOrderOverride: React.Dispatch<React.SetStateAction<(number | null)[] | null>>;
 }
 
 export function useOptimisticGrid({
@@ -32,6 +57,7 @@ export function useOptimisticGrid({
     tempId: number;
     revert: () => void;
   } => {
+    // Negative timestamp guarantees uniqueness and DB-impossibility (autoincrement IDs > 0).
     const tempId = -Date.now();
     const tempRow: GridRow = { id: tempId, cells: {} };
 
@@ -147,17 +173,6 @@ export function useOptimisticGrid({
       const newCount = prevCount + 1;
       totalRowCountRef.current = newCount;
 
-      // Compact flat order: only loaded rows in page-index order.
-      // Insert-near always targets a visible (loaded) row, so indexOf will find it.
-      // Rows beyond the override length are filled by the page-store path in gridRows.
-      const preInsertFlatOrder: number[] = [
-        ...(pageStoreRef.current?.keys() ?? []),
-      ]
-        .sort((a, b) => a - b)
-        .flatMap((pi) =>
-          (pageStoreRef.current?.get(pi) ?? []).map((r) => r.id),
-        );
-
       const lastPageIndex = Math.floor((newCount - 1) / PAGE_SIZE);
       const existingPage = pageStoreRef.current?.get(lastPageIndex) ?? [];
       pageStoreRef.current?.set(lastPageIndex, [...existingPage, tempRow]);
@@ -165,12 +180,25 @@ export function useOptimisticGrid({
       setTotalRowCount(newCount);
 
       setRowOrderOverride((prev) => {
-        const currentOrder = prev ?? preInsertFlatOrder;
-        let insertIdx = -1;
+        let currentOrder: (number | null)[] = prev ?? [];
 
+        // Materialise a sparse override from pageStore entries when activating for
+        // the first time. null slots represent pages not yet fetched — they must be
+        // preserved so the virtualizer's placeholder rows remain at their correct indices.
+        if (!prev) {
+          currentOrder = new Array<number | null>(prevCount).fill(null);
+          for (const [pageIndex, pageRows] of pageStoreRef.current?.entries() ??
+            []) {
+            const startIdx = pageIndex * PAGE_SIZE;
+            pageRows.forEach((row, i) => {
+              if (startIdx + i < prevCount) currentOrder[startIdx + i] = row.id;
+            });
+          }
+        }
+
+        let insertIdx = -1;
         if (beforeRowId != null) {
-          const targetIdx = currentOrder.indexOf(beforeRowId);
-          if (targetIdx !== -1) insertIdx = targetIdx;
+          insertIdx = currentOrder.indexOf(beforeRowId);
         } else if (afterRowId != null) {
           const targetIdx = currentOrder.indexOf(afterRowId);
           if (targetIdx !== -1) insertIdx = targetIdx + 1;

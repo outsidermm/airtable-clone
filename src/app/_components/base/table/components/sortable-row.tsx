@@ -1,3 +1,38 @@
+/**
+ * SortableRow — one absolute-positioned row in the virtualized grid.
+ *
+ * Positioning:
+ *   Placed via `position: absolute; top: virtualStart` inside the
+ *   `position: relative` scroll canvas. `virtualStart` is the scroll-scaled
+ *   CSS pixel offset from `useTableVirtualizer`, not the raw virtualizer value.
+ *
+ * Two-section layout:
+ *   Frozen section (`position: sticky; left: 0; z-index: 30`) holds the
+ *   checkbox column, primary cell, and any extra frozen non-primary cells.
+ *   Scrollable section holds the remaining non-primary cells side-by-side.
+ *   Both sections use `role="none"` so the WAI-ARIA grid model sees
+ *   `role="row"` directly owning `role="gridcell"` children.
+ *
+ * Narrow selection props pattern:
+ *   Rather than passing the full `selectedCell` / `editingCell` objects,
+ *   the parent extracts per-row slices (`selectedColumnId`, `editingColumnId`,
+ *   `multiSelectColumnIds`). Memo comparison then only re-renders rows whose
+ *   selection status actually changed — unaffected rows are skipped entirely.
+ *
+ * columnKeyMap — stable React keys across temp ID swaps:
+ *   When a column is optimistically created, it gets a negative temp ID.
+ *   `columnKeyMap` maps each column ID to a stable UUID-like string created
+ *   at optimistic-add time. Passing this as the React key prevents GridCell
+ *   from unmounting and remounting when the temp ID is swapped for the
+ *   confirmed DB ID.
+ *
+ * DnD Kit integration:
+ *   `useSortable({ id: "row-{rowId}" })` attaches drag event handlers and
+ *   provides the CSS transform for in-flight reordering. `isDragging` reduces
+ *   opacity to signal the drag source. The actual row reorder persists via
+ *   `handleReorderRowPersisted` in base-content.tsx on DragEnd.
+ */
+
 import { memo } from "react";
 import type { Row } from "@tanstack/react-table";
 import type { GridColumn, GridRow } from "~/types/grid";
@@ -142,8 +177,13 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
   };
 
   return (
+    // virtualIndex is the row's actual position in the full dataset (not just the
+    // rendered window), making aria-rowindex a truthful 1-based dataset position.
     <div
       ref={setNodeRef}
+      role="row"
+      aria-rowindex={virtualIndex + 1}
+      aria-selected={isRowSelected}
       data-index={virtualIndex}
       className="absolute left-0 flex"
       style={style}
@@ -152,7 +192,10 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
       onContextMenu={(e) => onContextMenu(rowId, virtualIndex, e)}
     >
       {/* === FROZEN SECTION === */}
+      {/* role="none" makes this layout-only wrapper transparent to the a11y tree
+          so role="row" directly owns its role="gridcell" children. */}
       <div
+        role="none"
         className={`sticky left-0 z-30 flex shrink-0 border-b border-gray-200 ${rowBg}`}
         style={{
           width: frozenWidth,
@@ -175,6 +218,7 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
                   type="checkbox"
                   className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
                   checked
+                  aria-label={`Deselect row ${virtualIndex + 1}`}
                   onChange={row.getToggleSelectedHandler()}
                 />
               </div>
@@ -186,13 +230,19 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
                 <DragHandle {...attributes} {...listeners} />
               </div>
               <div className="flex flex-1 justify-center">
-                <span className="text-xs text-gray-400 group-hover:hidden">
+                {/* Row number is a visual affordance only; aria-rowindex on the
+                    parent already encodes position for the accessibility tree. */}
+                <span
+                  aria-hidden="true"
+                  className="text-xs text-gray-400 group-hover:hidden"
+                >
                   {virtualIndex + 1}
                 </span>
                 <input
                   type="checkbox"
                   className="hidden h-3.5 w-3.5 rounded border-gray-300 text-blue-600 group-hover:block"
                   checked={false}
+                  aria-label={`Select row ${virtualIndex + 1}`}
                   onChange={row.getToggleSelectedHandler()}
                 />
               </div>
@@ -212,7 +262,9 @@ export const SortableRow = memo(function SortableRow(props: SortableRowProps) {
       </div>
 
       {/* === SCROLLABLE SECTION === */}
+      {/* role="none" mirrors the frozen section: layout container only. */}
       <div
+        role="none"
         className={`flex border-b border-gray-200 ${rowBg}`}
         style={{ width: totalScrollableWidth }}
       >

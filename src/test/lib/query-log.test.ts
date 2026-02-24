@@ -3,7 +3,6 @@ import {
   pushQueryEntry,
   getQueryLog,
   clearQueryLog,
-  type QueryEntry,
 } from "~/lib/query-log";
 
 describe("query-log", () => {

@@ -75,15 +75,69 @@ export function useViewMutations(
   });
 
   const updateView = api.view.update.useMutation({
-    onSuccess: (data, variables) => {
-      invalidate();
+    onMutate: async (variables) => {
+      // 1. Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await utils.table.getById.cancel({ id: activeTableIdRef.current });
+      await utils.view.getById.cancel({ id: variables.id });
 
+      // 2. Snapshot the previous values
+      const previousTable = utils.table.getById.getData({
+        id: activeTableIdRef.current,
+      });
+      const previousView = utils.view.getById.getData({
+        id: variables.id,
+      });
+
+      // 3. Optimistically update the table cache (for the sidebar/menus)
+      if (previousTable) {
+        utils.table.getById.setData(
+          { id: activeTableIdRef.current },
+          {
+            ...previousTable,
+            views: previousTable.views.map((v) =>
+              v.id === variables.id
+                ? { ...v, config: variables.config as ViewConfig }
+                : v,
+            ),
+          },
+        );
+      }
+
+      // 4. Optimistically update the view cache (THIS drives the Grid UI in BaseContent)
+      if (previousView) {
+        utils.view.getById.setData(
+          { id: variables.id },
+          {
+            ...previousView,
+            config: variables.config as ViewConfig,
+          },
+        );
+      }
+
+      return { previousTable, previousView };
+    },
+    onError: (err, variables, context) => {
+      // Rollback to the previous values if the mutation fails
+      if (context?.previousTable) {
+        utils.table.getById.setData(
+          { id: activeTableIdRef.current },
+          context.previousTable,
+        );
+      }
+      if (context?.previousView) {
+        utils.view.getById.setData({ id: variables.id }, context.previousView);
+      }
+    },
+    onSuccess: (data, variables) => {
       // avoiding any stale activeViewId closure issues from the initial load.
       void utils.view.getById.invalidate({ id: variables.id });
 
       if (needsRowRefetchRef.current) {
         refetchRows();
       }
+    },
+    onSettled: () => {
+      invalidate();
     },
   });
 

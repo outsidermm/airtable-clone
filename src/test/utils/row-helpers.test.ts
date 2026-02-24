@@ -3,7 +3,7 @@
  * calculateRowPosition uses DB queries — we test the validation branches
  * and the LexoRank arithmetic by mocking the Prisma transaction.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { LexoRank } from "lexorank";
 
 // Re-test the LexoRank arithmetic that calculateRowPosition relies on —
