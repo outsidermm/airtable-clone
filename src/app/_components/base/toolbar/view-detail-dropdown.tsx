@@ -1,4 +1,5 @@
 import { useViewMutations } from "../../hooks/use-view-mutations";
+import { useToast } from "~/app/_components/ui/toast";
 import {
   ChevronRightIcon,
   DownloadIcon,
@@ -21,6 +22,7 @@ export function ViewDetailDropdown({
   viewCount,
   closeDropdown,
 }: ViewDetailDropdownProps) {
+  const toast = useToast();
   const { activeTableId, activeViewId, setActiveViewId } = useBase();
   const viewMutations = useViewMutations(
     activeTableId,
@@ -93,7 +95,7 @@ export function ViewDetailDropdown({
         disabled={viewCount <= 1}
         onClick={() => {
           if (viewCount <= 1) {
-            alert("You must have at least one view");
+            toast.warning("You must have at least one view");
             return;
           }
           if (activeViewId) {

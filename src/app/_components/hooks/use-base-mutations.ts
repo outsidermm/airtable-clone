@@ -1,8 +1,10 @@
 import { useCallback } from "react";
 import { api } from "~/trpc/react";
+import { useToast } from "~/app/_components/ui/toast";
 
 export function useBaseMutations() {
   const utils = api.useUtils();
+  const toast = useToast();
 
   const toggleStarredMutation = api.base.toggleStarred.useMutation({
     onMutate: async ({ id }) => {
@@ -24,6 +26,7 @@ export function useBaseMutations() {
       if (context?.previousBases) {
         utils.base.getAll.setData(undefined, context.previousBases);
       }
+      toast.error("Failed to update starred status");
     },
     onSettled: (_data, _err, vars) => {
       // Refetch to ensure consistency
@@ -45,6 +48,7 @@ export function useBaseMutations() {
       void utils.base.getAll.invalidate();
       void utils.base.getById.invalidate({ id: vars.id });
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const handleRename = useCallback(
@@ -55,7 +59,32 @@ export function useBaseMutations() {
   );
 
   const deleteBaseMutation = api.base.delete.useMutation({
+    onMutate: async (variables) => {
+      // Cancel outgoing fetches for all bases
+      await utils.base.getAll.cancel();
+
+      // Snapshot previous bases
+      const previousBases = utils.base.getAll.getData();
+
+      // Optimistically remove the base from the list
+      utils.base.getAll.setData(undefined, (old) =>
+        old?.filter((base) => base.id !== variables.id),
+      );
+
+      return { previousBases };
+    },
     onSuccess: () => {
+      toast.success("Base deleted");
+    },
+    onError: (err, _vars, context) => {
+      // Rollback on error
+      if (context?.previousBases) {
+        utils.base.getAll.setData(undefined, context.previousBases);
+      }
+      toast.error(err.message);
+    },
+    onSettled: () => {
+      // Refetch to ensure consistency
       void utils.base.getAll.invalidate();
     },
   });
@@ -73,7 +102,9 @@ export function useBaseMutations() {
       void utils.base.getById.prefetch({ id: data.id });
       await utils.base.getAll.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
+
   const handleCreateBase = useCallback(async () => {
     const newBase = await createBaseMutation.mutateAsync({});
     return newBase;
@@ -85,6 +116,6 @@ export function useBaseMutations() {
     handleDeleteConfirm,
     deleteBaseMutation,
     handleCreateBase,
-    createBaseMutation
+    createBaseMutation,
   };
 }

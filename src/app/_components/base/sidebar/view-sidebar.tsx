@@ -352,7 +352,7 @@ export function ViewSidebar({
                   </button>
                   <button
                     onClick={() => {
-                      viewMutations.handleAddView();
+                      viewMutations.handleAddView(newViewName);
                       setShowCreateForm(false);
                       setCreateMenuPosition(null);
                       setNewViewName("Grid view");

@@ -34,6 +34,7 @@ import { RowHeightDropdown } from "./row-height-dropdown";
 import { PerformancePanel } from "./performance-panel";
 import { useBase } from "../base-context";
 import { ViewDetailDropdown } from "./view-detail-dropdown";
+import { useToast } from "~/app/_components/ui/toast";
 
 type ToolbarDropdown =
   | "hideFields"
@@ -67,6 +68,7 @@ export function BaseToolbar({
   activeViewName,
   onScrollToRow,
 }: BaseToolbarProps) {
+  const toast = useToast();
   const { activeTableId, activeViewId, setActiveViewId, refetchRows } =
     useBase();
   const viewMutations = useViewMutations(
@@ -102,11 +104,11 @@ export function BaseToolbar({
         rowCount: data.count,
       });
       refetchRows();
-      alert(`Successfully created ${data.count.toLocaleString()} rows!`);
+      toast.success(`Successfully created ${data.count.toLocaleString()} rows!`);
     },
-    onError: (error) => {
+    onError: () => {
       setIsSeeding(false);
-      alert(`Failed to create rows: ${error.message}`);
+      toast.error("Couldn't create rows. Please try again.");
     },
   });
 

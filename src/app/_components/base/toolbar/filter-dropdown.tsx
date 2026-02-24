@@ -433,21 +433,18 @@ export function FilterDropdown({
                     </div>
 
                     <div className="w-48 shrink-0">
-                      {needsValue ? (
-                        <input
-                          type={col?.type === "NUMBER" ? "number" : "text"}
-                          step="any"
-                          value={filter.value ?? ""}
-                          onChange={(e) =>
-                            updateFilterValue(index, e.target.value)
-                          }
-                          onBlur={() => handleBlur(index, col?.type)}
-                          placeholder="Enter a value"
-                          className="w-full [appearance:textfield] border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none placeholder:text-gray-400 invalid:border-red-600 focus:border-blue-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      ) : (
-                        <div className="h-7" />
-                      )}
+                      <input
+                        type={col?.type === "NUMBER" ? "number" : "text"}
+                        step="any"
+                        value={filter.value ?? ""}
+                        disabled={!needsValue}
+                        onChange={(e) =>
+                          updateFilterValue(index, e.target.value)
+                        }
+                        onBlur={() => handleBlur(index, col?.type)}
+                        placeholder="Enter a value"
+                        className="w-full [appearance:textfield] border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none placeholder:text-gray-400 invalid:border-red-600 focus:border-blue-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
                     </div>
 
                     <div className="flex shrink-0 items-center border border-gray-200">

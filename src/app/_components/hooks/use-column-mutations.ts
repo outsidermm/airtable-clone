@@ -2,9 +2,11 @@ import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { ColumnType } from "generated/prisma/enums";
 import { useBase } from "../base/base-context";
+import { useToast } from "~/app/_components/ui/toast";
 
 export function useColumnMutations(activeTableId: number) {
   const utils = api.useUtils();
+  const toast = useToast();
   const { onColumnCreated, notifyColumnIdSwap } = useBase();
 
   const invalidate = useCallback(() => {
@@ -71,16 +73,25 @@ export function useColumnMutations(activeTableId: number) {
     onSettled: invalidate,
   });
 
-  const updateColumn = api.column.update.useMutation({ onSuccess: invalidate });
+  const updateColumn = api.column.update.useMutation({
+    onSuccess: invalidate,
+    onError: () => toast.error("Couldn't update the field. Please try again."),
+  });
   const reorderColumn = api.column.reorder.useMutation({
     onSuccess: invalidate,
+    onError: () => toast.error("Couldn't reorder the field. Please try again."),
   });
   const setPrimaryColumn = api.column.setPrimary.useMutation({
     onSuccess: invalidate,
+    onError: () => toast.error("Couldn't set the primary field. Please try again."),
   });
 
   const duplicateColumn = api.column.duplicate.useMutation({
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      toast.success("Field duplicated");
+    },
+    onError: () => toast.error("Couldn't duplicate the field. Please try again."),
   });
 
   const deleteColumn = api.column.delete.useMutation({
@@ -96,10 +107,12 @@ export function useColumnMutations(activeTableId: number) {
       }
       return { previousData };
     },
+    onSuccess: () => toast.success("Field deleted"),
     onError: (_err, _vars, context) => {
       if (context?.previousData) {
         utils.table.getById.setData({ id: activeTableId }, context.previousData);
       }
+      toast.error("Couldn't delete the field. Please try again.");
     },
     onSettled: invalidate,
   });

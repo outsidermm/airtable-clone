@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from "react";
 import { api } from "~/trpc/react";
 import type { ViewConfig } from "~/server/api/routers/view";
 import { useBase } from "../base/base-context";
+import { useToast } from "~/app/_components/ui/toast";
 
 export function useViewMutations(
   activeTableId: number,
@@ -9,6 +10,7 @@ export function useViewMutations(
   setActiveViewId: (id: number | null) => void,
 ) {
   const utils = api.useUtils();
+  const toast = useToast();
   const { refetchRows } = useBase();
 
   // Tracks whether the in-flight updateView mutation needs a row refetch.
@@ -33,6 +35,7 @@ export function useViewMutations(
       invalidate();
       setActiveViewId(newView.id);
     },
+    onError: () => toast.error("Couldn't create the view. Please try again."),
   });
 
   const renameView = api.view.rename.useMutation({
@@ -60,7 +63,7 @@ export function useViewMutations(
 
       return { previousTable };
     },
-    onError: (err, newView, context) => {
+    onError: (_err, _vars, context) => {
       // Rollback to the previous value if the mutation fails
       if (context?.previousTable) {
         utils.table.getById.setData(
@@ -68,6 +71,7 @@ export function useViewMutations(
           context.previousTable,
         );
       }
+      toast.error("Couldn't rename the view. Please try again.");
     },
     onSettled: () => {
       invalidate();
@@ -116,7 +120,7 @@ export function useViewMutations(
 
       return { previousTable, previousView };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       // Rollback to the previous values if the mutation fails
       if (context?.previousTable) {
         utils.table.getById.setData(
@@ -127,8 +131,9 @@ export function useViewMutations(
       if (context?.previousView) {
         utils.view.getById.setData({ id: variables.id }, context.previousView);
       }
+      toast.error("Couldn't save view settings. Please try again.");
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // avoiding any stale activeViewId closure issues from the initial load.
       void utils.view.getById.invalidate({ id: variables.id });
 
@@ -144,14 +149,18 @@ export function useViewMutations(
   const deleteView = api.view.delete.useMutation({
     onSuccess: () => {
       invalidate();
+      toast.success("View deleted");
     },
+    onError: () => toast.error("Couldn't delete the view. Please try again."),
   });
 
   const duplicateView = api.view.duplicate.useMutation({
     onSuccess: (newView) => {
       invalidate();
       setActiveViewId(newView.id);
+      toast.success("View duplicated");
     },
+    onError: () => toast.error("Couldn't duplicate the view. Please try again."),
   });
 
   const reorderViews = api.view.reorder.useMutation({
@@ -160,9 +169,12 @@ export function useViewMutations(
     },
   });
 
-  const handleAddView = useCallback(() => {
-    createView.mutate({ tableId: activeTableId });
-  }, [activeTableId, createView]);
+  const handleAddView = useCallback(
+    (name?: string) => {
+      createView.mutate({ tableId: activeTableId, name });
+    },
+    [activeTableId, createView],
+  );
 
   const handleRenameView = useCallback(
     (viewId: number, name: string) => {

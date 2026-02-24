@@ -27,8 +27,10 @@ import { useCallback } from "react";
 import { api } from "~/trpc/react";
 import { useBase } from "../base/base-context";
 import { pushQueryEntry } from "~/lib/query-log";
+import { useToast } from "~/app/_components/ui/toast";
 
 export function useRowMutations(activeTableId: number) {
+  const toast = useToast();
   const {
     refetchRows,
     optimisticAddRow,
@@ -69,7 +71,12 @@ export function useRowMutations(activeTableId: number) {
   });
 
   const bulkDeleteRow = api.row.bulkDelete.useMutation({
-    onSuccess: () => refetchRows(),
+    onSuccess: (_data, variables) => {
+      refetchRows();
+      const count = variables.ids.length;
+      toast.success(`${count} ${count === 1 ? "row" : "rows"} deleted`);
+    },
+    onError: () => toast.error("Couldn't delete rows. Please try again."),
   });
 
   // Mutation for insert-above / insert-below with persistent ordering

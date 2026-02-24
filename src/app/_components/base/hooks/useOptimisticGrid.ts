@@ -3,24 +3,24 @@
  * the BaseContext callback registry.
  *
  * Why this hook exists (instead of living in useRowMutations):
- *   useRowMutations calls BaseContext callbacks (optimisticAddRow, etc.) but
- *   cannot own their implementations — those implementations require access to
- *   `pageStoreRef`, which lives in BaseContent's scope. This hook bridges the two
- *   via BaseContext's register pattern: BaseContent creates the ref, passes it here,
- *   and this hook registers closures that capture it.
+ * useRowMutations calls BaseContext callbacks (optimisticAddRow, etc.) but
+ * cannot own their implementations — those implementations require access to
+ * `pageStoreRef`, which lives in BaseContent's scope. This hook bridges the two
+ * via BaseContext's register pattern: BaseContent creates the ref, passes it here,
+ * and this hook registers closures that capture it.
  *
  * Temp ID convention:
- *   Optimistic rows are assigned negative IDs (`-Date.now()`). Since the Row model
- *   uses `Int @id @default(autoincrement())` (always positive), negative values are
- *   impossible in the real DB and require no separate `isPending` flag on GridRow.
+ * Optimistic rows are assigned negative IDs (`-Date.now()`). Since the Row model
+ * uses `Int @id @default(autoincrement())` (always positive), negative values are
+ * impossible in the real DB and require no separate `isPending` flag on GridRow.
  *
  * rowOrderOverride interaction:
- *   - optimisticAddRowImpl: appends to the override only if already active to avoid
- *     an unnecessary O(n) array copy for the common append-to-end case.
- *   - optimisticInsertRowNearImpl: always activates the override, building a sparse
- *     index from the current pageStore entries to place the new row precisely.
- *   - All revert() closures capture their pre-mutation state, enabling rollback
- *     without any additional server round-trip.
+ * - optimisticAddRowImpl: appends to the override only if already active to avoid
+ * an unnecessary O(n) array copy for the common append-to-end case.
+ * - optimisticInsertRowNearImpl: always activates the override, building a sparse
+ * index from the current pageStore entries to place the new row precisely.
+ * - All revert() closures capture their pre-mutation state, enabling rollback
+ * without any additional server round-trip.
  */
 
 import { useCallback, useEffect } from "react";
@@ -36,7 +36,9 @@ interface UseOptimisticGridProps {
   pendingOptimisticEditsRef: React.RefObject<
     Map<number, Record<string, string | number | null>>
   >;
-  setRowOrderOverride: React.Dispatch<React.SetStateAction<(number | null)[] | null>>;
+  setRowOrderOverride: React.Dispatch<
+    React.SetStateAction<(number | null)[] | null>
+  >;
 }
 
 export function useOptimisticGrid({
@@ -199,8 +201,34 @@ export function useOptimisticGrid({
         let insertIdx = -1;
         if (beforeRowId != null) {
           insertIdx = currentOrder.indexOf(beforeRowId);
+          // Fallback if rowOrderOverride is acting as a stale snapshot that missed a newly fetched page
+          if (insertIdx === -1) {
+            for (const [
+              pageIndex,
+              pageRows,
+            ] of pageStoreRef.current?.entries() ?? []) {
+              const idxInPage = pageRows.findIndex((r) => r.id === beforeRowId);
+              if (idxInPage !== -1) {
+                insertIdx = pageIndex * PAGE_SIZE + idxInPage;
+                break;
+              }
+            }
+          }
         } else if (afterRowId != null) {
-          const targetIdx = currentOrder.indexOf(afterRowId);
+          let targetIdx = currentOrder.indexOf(afterRowId);
+          // Fallback if rowOrderOverride is acting as a stale snapshot that missed a newly fetched page
+          if (targetIdx === -1) {
+            for (const [
+              pageIndex,
+              pageRows,
+            ] of pageStoreRef.current?.entries() ?? []) {
+              const idxInPage = pageRows.findIndex((r) => r.id === afterRowId);
+              if (idxInPage !== -1) {
+                targetIdx = pageIndex * PAGE_SIZE + idxInPage;
+                break;
+              }
+            }
+          }
           if (targetIdx !== -1) insertIdx = targetIdx + 1;
         }
 
