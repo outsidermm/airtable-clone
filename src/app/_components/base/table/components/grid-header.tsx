@@ -116,7 +116,7 @@ export function GridHeader({
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
                 <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                <span className="truncate text-xs font-normal text-gray-700">
+                <span className="truncate text-xs font-medium text-gray-900">
                   {primaryColumn.name}
                 </span>
               </div>
@@ -135,7 +135,7 @@ export function GridHeader({
           return (
             <div
               key={header.id}
-              className={`relative border-r border-gray-200 ${
+              className={`relative border border-gray-200 ${
                 filteredColumnIds.has(col.id)
                   ? "bg-green-100"
                   : sortedColumnIds.has(col.id)
@@ -160,7 +160,7 @@ export function GridHeader({
                 <div className="group flex h-full items-center justify-between bg-transparent px-2 py-1.5">
                   <div className="flex items-center gap-1.5 overflow-hidden">
                     <ColumnTypeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                    <span className="truncate text-xs text-gray-900">
+                    <span className="truncate text-xs font-medium text-gray-900">
                       {col.name}
                     </span>
                   </div>
