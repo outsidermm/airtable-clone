@@ -25,7 +25,7 @@ import {
 } from "~/app/_components/ui/icons";
 import type { FilterConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
-import { SortableItem } from "./sortable-item";
+import { SortableGeneralItem } from "../../ui/sortable-general-item";
 import { SearchableSelect } from "../../ui/searchable-select";
 
 interface FilterDropdownProps {
@@ -306,7 +306,7 @@ export function FilterDropdown({
                       ?.label ?? filter.operator;
 
                   return (
-                    <SortableItem
+                    <SortableGeneralItem
                       key={String(index)}
                       id={String(index)}
                       dragHandleClassName="border border-gray-200 p-1.75 rounded-r"
@@ -496,7 +496,7 @@ export function FilterDropdown({
                           </button>
                         </div>
                       </div>
-                    </SortableItem>
+                    </SortableGeneralItem>
                   );
                 })}
               </div>

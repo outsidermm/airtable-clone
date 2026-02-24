@@ -25,7 +25,7 @@ import {
 } from "~/app/_components/ui/icons";
 import type { SortConfig } from "~/server/api/routers/view";
 import type { GridColumn } from "~/types/grid";
-import { SortableItem } from "./sortable-item";
+import { SortableGeneralItem } from "../../ui/sortable-general-item";
 import { SearchableSelect } from "../../ui/searchable-select";
 
 interface SortDropdownProps {
@@ -223,7 +223,7 @@ export function SortDropdown({
                     );
 
                     return (
-                      <SortableItem
+                      <SortableGeneralItem
                         key={String(index)}
                         id={String(index)}
                         hideDragHandle={localSorts.length === 1}
@@ -350,7 +350,7 @@ export function SortDropdown({
                             <XIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                      </SortableItem>
+                      </SortableGeneralItem>
                     );
                   })}
                 </div>
