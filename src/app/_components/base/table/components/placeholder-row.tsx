@@ -4,7 +4,7 @@ import type { GridColumn } from "~/types/grid";
 
 interface PlaceholderRowProps {
   virtualRow: VirtualItem;
-  scrollScaleRef: React.RefObject<number>;
+  virtualStart: number;
   currentRowHeight: number;
   frozenWidth: number;
   totalScrollableWidth: number;
@@ -14,7 +14,7 @@ interface PlaceholderRowProps {
 
 export function PlaceholderRow({
   virtualRow,
-  scrollScaleRef,
+  virtualStart,
   currentRowHeight,
   frozenWidth,
   totalScrollableWidth,
@@ -26,7 +26,7 @@ export function PlaceholderRow({
       key={`placeholder-${virtualRow.index}`}
       className="absolute flex w-full border-b border-gray-200 bg-white"
       style={{
-        top: virtualRow.start * scrollScaleRef.current,
+        top: virtualStart,
         height: currentRowHeight,
         minWidth: "fit-content",
       }}

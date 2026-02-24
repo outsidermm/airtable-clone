@@ -429,9 +429,13 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
 
     const activeRowId = selectedCell?.rowId ?? null;
 
+    // --- Pre-calculate anchor for accurate unscaled rendering
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    const firstItemStart = virtualItems[0]?.start ?? 0;
+    const scaledAnchorStart = firstItemStart * scrollScaleRef.current;
+
     return (
       <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
-        {/* Added wrapper for the overlay */}
         <div className="relative flex flex-1 overflow-hidden">
           <div
             ref={parentRef}
@@ -459,7 +463,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                 sortedColumnIds={sortedColumnIds}
               />
 
-              {/* 1. Render Rows (Only if they exist) */}
               {rows.length > 0 && (
                 <DndContext
                   sensors={sensors}
@@ -477,15 +480,21 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                         minWidth: "fit-content",
                       }}
                     >
-                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      {virtualItems.map((virtualRow) => {
                         const rowData = rows[virtualRow.index];
+
+                        // Apply the unscaled offset to the scaled anchor
+                        const unscaledOffset =
+                          virtualRow.start - firstItemStart;
+                        const correctedVirtualStart =
+                          scaledAnchorStart + unscaledOffset;
 
                         if (!rowData) {
                           return (
                             <PlaceholderRow
                               key={`placeholder-${virtualRow.index}`}
                               virtualRow={virtualRow}
-                              scrollScaleRef={scrollScaleRef}
+                              virtualStart={correctedVirtualStart}
                               currentRowHeight={currentRowHeight}
                               frozenWidth={frozenWidth}
                               totalScrollableWidth={totalScrollableWidth}
@@ -528,9 +537,7 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
                           <SortableRow
                             key={rowKey}
                             rowId={rowData.id}
-                            virtualStart={
-                              virtualRow.start * scrollScaleRef.current
-                            }
+                            virtualStart={correctedVirtualStart}
                             virtualIndex={virtualRow.index}
                             currentRowHeight={currentRowHeight}
                             isRowSelected={selectedRowIds.has(
@@ -629,7 +636,6 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
             </div>
           </div>
 
-          {/* Global full-height overlay freeze drag handler, starting below the header row */}
           <FrozenColumnOverlay
             frozenWidth={frozenWidth}
             handleFrozenBorderDragStart={handleFrozenBorderDragStart}
