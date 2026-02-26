@@ -639,28 +639,30 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
               )}
 
               <div
-                className="flex shrink-0 bg-gray-100"
+                className="group flex shrink-0 bg-gray-100"
                 style={{ minWidth: "fit-content" }}
               >
-                <div
-                  className="sticky left-0 z-10 flex border-b border-gray-200 bg-white"
+                <button
+                  className="sticky left-0 z-10 flex border-b border-gray-200 bg-white group-hover:bg-gray-50"
                   style={{
                     width: frozenWidth,
                     height: HEADER_HEIGHT,
                     borderRight: "2px solid rgb(209, 213, 219)",
                   }}
+                  onClick={rowMutations.handleAddRow}
                 >
-                  <button
-                    onClick={rowMutations.handleAddRow}
+                  <div
                     aria-label="Add row"
-                    className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-gray-600"
+                    className="ml-6 flex items-center gap-2 px-3 py-2 text-gray-400 group-hover:text-gray-600"
                   >
                     <PlusIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-                <div
-                  className="flex border-r border-b border-gray-200 bg-white"
+                  </div>
+                </button>
+
+                <button
+                  className="flex border-r border-b border-gray-200 bg-white group-hover:bg-gray-50"
                   style={{ width: totalScrollableWidth }}
+                  onClick={rowMutations.handleAddRow}
                 />
               </div>
 

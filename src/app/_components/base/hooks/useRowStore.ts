@@ -46,20 +46,23 @@ export function useRowStore({
   setRowOrderOverride,
   registerRefetchRows,
 }: UseRowStoreProps) {
-  const { activeViewId, activeTableId } = useBase();
+  const { activeViewId, activeTableId, searchQuery } = useBase();
   const utils = api.useUtils();
 
   // pageStoreRef is the authoritative mutable source; pageStore state is its
   // snapshot twin. Never write to pageStore directly — always mutate the ref
   // first, then call setPageStore(new Map(pageStoreRef.current)) to trigger render.
+
   const pageStoreRef = useRef<Map<number, GridRow[]>>(new Map());
   const loadingPagesRef = useRef<Set<number>>(new Set());
+
   // Generation counter: incremented on view/table change to invalidate in-flight fetches.
   const fetchKeyRef = useRef(0);
   const [pageStore, setPageStore] = useState<Map<number, GridRow[]>>(new Map());
-  const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
+
   // Ref twin of totalRowCount for synchronous reads inside callbacks/effects
   // that would otherwise close over a stale state value.
+  const [totalRowCount, setTotalRowCount] = useState<number | undefined>();
   const totalRowCountRef = useRef<number>(0);
 
   const fetchPage = useCallback(
@@ -82,7 +85,33 @@ export function useRowStore({
         let fetchedTotalCount: number | undefined;
 
         const fetchStart = Date.now();
-        if (activeViewId) {
+
+        // --- NEW: Intercept fetch for cell.search if searchQuery exists ---
+        if (searchQuery && searchQuery.trim().length > 0 && activeTableId) {
+          const data = await utils.cell.search.fetch(
+            {
+              tableId: activeTableId,
+              query: searchQuery.trim(),
+              offset,
+              limit: PAGE_SIZE,
+            },
+            { staleTime: 0 },
+          );
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+          pushQueryEntry({
+            path: "cell.search",
+            label: `tableId=${activeTableId} query=${searchQuery} page=${pageIndex}`,
+            sqlMs: data.sqlMs,
+            totalMs: Date.now() - fetchStart,
+            rowCount: newRows.length,
+          });
+        }
+        // ----------------------------------------------------------------
+        else if (activeViewId) {
           const data = await utils.view.getData.fetch(
             { viewId: activeViewId, offset, limit: PAGE_SIZE },
             { staleTime: 0 },
@@ -138,7 +167,7 @@ export function useRowStore({
         }
       }
     },
-    [activeViewId, activeTableId, utils],
+    [activeViewId, activeTableId, searchQuery, utils],
   );
 
   const silentRefetchPage = useCallback(
@@ -149,7 +178,22 @@ export function useRowStore({
         let newRows: GridRow[];
         let fetchedTotalCount: number | undefined;
 
-        if (activeViewId) {
+        if (searchQuery && searchQuery.trim().length > 0 && activeTableId) {
+          const data = await utils.cell.search.fetch(
+            {
+              tableId: activeTableId,
+              query: searchQuery.trim(),
+              offset,
+              limit: PAGE_SIZE,
+            },
+            { staleTime: 0 },
+          );
+          newRows = data.rows.map((row) => ({
+            id: row.id,
+            cells: row.cells as Record<string, string | number | null>,
+          }));
+          fetchedTotalCount = data.totalCount;
+        } else if (activeViewId) {
           const data = await utils.view.getData.fetch(
             { viewId: activeViewId, offset, limit: PAGE_SIZE },
             { staleTime: 0 },
@@ -191,13 +235,14 @@ export function useRowStore({
         // Silently ignore errors
       }
     },
-    [activeViewId, activeTableId, utils, setRowOrderOverride],
+    [activeViewId, activeTableId, searchQuery, utils, setRowOrderOverride],
   );
 
   // Refetches every loaded page without resetting the store. Called by structural
   // mutations (reorder, bulk-delete) that change server-side order/count but should
   // not blank the viewport. Page 0 runs first and clears rowOrderOverride on completion,
   // signalling that the authoritative server order has replaced the optimistic override.
+
   const refetchLoadedPages = useCallback(() => {
     const loadedPageIndices = [...pageStoreRef.current.keys()];
     loadingPagesRef.current = new Set();
@@ -213,6 +258,8 @@ export function useRowStore({
 
   // Full reset on view/table switch: bump the generation counter, clear all caches,
   // and eagerly fetch page 0 so the grid is never blank during tab transitions.
+
+  // Make sure searchQuery triggers a full fetch reset so the grid changes immediately
   useEffect(() => {
     fetchKeyRef.current++;
     pageStoreRef.current = new Map();
@@ -224,7 +271,7 @@ export function useRowStore({
     if (activeViewId ?? activeTableId) {
       void fetchPage(0);
     }
-  }, [activeViewId, activeTableId, fetchPage]);
+  }, [activeViewId, activeTableId, searchQuery, fetchPage]);
 
   return {
     pageStore,

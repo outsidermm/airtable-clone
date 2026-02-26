@@ -41,10 +41,10 @@ export function SortableColumnItem({
       style={style}
       className="flex items-center justify-between gap-1 px-5 py-0.5"
     >
-      <div className="flex w-full items-center gap-2 py-0.5 hover:bg-gray-100">
+      <div className="flex w-full min-w-0 items-center gap-2 py-0.5 hover:bg-gray-100">
         <button
           onClick={onToggle}
-          className={`flex h-2 w-3 items-center rounded-full px-0.5 transition-colors ${
+          className={`flex h-2 w-3 shrink-0 items-center rounded-full px-0.5 transition-colors ${
             isVisible ? "bg-green-600" : "bg-gray-300"
           }`}
         >
@@ -55,11 +55,13 @@ export function SortableColumnItem({
           />
         </button>
         {column.type === "NUMBER" ? (
-          <NumberIcon className="h-3 w-3 text-gray-400" />
+          <NumberIcon className="h-3 w-3 shrink-0 text-gray-400" />
         ) : (
-          <TextIcon className="h-3 w-3 text-gray-400" />
+          <TextIcon className="h-3 w-3 shrink-0 text-gray-400" />
         )}
-        <span className="text-xs text-gray-700">{column.name}</span>
+        <span className="flex-1 truncate text-left text-xs text-gray-700">
+          {column.name}
+        </span>
       </div>
       <div
         {...attributes}

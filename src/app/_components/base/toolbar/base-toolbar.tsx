@@ -66,7 +66,6 @@ export function BaseToolbar({
   onSidebarHoverEnter,
   onSidebarHoverLeave,
   activeViewName,
-  onScrollToRow,
 }: BaseToolbarProps) {
   const toast = useToast();
   const { activeTableId, activeViewId, setActiveViewId, refetchRows } =
@@ -104,7 +103,9 @@ export function BaseToolbar({
         rowCount: data.count,
       });
       refetchRows();
-      toast.success(`Successfully created ${data.count.toLocaleString()} rows!`);
+      toast.success(
+        `Successfully created ${data.count.toLocaleString()} rows!`,
+      );
     },
     onError: () => {
       setIsSeeding(false);
@@ -486,13 +487,7 @@ export function BaseToolbar({
             <SearchIcon className="h-4 w-4" />
           </button>
           {activeDropdown === "search" && (
-            <SearchDropdown
-              columns={columns}
-              filters={viewConfig.filters ?? []}
-              onUpdateFilters={handleUpdateFilters}
-              onScrollToRow={onScrollToRow}
-              onClose={closeDropdown}
-            />
+            <SearchDropdown onClose={closeDropdown} />
           )}
         </div>
 
