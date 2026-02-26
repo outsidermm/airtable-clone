@@ -338,7 +338,7 @@ export function FilterDropdown({
                       )}
                     </div>
 
-                    <div className="relative flex-1">
+                    <div className="relative min-w-0 flex-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -351,10 +351,10 @@ export function FilterDropdown({
                         }}
                         className="flex w-full items-center justify-between rounded-l border border-gray-200 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                       >
-                        <span className="truncate">
+                        <span className="mr-2 flex-1 truncate text-left">
                           {col ? col.name : "Select field..."}
                         </span>
-                        <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-400" />
+                        <ChevronDownIcon className="h-3 w-3 shrink-0 text-gray-400" />
                       </button>
 
                       {openMenu?.index === index &&
@@ -391,7 +391,7 @@ export function FilterDropdown({
                         )}
                     </div>
 
-                    <div className="relative w-40 shrink-0">
+                    <div className="relative w-34 shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -404,8 +404,10 @@ export function FilterDropdown({
                         }}
                         className="flex w-full items-center justify-between border border-gray-200 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                       >
-                        <span className="truncate">{currentOpLabel}</span>
-                        <ChevronDownIcon className="ml-1 h-3 w-3 shrink-0 text-gray-400" />
+                        <span className="mr-2 flex-1 truncate text-left">
+                          {currentOpLabel}
+                        </span>
+                        <ChevronDownIcon className="h-3 w-3 shrink-0 text-gray-400" />
                       </button>
 
                       {openMenu?.index === index &&
