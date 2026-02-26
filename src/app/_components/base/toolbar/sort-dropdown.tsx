@@ -129,7 +129,7 @@ export function SortDropdown({
     return dir === "asc" ? "A → Z" : "Z → A";
   };
 
-  const containerWidthClass = localSorts.length === 0 ? "w-80" : "w-110";
+  const containerWidthClass = localSorts.length === 0 ? "w-80" : "w-[30rem]";
 
   return (
     <Popover
@@ -168,14 +168,16 @@ export function SortDropdown({
               <button
                 key={col.id}
                 onClick={() => addSort(col.id)}
-                className="flex w-full items-center gap-1.5 rounded px-1 py-1 hover:bg-gray-100"
+                className="flex w-full min-w-0 items-center gap-1.5 rounded px-1 py-1 hover:bg-gray-100"
               >
                 {col.type === "NUMBER" ? (
-                  <NumberIcon className="h-3.5 w-3.5 text-gray-400" />
+                  <NumberIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                 ) : (
-                  <TextIcon className="h-3.5 w-3.5 text-gray-400" />
+                  <TextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                 )}
-                <span className="text-xs text-gray-700">{col.name}</span>
+                <span className="flex-1 truncate text-left text-xs text-gray-700">
+                  {col.name}
+                </span>
               </button>
             ))}
             {filteredGlobalColumns.length === 0 && (
@@ -204,8 +206,8 @@ export function SortDropdown({
                     hideDragHandle={localSorts.length === 1}
                   >
                     <div className="flex w-full items-center justify-between gap-2">
-                      <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <div className="relative min-w-0 flex-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -218,12 +220,12 @@ export function SortDropdown({
                             }}
                             className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                           >
-                            <span className="truncate">
+                            <span className="mr-2 flex-1 truncate text-left">
                               {selectedColumn
                                 ? selectedColumn.name
                                 : "Select a field..."}
                             </span>
-                            <ChevronDownIcon className="ml-1 h-2 w-2 text-gray-400" />
+                            <ChevronDownIcon className="h-2 w-2 shrink-0 text-gray-400" />
                           </button>
 
                           {openMenu?.index === index &&
@@ -271,13 +273,13 @@ export function SortDropdown({
                               }}
                               className="flex w-full items-center justify-between rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                             >
-                              <span>
+                              <span className="mr-2 flex-1 truncate text-left">
                                 {getDirectionLabel(
                                   sort.columnId,
                                   sort.direction,
                                 )}
                               </span>
-                              <ChevronDownIcon className="h-2 w-2 text-gray-500" />
+                              <ChevronDownIcon className="h-2 w-2 shrink-0 text-gray-500" />
                             </button>
 
                             {openMenu?.index === index &&
