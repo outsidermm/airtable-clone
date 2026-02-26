@@ -1,4 +1,3 @@
-// src/app/_components/ui/popover.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -9,8 +8,8 @@ interface PopoverProps {
   className?: string;
   align?: "left" | "right";
   zIndex?: number;
-  overlayZIndex?: number;
-  overlayStyle?: React.CSSProperties;
+  overlayZIndex?: number; // Kept for backwards compatibility
+  overlayStyle?: React.CSSProperties; // Kept for backwards compatibility
   anchorEl?: HTMLElement | null; // Triggers fixed collision-aware positioning
   dependency?: unknown; // Re-run positioning if content changes size (e.g. searching)
 }
@@ -21,8 +20,6 @@ export function Popover({
   className = "",
   align = "left",
   zIndex = 50,
-  overlayZIndex = 40,
-  overlayStyle,
   anchorEl,
   dependency,
 }: PopoverProps) {
@@ -39,6 +36,31 @@ export function Popover({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  // Handle Click Outside (Replaces the blocking invisible overlay)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(e.target as Node) &&
+        document.contains(e.target as Node) // Ensure target wasn't just unmounted
+      ) {
+        onClose();
+      }
+    };
+
+    // Delay attachment by 1 tick to avoid immediately capturing the click that opened the popover
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("click", handleClickOutside);
+      document.addEventListener("touchend", handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("touchend", handleClickOutside);
+    };
   }, [onClose]);
 
   // Handle Anchor Math & Screen Collision
@@ -68,29 +90,18 @@ export function Popover({
   const isFixed = !!anchorEl;
 
   return (
-    <>
-      <div
-        role="presentation"
-        className="fixed inset-0"
-        style={{ zIndex: overlayZIndex, ...overlayStyle }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      />
-      <div
-        ref={modalRef}
-        className={`${isFixed ? "fixed" : "absolute top-full mt-1"} rounded-lg border border-gray-200 bg-white shadow-xl ${
-          !isFixed && align === "right" ? "right-0" : ""
-        } ${!isFixed && align === "left" ? "left-0" : ""} ${className}`}
-        style={{
-          zIndex,
-          ...(position ?? {}),
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </>
+    <div
+      ref={modalRef}
+      className={`${isFixed ? "fixed" : "absolute top-full mt-1"} rounded-lg border border-gray-200 bg-white shadow-xl ${
+        !isFixed && align === "right" ? "right-0" : ""
+      } ${!isFixed && align === "left" ? "left-0" : ""} ${className}`}
+      style={{
+        zIndex,
+        ...(position ?? {}),
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>
   );
 }

@@ -69,7 +69,11 @@ export const cellRouter = createTRPCRouter({
         WHERE id = ${input.rowId}
       `;
 
-      return { rowId: input.rowId, columnId: input.columnId, sqlMs: Date.now() - sqlStart };
+      return {
+        rowId: input.rowId,
+        columnId: input.columnId,
+        sqlMs: Date.now() - sqlStart,
+      };
     }),
 
   // Bulk update cells (optimized for paste operations)
@@ -170,7 +174,7 @@ export const cellRouter = createTRPCRouter({
       return row.cells as Record<string, unknown>;
     }),
 
-  // Search cells across rows in a table
+  // Search cells across rows in a table (now supports pagination)
   search: protectedProcedure
     .input(
       z.object({
@@ -178,6 +182,7 @@ export const cellRouter = createTRPCRouter({
         query: z.string().min(1),
         columnId: z.number().int().optional(),
         limit: z.number().int().min(1).max(500).default(200),
+        offset: z.number().int().min(0).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -193,36 +198,71 @@ export const cellRouter = createTRPCRouter({
 
       const searchPattern = `%${input.query}%`;
       const sqlStart = Date.now();
+      const isFirstPage = !input.offset || input.offset === 0;
 
       if (input.columnId) {
         // Search within a specific column key in JSONB
         const colKey = String(input.columnId);
-        const rows = await ctx.db.$queryRaw<
-          Array<{ id: number; cells: unknown }>
-        >`
-          SELECT id, cells
-          FROM "Row"
-          WHERE "tableId" = ${input.tableId}
-            AND cells->>${colKey} ILIKE ${searchPattern}
-          ORDER BY id ASC
-          LIMIT ${input.limit}
-        `;
-        return { rows, sqlMs: Date.now() - sqlStart };
+
+        const [countResult, rows] = await Promise.all([
+          isFirstPage
+            ? ctx.db.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(*) as count
+                FROM "Row"
+                WHERE "tableId" = ${input.tableId}
+                  AND cells->>${colKey} ILIKE ${searchPattern}
+              `
+            : Promise.resolve(undefined),
+          ctx.db.$queryRaw<Array<{ id: number; cells: unknown }>>`
+            SELECT id, cells
+            FROM "Row"
+            WHERE "tableId" = ${input.tableId}
+              AND cells->>${colKey} ILIKE ${searchPattern}
+            ORDER BY id ASC
+            LIMIT ${input.limit}
+            OFFSET ${input.offset ?? 0}
+          `,
+        ]);
+
+        return {
+          rows,
+          totalCount: countResult
+            ? Number(countResult[0]?.count ?? 0)
+            : undefined,
+          sqlMs: Date.now() - sqlStart,
+        };
       } else {
-        // Search across all JSONB values
-        const rows = await ctx.db.$queryRaw<
-          Array<{ id: number; cells: unknown }>
-        >`
-          SELECT r.id, r.cells
-          FROM "Row" r,
-          LATERAL jsonb_each_text(r.cells) AS kv(key, value)
-          WHERE r."tableId" = ${input.tableId}
-            AND kv.value ILIKE ${searchPattern}
-          GROUP BY r.id, r.cells
-          ORDER BY r.id ASC
-          LIMIT ${input.limit}
-        `;
-        return { rows, sqlMs: Date.now() - sqlStart };
+        // Search across all JSONB values using LATERAL expansion
+        const [countResult, rows] = await Promise.all([
+          isFirstPage
+            ? ctx.db.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(DISTINCT r.id) as count
+                FROM "Row" r,
+                LATERAL jsonb_each_text(r.cells) AS kv(key, value)
+                WHERE r."tableId" = ${input.tableId}
+                  AND kv.value ILIKE ${searchPattern}
+              `
+            : Promise.resolve(undefined),
+          ctx.db.$queryRaw<Array<{ id: number; cells: unknown }>>`
+            SELECT r.id, r.cells
+            FROM "Row" r,
+            LATERAL jsonb_each_text(r.cells) AS kv(key, value)
+            WHERE r."tableId" = ${input.tableId}
+              AND kv.value ILIKE ${searchPattern}
+            GROUP BY r.id, r.cells
+            ORDER BY r.id ASC
+            LIMIT ${input.limit}
+            OFFSET ${input.offset ?? 0}
+          `,
+        ]);
+
+        return {
+          rows,
+          totalCount: countResult
+            ? Number(countResult[0]?.count ?? 0)
+            : undefined,
+          sqlMs: Date.now() - sqlStart,
+        };
       }
     }),
 });
