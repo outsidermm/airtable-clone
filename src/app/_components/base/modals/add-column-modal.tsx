@@ -112,7 +112,7 @@ export function AddColumnModal({
             <QuestionIcon className="h-4 w-8 cursor-help text-gray-400 hover:text-gray-600" />
           </div>
 
-          <div className="max-h-180 overflow-y-auto p-2">
+          <div className="max-h-120 overflow-y-auto p-2">
             {filteredFields.length > 0 ? (
               <>
                 {agentFields.length > 0 && (
