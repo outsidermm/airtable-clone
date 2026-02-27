@@ -18,7 +18,7 @@ export default function HomePage() {
         <TestimonialSection />
 
         {/* Final CTA Section */}
-        <section className="bg-gradient-to-br from-blue-50 to-indigo-50 px-6 py-20">
+        <section className="bg-linear-to-br from-blue-50 to-indigo-50 px-6 py-20">
           <div className="mx-auto max-w-4xl text-center">
             <h2 className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl">
               Start building with Airtable
