@@ -82,7 +82,7 @@ export function useCellMutations({
       cellUpdateStartRef.current.set(key, Date.now());
 
       const colKey = String(variables.columnId);
-      let previousValue: string | number | null | undefined = undefined;
+      let previousValue: string | number | boolean | null | undefined = undefined;
 
       // Optimistically update the store immediately
       for (const [pageIndex, pageRows] of pageStoreRef.current) {
@@ -275,7 +275,7 @@ export function useCellMutations({
           if (tempKey in row.cells) {
             const { [tempKey]: val, ...rest } = row.cells;
             pageChanged = true;
-            const newCells: Record<string, string | number | null> =
+            const newCells: Record<string, string | number | boolean | null> =
               val !== undefined ? { ...rest, [realKey]: val } : { ...rest };
             return { ...row, cells: newCells };
           }
