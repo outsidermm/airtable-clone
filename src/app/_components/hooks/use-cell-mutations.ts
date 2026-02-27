@@ -54,10 +54,10 @@ interface UseCellMutationsProps {
   pageStoreRef: React.RefObject<Map<number, GridRow[]>>;
   setPageStore: React.Dispatch<React.SetStateAction<Map<number, GridRow[]>>>;
   pendingOptimisticEditsRef: React.RefObject<
-    Map<number, Record<string, string | number | null>>
+    Map<number, Record<string, string | number | boolean | null>>
   >;
   pendingColumnEditsRef: React.RefObject<
-    Map<number, Map<number, string | number | null>>
+    Map<number, Map<number, string | number | boolean | null>>
   >;
 }
 
@@ -148,12 +148,14 @@ export function useCellMutations({
       if (!col) return;
 
       const colKey = String(columnId);
-      const convertedValue: string | number | null =
+      const convertedValue: string | number | boolean | null =
         col.type === "NUMBER"
           ? isNaN(parseFloat(value))
             ? null
             : parseFloat(value)
-          : value;
+          : col.type === "BOOL"
+            ? value === "true"
+            : value;
 
       const isTempRow = rowId < 0;
       const isTempCol = columnId < 0;

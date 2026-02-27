@@ -1,28 +1,23 @@
 import { z } from "zod";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createDefaultTable } from "../utils/table-helpers";
 
 export const baseRouter = createTRPCRouter({
   // Create a new base with a default table (columns, rows, cells, view)
-  create: protectedProcedure
-    .input(z.object({}))
-    .mutation(async ({ ctx }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        const base = await tx.base.create({
-          data: {
-            userId: ctx.session.user.id,
-          },
-        });
-
-        await createDefaultTable(tx, base.id, "Table 1");
-
-        return base;
+  create: protectedProcedure.input(z.object({})).mutation(async ({ ctx }) => {
+    return await ctx.db.$transaction(async (tx) => {
+      const base = await tx.base.create({
+        data: {
+          userId: ctx.session.user.id,
+        },
       });
-    }),
+
+      await createDefaultTable(tx, base.id, "Table 1");
+
+      return base;
+    });
+  }),
 
   // Get a single base by ID with tables
   getById: protectedProcedure
@@ -48,20 +43,19 @@ export const baseRouter = createTRPCRouter({
     }),
 
   // Get all bases for the current user
-  getAll: protectedProcedure
-    .query(async ({ ctx }) => {
-      return ctx.db.base.findMany({
-        where: { userId: ctx.session.user.id },
-        orderBy: [
-          { starred: "desc" }, // Starred bases first
-          { updatedAt: "desc" }, // Then by most recently updated
-        ],
-      });
-    }),
+  getAll: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.base.findMany({
+      where: { userId: ctx.session.user.id },
+      orderBy: [
+        { starred: "desc" }, // Starred bases first
+        { updatedAt: "desc" }, // Then by most recently updated
+      ],
+    });
+  }),
 
   // Get bases by name (partial match)
   getByName: protectedProcedure
-    .input(z.object({ id: z.string(), name: z.string().max(255)}))
+    .input(z.object({ id: z.string(), name: z.string().max(255) }))
     .query(async ({ ctx, input }) => {
       const base = await ctx.db.base.findMany({
         where: {
@@ -70,25 +64,25 @@ export const baseRouter = createTRPCRouter({
           name: {
             contains: input.name, // Partial match on name
             mode: "insensitive", // Case-insensitive search
-          }
+          },
         },
       });
 
-      if (!base) {
+      if (base.length === 0) {
         throw new Error("Base not found or access denied");
       }
-
       return base;
     }),
 
   // Update a base
   rename: protectedProcedure
-    .input(z.object({
-      id: z.string(),
-      name: z.string().min(1).max(255),
-    }))
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(255),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-
       // Verify ownership before updating
       const base = await ctx.db.base.findUnique({
         where: { id: input.id, userId: ctx.session.user.id },
@@ -145,12 +139,11 @@ export const baseRouter = createTRPCRouter({
         data: { starred: !base.starred },
       });
     }),
-  
-    getStarred: protectedProcedure
-    .query(async ({ ctx }) => {
-      return ctx.db.base.findMany({
-        where: { userId: ctx.session.user.id, starred: true },
-        orderBy: { updatedAt: "desc" },
-      });
-    }),
+
+  getStarred: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.base.findMany({
+      where: { userId: ctx.session.user.id, starred: true },
+      orderBy: { updatedAt: "desc" },
+    });
+  }),
 });

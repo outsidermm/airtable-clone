@@ -98,7 +98,7 @@ model Column {
     table      AirtableTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
     order      String
-    primary     Boolean @default(false)
+    primary    Boolean @default(false)
 
     @@index([tableId, order])
 }
@@ -134,4 +134,5 @@ model View {
 enum ColumnType {
     TEXT
     NUMBER
+    BOOL
 }

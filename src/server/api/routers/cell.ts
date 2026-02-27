@@ -9,7 +9,7 @@ export const cellRouter = createTRPCRouter({
       z.object({
         rowId: z.number().int(),
         columnId: z.number().int(),
-        value: z.union([z.string(), z.number(), z.null()]),
+        value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -56,6 +56,15 @@ export const cellRouter = createTRPCRouter({
             // Auto-convert numbers to strings for text fields
             input.value = String(input.value);
           }
+        } else if (column.type === "BOOL") {
+          if (typeof input.value === "string") {
+            // Auto-convert "true"/"false" strings to booleans
+            if (input.value === "true") input.value = true;
+            else if (input.value === "false") input.value = false;
+            else throw new Error("Invalid boolean value");
+          } else if (typeof input.value === "number") {
+            input.value = input.value !== 0;
+          }
         }
       }
 
@@ -85,7 +94,7 @@ export const cellRouter = createTRPCRouter({
             z.object({
               rowId: z.number().int(),
               columnId: z.number().int(),
-              value: z.union([z.string(), z.number(), z.null()]),
+              value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
             }),
           )
           .min(1)
@@ -115,7 +124,7 @@ export const cellRouter = createTRPCRouter({
       // Group updates by rowId for efficiency
       const updatesByRow = new Map<
         number,
-        Array<{ columnId: number; value: string | number | null }>
+        Array<{ columnId: number; value: string | number | boolean | null }>
       >();
       for (const update of input.updates) {
         const existing = updatesByRow.get(update.rowId) ?? [];

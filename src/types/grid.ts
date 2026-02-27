@@ -11,7 +11,7 @@ export interface GridColumn {
 
 export interface GridRow {
   id: number;
-  cells: Record<string, string | number | null>;
+  cells: Record<string, string | number | boolean | null>;
 }
 
 export interface SearchResult {

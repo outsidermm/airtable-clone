@@ -163,11 +163,11 @@ export async function convertCellsForTypeChange(
   tx: PrismaTransaction,
   columnId: number,
   tableId: number,
-  newType: "TEXT" | "NUMBER",
+  newType: "TEXT" | "NUMBER" | "BOOL",
 ) {
   const colKey = String(columnId);
 
-  if (newType === "TEXT") {
+  if (newType === "TEXT" || newType === "BOOL") {
     // Convert number values to text strings in JSONB
     await tx.$executeRaw`
       UPDATE "Row"

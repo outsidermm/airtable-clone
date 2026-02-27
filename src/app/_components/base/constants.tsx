@@ -280,7 +280,7 @@ export const FIELD_TYPES: FieldType[] = [
   {
     id: "checkbox",
     name: "Checkbox",
-    type: "TEXT",
+    type: "BOOL",
     category: "standard",
     icon: (
       <svg

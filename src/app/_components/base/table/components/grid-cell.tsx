@@ -39,7 +39,7 @@ interface GridCellProps {
   rowId: number;
   columnId: number;
   width: number;
-  value: string | number | null | undefined;
+  value: string | number | boolean | null | undefined;
   columnType: ColumnType;
   // State
   isSelectedCell: boolean;
@@ -126,6 +126,33 @@ export const GridCell = memo(function GridCell({
   const borderClass = isSelectedCell
     ? "ring-2 ring-blue-500 ring-inset z-20"
     : "border-r border-gray-200";
+
+  // BOOL columns render as a standalone checkbox — no text input or edit mode needed.
+  if (columnType === "BOOL") {
+    const isChecked = value === true || value === "true" || value === 1;
+    return (
+      <div
+        id={`cell-${rowId}-${columnId}`}
+        role="gridcell"
+        aria-selected={isSelectedCell}
+        className={`relative flex items-center justify-center ${borderClass} ${cellBg}`}
+        style={{ width, minWidth: 80 }}
+        onMouseDown={(e) => onMouseDown(rowId, columnId, e)}
+        onMouseEnter={() => onMouseEnter(rowId, columnId)}
+      >
+        <input
+          type="checkbox"
+          checked={isChecked}
+          onChange={(e) => {
+            const newValue = e.target.checked ? "true" : "false";
+            startTransition(() => onChange(rowId, columnId, newValue));
+          }}
+          className="h-3.5 w-3.5 cursor-pointer rounded border-gray-300 text-blue-600 accent-blue-600"
+          aria-label={`Boolean field, row ${rowId}`}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

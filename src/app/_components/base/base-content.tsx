@@ -205,10 +205,10 @@ export function BaseContent({
 
   // --- Rows: random-access page store ---
   const pendingOptimisticEditsRef = useRef<
-    Map<number, Record<string, string | number | null>>
+    Map<number, Record<string, string | number | boolean | null>>
   >(new Map());
   const pendingColumnEditsRef = useRef<
-    Map<number, Map<number, string | number | null>>
+    Map<number, Map<number, string | number | boolean | null>>
   >(new Map());
 
   const {

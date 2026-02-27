@@ -34,7 +34,7 @@ interface UseOptimisticGridProps {
   totalRowCountRef: React.RefObject<number>;
   setTotalRowCount: React.Dispatch<React.SetStateAction<number | undefined>>;
   pendingOptimisticEditsRef: React.RefObject<
-    Map<number, Record<string, string | number | null>>
+    Map<number, Record<string, string | number | boolean | null>>
   >;
   setRowOrderOverride: React.Dispatch<
     React.SetStateAction<(number | null)[] | null>

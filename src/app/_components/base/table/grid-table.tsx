@@ -471,7 +471,9 @@ export const GridTable = forwardRef<GridTableHandle, GridTableProps>(
           ?.querySelector("input");
         if (el) {
           el.focus();
-          el.setSelectionRange(el.value.length, el.value.length);
+          if (el.type !== "checkbox") {
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
         }
       }
     }, [editingCell]);
